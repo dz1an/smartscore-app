@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 
+def index(request):
+    return render(request, 'base.html')
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -12,7 +15,7 @@ def login_view(request):
             return redirect('home')  # Redirect to the home page after successful login
         else:
             messages.error(request, 'Invalid username or password.')
-    return render(request, 'core/login.html')
+    return render(request, 'login.html')
 
 def logout_view(request):
     logout(request)
