@@ -1,0 +1,39 @@
+<!-- templates/base.html -->
+
+{% load compress %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smartscore</title>
+
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'src/output.css' %}">
+    {% endcompress %}
+
+</head>
+
+<body class="bg-green-50">
+    {% include 'navbar.html' %}
+   
+      <hr>
+
+    <div class="container mx-auto mt-4">
+        <div>
+
+        </div>
+        {% block content %}
+        {% endblock content %}
+    </div>
+    
+    {% include 'footer.html' %}
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+</body>
+
+</html>
