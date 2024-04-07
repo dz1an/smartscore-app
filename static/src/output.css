@@ -20,6 +20,8 @@
   /* 2 */
 }
 
+
+
 ::before,
 ::after {
   --tw-content: '';
@@ -83,6 +85,10 @@ hr {
   /* 3 */
 }
 
+#sphinx-landing{
+
+  max-width: 60%;
+}
 /*
 Add the correct text decoration in Chrome, Edge, and Safari.
 */
