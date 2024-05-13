@@ -3,6 +3,7 @@
 {% load compress %}
 {% load static %}
 
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -21,19 +22,28 @@
 <body class="bg-green-50">
     {% include 'navbar.html' %}
    
-      <hr>
+    <hr>
 
     <div class="container mx-auto mt-4">
         <div>
-
+            {% block content %}
+            {% endblock content %}
         </div>
-        {% block content %}
-        {% endblock content %}
     </div>
     
     {% include 'footer.html' %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+
+    {% if user.is_authenticated %}
+        <!-- User is logged in -->
+        <p>Welcome, {{ user.username }}!</p>
+        <a href="{% url 'logout' %}">Logout</a>
+        <!-- You can add other authenticated user content here -->
+    {% else %}
+        <!-- User is not logged in -->
+        <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'register' %}">Register</a>.</p>
+    {% endif %}
 </body>
 
 </html>
