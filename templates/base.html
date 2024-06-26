@@ -1,39 +1,40 @@
-<!-- templates/base.html -->
-
-{% load compress %}
 {% load static %}
-
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smartscore</title>
 
-    {% compress css %}
-    <link rel="stylesheet" href="{% static 'src/output.css' %}">
-    {% endcompress %}
+    <!-- Include Flowbite CSS -->
+    <link rel="stylesheet" href="{% static 'output.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
+    {% block extra_head %}
+    {% endblock %}
 </head>
-
-<body class="bg-green-50">
+<body>
     {% include 'navbar.html' %}
-   
     <hr>
-
     <div class="container mx-auto mt-4">
         <div>
             {% block content %}
-            {% endblock content %}
+            {% endblock %}
         </div>
     </div>
-    
-    {% include 'footer.html' %}
+  
 
+    <!-- Modal for adding classes -->
+    {% block modal %}
+    {% endblock %}
+
+    <!-- Include Flowbite JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+
+    {% block extra_scripts %}
+    {% endblock %}
 
     {% if user.is_authenticated %}
         <!-- User is logged in -->
@@ -44,6 +45,17 @@
         <!-- User is not logged in -->
         <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'register' %}">Register</a>.</p>
     {% endif %}
-</body>
 
+    <!-- Display Django messages -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="p-4 mb-4 text-sm {{ message.tags }} bg-{{ message.tags }}-100 rounded-lg dark:bg-{{ message.tags }}-200 dark:text-{{ message.tags }}-800" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</body>
 </html>
+{% include 'footer.html' %}
