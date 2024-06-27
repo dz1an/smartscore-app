@@ -4,10 +4,12 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import Class, Student, Exam, Question
-from .forms import ClassForm, StudentForm, ExamForm
+from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
 
-
+#
 
 def index(request):
     return render(request, 'index.html')
@@ -72,22 +74,42 @@ def classes_view(request):
 
 def class_detail_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
+    students = class_instance.students.all()  # Assuming related_name is 'students'
 
     if request.method == 'POST':
-        form = StudentForm(request.POST)
+        form = ClassNameForm(request.POST, instance=class_instance)
         if form.is_valid():
-            student = form.save(commit=False)
-            student.class_assigned = class_instance
-            student.save()
-            messages.success(request, 'Student added successfully!')
-            return redirect('class_detail', class_id=class_id)
-        else:
-            messages.error(request, 'Error adding student. Please check the form.')
+            form.save()
+            return redirect('class_detail', class_id=class_instance.id)
     else:
-        form = StudentForm()
+        form = ClassNameForm(instance=class_instance)
 
-    students = class_instance.students.all()
-    return render(request, 'class_detail.html', {'class': class_instance, 'students': students, 'form': form})
+    context = {
+        'class': class_instance,
+        'students': students,
+        'form': form,
+    }
+    return render(request, 'class_detail.html', context)
+
+def update_class_name_view(request, class_id):
+    class_instance = get_object_or_404(Class, id=class_id)
+
+    if request.method == 'POST':
+        form = ClassNameForm(request.POST, instance=class_instance)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Class name updated successfully!')
+            return redirect('class_detail', class_id=class_instance.id)
+        else:
+            messages.error(request, 'Error updating class name. Please check the form.')
+    else:
+        form = ClassNameForm(instance=class_instance)
+
+    context = {
+        'class': class_instance,
+        'form': form,
+    }
+    return render(request, 'update_class_name.html', context)
 
 
 def exams_view(request):
@@ -106,48 +128,6 @@ def exams_view(request):
     exams = Exam.objects.all()
     return render(request, 'exams.html', {'classes': classes, 'exams': exams, 'form': form})
 
-def exam_detail_view(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
-
-    if request.method == 'POST':
-        question_text = request.POST.get('question_text')
-        correct_answer = request.POST.get('correct_answer')
-        if question_text and correct_answer:
-            Question.objects.create(exam=exam, question_text=question_text, correct_answer=correct_answer)
-            messages.success(request, 'Question added successfully!')
-            return redirect('exam_detail', exam_id=exam_id)
-        else:
-            messages.error(request, 'Error adding question. Please check the form.')
-    else:
-        form = QuestionForm()
-    
-    questions = exam.questions.all()
-    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions, 'form': form})
-
-def students_view(request):
-    students = Student.objects.all()
-    return render(request, 'students.html', {'students': students})
-
-def add_student_view(request, class_id):
-    class_instance = get_object_or_404(Class, id=class_id)
-    
-    if request.method == 'POST':
-        form = StudentForm(request.POST)
-        if form.is_valid():
-            # Save the student and associate with the class
-            student = form.save(commit=False)
-            student.class_assigned = class_instance
-            student.save()
-            messages.success(request, 'Student added successfully!')
-            return redirect('class_detail', class_id=class_instance.id)
-        else:
-            messages.error(request, 'Error adding student. Please check the form.')
-    else:
-        form = StudentForm()  # Create a new form instance for GET requests
-    
-    # If form submission fails or it's a GET request, redirect to class detail
-    return redirect('class_detail', class_id=class_instance.id)
-
 def add_exam_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST)
@@ -160,7 +140,65 @@ def add_exam_view(request):
     else:
         form = ExamForm()
     
-    return render(request, 'add_exam.html', {'form': form})
+    classes = Class.objects.all()
+    exams = Exam.objects.all()
+    return render(request, 'add_exam.html', {'classes': classes, 'exams': exams, 'form': form})
+
+def exam_detail_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+
+    if request.method == 'POST':
+        question_text = request.POST.get('question_text')
+        correct_answer = request.POST.get('correct_answer')
+        if question_text and correct_answer:
+            Question.objects.create(exam=exam, question_text=question_text, correct_answer=correct_answer)
+            messages.success(request, 'Question added successfully!')
+            return redirect('exam_detail', exam_id=exam_id)
+        else:
+            messages.error(request, 'Error adding question. Please check the form.')
+    
+    questions = exam.questions.all()
+    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
+
+def students_view(request):
+    students = Student.objects.all()
+    return render(request, 'students.html', {'students': students})
+
+def add_student_view(request, class_id):
+    class_instance = get_object_or_404(Class, id=class_id)
+    
+    if request.method == 'POST':
+        form = StudentForm(request.POST)
+        if form.is_valid():
+            student = form.save(commit=False)
+            student.class_assigned = class_instance
+            student.save()
+            messages.success(request, 'Student added successfully!')
+            return redirect('class_detail', class_id=class_instance.id)
+        else:
+            messages.error(request, 'Error adding student. Please check the form.')
+    else:
+        form = StudentForm()
+    
+    # Fetch students enrolled in the class
+    students = class_instance.students.all()
+
+    # Render the class detail template with context
+    return render(request, 'class_detail.html', {'class': class_instance, 'form': form, 'students': students})
+
+def edit_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+
+    if request.method == 'POST':
+        form = StudentForm(request.POST, instance=student)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'success': True})
+        else:
+            errors = form.errors.as_json()  # Convert errors to JSON format
+            return JsonResponse({'success': False, 'errors': errors}, status=400)  # Return errors with status code 400
+    else:
+        return JsonResponse({'success': False, 'errors': {'message': 'Method not allowed'}}, status=405)  # Method not allowed error
 
 def add_student_to_exam_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -191,15 +229,6 @@ def add_class_view(request):
 
     return render(request, 'add_class.html', {'form': form})
 
-def settings_view(request):
-    if request.method == 'POST':
-        # Handle form submission and save settings
-        # ...
-        pass
-
-    return render(request, 'settings.html')
-
-@login_required
 def settings_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')  # Use 'email' instead of 'username' for clarity

@@ -3,13 +3,12 @@ from django.urls import path
 from smartscoreapp.views import (
     index, login_view, register_view, registered_users_view,
     classes_view, class_detail_view, exams_view, exam_detail_view,
-    logout_view, add_class_view, add_student_view, add_exam_view, add_student_to_exam_view, settings_view
+    logout_view, add_class_view, add_student_view, add_exam_view,
+    add_student_to_exam_view, settings_view, edit_student,
+    update_class_name_view, students_view 
 )
 from django.conf.urls.static import static
 from django.conf import settings
-from . import views 
-
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -22,7 +21,9 @@ urlpatterns = [
     path('add-class/', add_class_view, name='add_class'),
     path('classes/<int:class_id>/', class_detail_view, name='class_detail'),
     path('add_student/<int:class_id>/', add_student_view, name='add_student'),
-    path('students/', views.students_view, name='students'),
+    path('classes/<int:class_id>/update/', update_class_name_view, name='update_class_name'), 
+    path('students/', students_view, name='students'),  
+    path('edit-student/<int:student_id>/', edit_student, name='edit_student'),
     path('exams/', exams_view, name='exams'),
     path('exams/<int:exam_id>/', exam_detail_view, name='exam_detail'),
     path('add_exam/', add_exam_view, name='add_exam'),
