@@ -10,14 +10,15 @@ class User(AbstractUser):
 
 class Class(models.Model):
     name = models.CharField(max_length=100)
+    description = models.TextField(default="No description provided")
 
     def __str__(self):
         return self.name
 
 class Student(models.Model):
     name = models.CharField(max_length=100)
-    class_assigned = models.ForeignKey(Class, related_name='students', on_delete=models.CASCADE)
-    year = models.IntegerField(choices=[(year, str(year)) for year in range(1, 5)], default=1)
+    year = models.IntegerField()
+    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
 
     def __str__(self):
         return self.name

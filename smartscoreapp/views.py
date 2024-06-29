@@ -3,8 +3,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Class, Student, Exam, Question
-from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm
+from .models import Class, Student, Exam, Question, Student
+from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentForm 
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
@@ -72,15 +72,24 @@ def classes_view(request):
     classes = Class.objects.all()
     return render(request, 'classes.html', {'classes': classes, 'form': form})
 
+def delete_class_view(request, class_id):
+    class_instance = get_object_or_404(Class, id=class_id)
+    class_instance.delete()
+    messages.success(request, 'Class deleted successfully!')
+    return redirect('classes')
+
 def class_detail_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
-    students = class_instance.students.all()  # Assuming related_name is 'students'
+    students = class_instance.students.all()
 
     if request.method == 'POST':
         form = ClassNameForm(request.POST, instance=class_instance)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Class name updated successfully.')
             return redirect('class_detail', class_id=class_instance.id)
+        else:
+            messages.error(request, 'Error updating class name. Please check the form.')
     else:
         form = ClassNameForm(instance=class_instance)
 
@@ -109,7 +118,7 @@ def update_class_name_view(request, class_id):
         'class': class_instance,
         'form': form,
     }
-    return render(request, 'update_class_name.html', context)
+    return render(request, 'class_detail.html', context)
 
 
 def exams_view(request):
@@ -166,39 +175,41 @@ def students_view(request):
 
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
-    
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
             student = form.save(commit=False)
-            student.class_assigned = class_instance
+            student.assigned_class = class_instance
             student.save()
             messages.success(request, 'Student added successfully!')
-            return redirect('class_detail', class_id=class_instance.id)
+            return redirect('class_detail', class_id=class_id)
         else:
+            # Debugging: print form errors
+            print(form.errors)
             messages.error(request, 'Error adding student. Please check the form.')
     else:
         form = StudentForm()
-    
-    # Fetch students enrolled in the class
-    students = class_instance.students.all()
+    return render(request, 'add_student.html', {'form': form, 'class_instance': class_instance})
 
-    # Render the class detail template with context
-    return render(request, 'class_detail.html', {'class': class_instance, 'form': form, 'students': students})
-
+@login_required
 def edit_student(request, student_id):
-    student = get_object_or_404(Student, id=student_id)
-
+    student_instance = get_object_or_404(Student, id=student_id)
+    
     if request.method == 'POST':
-        form = StudentForm(request.POST, instance=student)
+        form = EditStudentForm(request.POST, instance=student_instance)
         if form.is_valid():
             form.save()
-            return JsonResponse({'success': True})
-        else:
-            errors = form.errors.as_json()  # Convert errors to JSON format
-            return JsonResponse({'success': False, 'errors': errors}, status=400)  # Return errors with status code 400
+            messages.success(request, 'Student updated successfully!')
+            return redirect('class_detail', class_id=student_instance.assigned_class.id)
     else:
-        return JsonResponse({'success': False, 'errors': {'message': 'Method not allowed'}}, status=405)  # Method not allowed error
+        form = EditStudentForm(instance=student_instance)
+    
+    context = {
+        'form': form,
+        'student': student_instance,
+    }
+    return render(request, 'edit_student.html', context)
+
 
 def add_student_to_exam_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -223,11 +234,14 @@ def add_class_view(request):
         form = ClassForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('classes')  # Redirect to classes page after adding a class
+            messages.success(request, 'Class added successfully!')
+            return redirect('classes')
+        else:
+            messages.error(request, 'Error adding class. Please check the form.')
     else:
         form = ClassForm()
-
-    return render(request, 'add_class.html', {'form': form})
+    
+    return render(request, 'classes.html', {'form': form})
 
 def settings_view(request):
     if request.method == 'POST':

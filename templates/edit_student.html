@@ -5,10 +5,10 @@
 </head>
 <body>
     <h1>Add Student to {{ class_instance.name }}</h1>
-    <form method="post">
+    <form method="post" action="{% url 'edit_student' student_id=student.id %}">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Add Student</button>
+        <!-- Form fields -->
+        <button type="submit">Save Changes</button>
     </form>
     <a href="{% url 'class_detail' class_instance.id %}">Back to class details</a>
 </body>
