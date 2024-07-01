@@ -45,10 +45,9 @@
           <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ class.name }}</td>
           <td class="px-6 py-4">{{ class.description }}</td>
           <td class="px-6 py-4">
+            <button data-modal-target="add-student-modal-{{ class.id }}" data-modal-toggle="add-student-modal-{{ class.id }}" class="text-green-600 hover:underline ml-4">Add Student</button>
             <a href="{% url 'class_detail' class.id %}" class="text-blue-600 hover:underline">View</a>
-            <a href="{% url 'add_student' class.id %}" class="text-green-600 hover:underline ml-4">Add Student</a>
             <a href="{% url 'delete_class' class.id %}" class="text-red-600 hover:underline ml-4" onclick="return confirm('Are you sure you want to delete this class?');">Delete</a>
-
           </td>
         </tr>
       {% empty %}
@@ -95,7 +94,7 @@
         </div>
         <button type="submit" class="text-white inline-flex items-center bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
           <svg class="me-1 -ms-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path>
+            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
           </svg>
           Add Class
         </button>
@@ -104,7 +103,7 @@
   </div>
 </div>
 
-<!-- Modal for adding students to each class -->
+<!-- Modals for adding students to each class -->
 {% for class in classes %}
 <div id="add-student-modal-{{ class.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
   <div class="relative p-4 w-full max-w-md max-h-full">
@@ -125,12 +124,25 @@
         <div class="grid gap-4 mb-4 grid-cols-1">
           <div>
             <label for="student_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Student Name</label>
-            <input type="text" name="student_name" id="student_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter student name" required>
+            <input type="text" name="name" id="student_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter student name" required>
+          </div>
+          <div>
+            <label for="student_year" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Year</label>
+            <input type="number" name="year" id="student_year" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter student year" required>
+          </div>
+          <div>
+            <label for="student_gender" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Gender</label>
+            <select name="gender" id="student_gender" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" required>
+              <option value="" disabled selected>Select gender</option>
+              {% for key, value in student_form.fields.gender.choices %}
+                <option value="{{ key }}">{{ value }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
-        <button type="submit" class="text-white inline-flex items-center bg-green-500 hover:bg-green-600 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
+        <button type="submit" class="text-white inline-flex items-center bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
           <svg class="me-1 -ms-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path>
+            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
           </svg>
           Add Student
         </button>
@@ -141,3 +153,4 @@
 {% endfor %}
 
 {% endblock %}
+

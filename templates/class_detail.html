@@ -129,27 +129,23 @@
   // Other modal functions (openDeleteModal, closeDeleteModal) as needed
 </script>
 
-
-
-
-
-  <!-- Add Student Modal -->
-  <div id="addStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form method="post" action="{% url 'add_student' class.id %}">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Student to {{ class.name }}</h2>
-          <div class="mb-4">
-            <label for="addStudentName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Student Name</label>
-            <input type="text" id="addStudentName" name="student_name" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-          </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Student</button>
-          <button type="button" onclick="closeAddStudentModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+<!-- Add Student Modal -->
+<div id="addStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form method="post" action="{% url 'add_student' class.id %}">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Students to {{ class.name }}</h2>
+        <div class="mb-4">
+          <label for="addStudentNames" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Student Names (comma-separated)</label>
+          <textarea id="addStudentNames" name="student_names" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+        </div>
+        <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Students</button>
+        <button type="button" onclick="closeAddStudentModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
   <!-- Delete Student Modal -->
   <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">

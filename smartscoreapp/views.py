@@ -69,8 +69,9 @@ def classes_view(request):
     else:
         form = ClassForm()
     
+    student_form = StudentForm()  # Add this line to create an instance of StudentForm
     classes = Class.objects.all()
-    return render(request, 'classes.html', {'classes': classes, 'form': form})
+    return render(request, 'classes.html', {'classes': classes, 'form': form, 'student_form': student_form})  # Pass the student_form to the template
 
 def delete_class_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -100,6 +101,7 @@ def class_detail_view(request, class_id):
     }
     return render(request, 'class_detail.html', context)
 
+
 def update_class_name_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
@@ -119,6 +121,7 @@ def update_class_name_view(request, class_id):
         'form': form,
     }
     return render(request, 'class_detail.html', context)
+
 
 
 def exams_view(request):
@@ -175,6 +178,7 @@ def students_view(request):
 
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
+    
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
@@ -184,12 +188,12 @@ def add_student_view(request, class_id):
             messages.success(request, 'Student added successfully!')
             return redirect('class_detail', class_id=class_id)
         else:
-            # Debugging: print form errors
-            print(form.errors)
             messages.error(request, 'Error adding student. Please check the form.')
     else:
         form = StudentForm()
+    
     return render(request, 'add_student.html', {'form': form, 'class_instance': class_instance})
+
 
 @login_required
 def edit_student(request, student_id):
@@ -209,6 +213,14 @@ def edit_student(request, student_id):
         'student': student_instance,
     }
     return render(request, 'edit_student.html', context)
+
+def delete_student(request, student_id):
+    student = get_object_or_404(Student, pk=student_id)
+    if request.method == 'POST':
+        student.delete()
+        messages.success(request, 'Student deleted successfully.')
+        return redirect('class_detail', class_id=student.assigned_class.id)
+    # Handle other HTTP methods if necessary
 
 
 def add_student_to_exam_view(request, exam_id):

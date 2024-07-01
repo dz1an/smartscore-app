@@ -52,6 +52,8 @@ TEMPLATES = [
             os.path.join(BASE_DIR, 'core', 'templates'),  # App-level templates directory
             os.path.join(BASE_DIR, 'smartscoreapp', 'templates'),  # App-level templates directory (if needed)
             os.path.join(BASE_DIR, 'templates'),  # Project-level templates directory
+            os.path.join(BASE_DIR, 'templates', 'classes'), 
+            
         ],
         'APP_DIRS': True,
         'OPTIONS': {
