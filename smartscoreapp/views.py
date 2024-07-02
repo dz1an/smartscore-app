@@ -3,13 +3,11 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Class, Student, Exam, Question, Student
+from .models import Class, Student, Exam, Question
 from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentForm 
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-
-#
 
 def index(request):
     return render(request, 'index.html')
@@ -101,7 +99,6 @@ def class_detail_view(request, class_id):
     }
     return render(request, 'class_detail.html', context)
 
-
 def update_class_name_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
@@ -121,8 +118,6 @@ def update_class_name_view(request, class_id):
         'form': form,
     }
     return render(request, 'class_detail.html', context)
-
-
 
 def exams_view(request):
     if request.method == 'POST':
@@ -176,6 +171,7 @@ def students_view(request):
     students = Student.objects.all()
     return render(request, 'students.html', {'students': students})
 
+@login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
     
@@ -197,31 +193,30 @@ def add_student_view(request, class_id):
 
 @login_required
 def edit_student(request, student_id):
-    student_instance = get_object_or_404(Student, id=student_id)
+    student = get_object_or_404(Student, pk=student_id)
     
     if request.method == 'POST':
-        form = EditStudentForm(request.POST, instance=student_instance)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Student updated successfully!')
-            return redirect('class_detail', class_id=student_instance.assigned_class.id)
-    else:
-        form = EditStudentForm(instance=student_instance)
+        student.name = request.POST.get('name')
+        student.save()
+        # Optionally add success message
+        messages.success(request, 'Student updated successfully.')
+        return redirect('class_detail', class_id=student.assigned_class.id)  # Redirect to appropriate page
     
-    context = {
-        'form': form,
-        'student': student_instance,
-    }
-    return render(request, 'edit_student.html', context)
+    # Handle other HTTP methods or render form for GET request
+    return render(request, 'edit_student.html', {'student': student})
 
 def delete_student(request, student_id):
     student = get_object_or_404(Student, pk=student_id)
+
     if request.method == 'POST':
+        assigned_class_id = student.assigned_class.id
         student.delete()
         messages.success(request, 'Student deleted successfully.')
-        return redirect('class_detail', class_id=student.assigned_class.id)
+        return redirect('class_detail', class_id=assigned_class_id)
+
     # Handle other HTTP methods if necessary
 
+    return redirect('class_detail', class_id=student.assigned_class.id)
 
 def add_student_to_exam_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -239,7 +234,9 @@ def add_student_to_exam_view(request, exam_id):
     else:
         form = StudentForm()
     
-    return render(request, 'add_student.html', {'form': form})
+    # Return to the exam detail page if not a POST request or if form is not valid
+    return redirect('exam_detail', exam_id=exam.id)
+
 
 def add_class_view(request):
     if request.method == 'POST':
@@ -259,8 +256,7 @@ def settings_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')  # Use 'email' instead of 'username' for clarity
         password = request.POST.get('password')
-        user = request.user
-
+        user = request.user    
         if email:
             user.email = email
             user.username = email  # Ensure the username is also updated to the email
@@ -273,3 +269,11 @@ def settings_view(request):
             messages.error(request, 'Email is required.')
 
     return render(request, 'settings.html')
+
+@login_required
+@require_http_methods(['POST'])
+def ajax_get_students(request):
+    class_id = request.POST.get('class_id')
+    students = Student.objects.filter(assigned_class_id=class_id).values('id', 'name')
+    data = list(students)
+    return JsonResponse(data, safe=False)
