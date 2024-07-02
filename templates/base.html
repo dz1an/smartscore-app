@@ -25,7 +25,6 @@
         </div>
     </div>
   
-
     <!-- Modal for adding classes -->
     {% block modal %}
     {% endblock %}
@@ -35,27 +34,6 @@
 
     {% block extra_scripts %}
     {% endblock %}
-
-    {% if user.is_authenticated %}
-        <!-- User is logged in -->
-        <p>Welcome, {{ user.username }}!</p>
-        <a href="{% url 'logout' %}">Logout</a>
-        <!-- You can add other authenticated user content here -->
-    {% else %}
-        <!-- User is not logged in -->
-        <p>You are not logged in. <a href="{% url 'login' %}">Login</a> or <a href="{% url 'register' %}">Register</a>.</p>
-    {% endif %}
-
-    <!-- Display Django messages -->
-    {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-                <div class="p-4 mb-4 text-sm {{ message.tags }} bg-{{ message.tags }}-100 rounded-lg dark:bg-{{ message.tags }}-200 dark:text-{{ message.tags }}-800" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
 </body>
 </html>
 {% include 'footer.html' %}

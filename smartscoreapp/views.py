@@ -8,6 +8,7 @@ from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentF
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from .forms import UserCreationWithEmailForm 
 
 def index(request):
     return render(request, 'index.html')
@@ -45,10 +46,15 @@ def register_view(request):
             password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=password)
             login(request, user)
-            messages.success(request, 'User registered successfully')
-            return redirect('index')
+            messages.success(request, 'User registered successfully!')
+            return redirect('login')  # Redirect to the login page
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
     else:
         form = UserCreationForm()
+    
     return render(request, 'register.html', {'form': form})
 
 def registered_users_view(request):
