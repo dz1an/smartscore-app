@@ -61,21 +61,25 @@ def registered_users_view(request):
     users = User.objects.all()
     return render(request, 'registered_users.html', {'users': users})
 
+@login_required
 def classes_view(request):
-    if request.method == 'POST':
-        form = ClassForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Class added successfully!')
-            return redirect('classes')
-        else:
-            messages.error(request, 'Error adding class. Please check the form.')
-    else:
-        form = ClassForm()
+    user_instance = request.user  # Get the logged-in User instance
     
-    student_form = StudentForm()  # Add this line to create an instance of StudentForm
-    classes = Class.objects.all()
-    return render(request, 'classes.html', {'classes': classes, 'form': form, 'student_form': student_form})  # Pass the student_form to the template
+    if request.method == 'POST':
+        # Handle form submission
+        pass
+    else:
+        # Fetch classes associated with the logged-in user
+        if user_instance.is_superuser:
+            # For superuser, fetch all classes
+            classes = Class.objects.all()
+        else:
+            # For regular users, fetch classes they manage (assuming user is the admin)
+            classes = Class.objects.filter(name=user_instance)  # adjust this query to match how you link users to classes
+    
+    # Render your template with classes data
+    return render(request, 'classes.html', {'classes': classes})
+
 
 def delete_class_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
