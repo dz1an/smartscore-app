@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
+
 
 
 class User(AbstractUser):
@@ -9,8 +11,8 @@ class User(AbstractUser):
 
 class Class(models.Model):
     name = models.CharField(max_length=100)
-    description = models.TextField(default="No description provided")
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Add this line
+    description = models.TextField(blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name

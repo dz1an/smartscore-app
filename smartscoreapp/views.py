@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -9,6 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from .forms import UserCreationWithEmailForm 
+
+User = get_user_model() 
 
 def index(request):
     return render(request, 'index.html')
@@ -66,8 +68,13 @@ def classes_view(request):
     user_instance = request.user  # Get the logged-in User instance
     
     if request.method == 'POST':
-        # Handle form submission
-        pass
+        # Handle form submission to add a new class
+        form = ClassNameForm(request.POST)
+        if form.is_valid():
+            new_class = form.save(commit=False)
+            new_class.user = user_instance  # Associate the logged-in user with the class
+            new_class.save()
+            return redirect('classes')  # Redirect to the classes page after successful creation
     else:
         # Fetch classes associated with the logged-in user
         if user_instance.is_superuser:
@@ -75,10 +82,15 @@ def classes_view(request):
             classes = Class.objects.all()
         else:
             # For regular users, fetch classes they manage (assuming user is the admin)
-            classes = Class.objects.filter(name=user_instance)  # adjust this query to match how you link users to classes
+            classes = Class.objects.filter(user=user_instance)
     
-    # Render your template with classes data
-    return render(request, 'classes.html', {'classes': classes})
+    # Render your template with classes data and form
+    context = {
+        'classes': classes,
+        'form': ClassNameForm()  # Assuming ClassNameForm is your form for adding a new class
+    }
+    return render(request, 'classes.html', context)
+
 
 
 def delete_class_view(request, class_id):
@@ -247,12 +259,14 @@ def add_student_to_exam_view(request, exam_id):
     # Return to the exam detail page if not a POST request or if form is not valid
     return redirect('exam_detail', exam_id=exam.id)
 
-
+@login_required
 def add_class_view(request):
     if request.method == 'POST':
         form = ClassForm(request.POST)
         if form.is_valid():
-            form.save()
+            new_class = form.save(commit=False)
+            new_class.user = request.user  # Directly assign request.user
+            new_class.save()
             messages.success(request, 'Class added successfully!')
             return redirect('classes')
         else:
