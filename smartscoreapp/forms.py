@@ -23,7 +23,7 @@ class StudentForm(forms.ModelForm):
     )
 
     gender = forms.ChoiceField(
-        choices=Student.GENDER_CHOICES,
+        choices=GENDER_CHOICES,
         label='Gender',
         widget=forms.Select(attrs={
             'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
@@ -38,6 +38,13 @@ class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
         fields = ['name', 'class_assigned', 'date', 'exam_id']
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
+
 
 class ClassNameForm(forms.ModelForm):
     class Meta:
@@ -65,4 +72,14 @@ class UserCreationWithEmailForm(UserCreationForm):
         model = User
         fields = ('email', 'username', 'password1', 'password2')
 
+# New form for adding students to exams
+class AddStudentToExamForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = ['name', 'year', 'gender']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
+        self.fields['year'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
+        self.fields['gender'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})

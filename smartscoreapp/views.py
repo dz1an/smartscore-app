@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from .forms import UserCreationWithEmailForm 
+from django.core.exceptions import PermissionDenied
 
 User = get_user_model() 
 
@@ -99,27 +100,28 @@ def delete_class_view(request, class_id):
     messages.success(request, 'Class deleted successfully!')
     return redirect('classes')
 
+@login_required
 def class_detail_view(request, class_id):
+    user_instance = request.user  # Get the logged-in User instance
+
+    # Fetch the class instance for the given class_id
     class_instance = get_object_or_404(Class, id=class_id)
-    students = class_instance.students.all()
 
-    if request.method == 'POST':
-        form = ClassNameForm(request.POST, instance=class_instance)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Class name updated successfully.')
-            return redirect('class_detail', class_id=class_instance.id)
-        else:
-            messages.error(request, 'Error updating class name. Please check the form.')
-    else:
-        form = ClassNameForm(instance=class_instance)
+    # Check if the logged-in user is authorized to view this class
+    if class_instance.user != user_instance:
+        # You may want to handle unauthorized access here, like redirecting or showing an error message
+        raise PermissionDenied("You are not authorized to view this class.")
 
+    # Fetch students enrolled in this class
+    students = Student.objects.filter(assigned_class=class_instance)
+
+    # Render your template with class details and enrolled students
     context = {
         'class': class_instance,
         'students': students,
-        'form': form,
     }
     return render(request, 'class_detail.html', context)
+
 
 def update_class_name_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -141,21 +143,25 @@ def update_class_name_view(request, class_id):
     }
     return render(request, 'class_detail.html', context)
 
+@login_required
 def exams_view(request):
-    if request.method == 'POST':
-        form = ExamForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Exam added successfully!')
-            return redirect('exams')
-        else:
-            messages.error(request, 'Error adding exam. Please check the form.')
-    else:
-        form = ExamForm()
+    user = request.user
+    user_classes = Class.objects.filter(user=user)
+    exams = Exam.objects.filter(class_assigned__in=user_classes)
+    return render(request, 'exams.html', {'exams': exams})
+
+@login_required
+def exam_detail_view(request, exam_id):
+    user_instance = request.user
+    exam = get_object_or_404(Exam, id=exam_id)
     
-    classes = Class.objects.all()
-    exams = Exam.objects.all()
-    return render(request, 'exams.html', {'classes': classes, 'exams': exams, 'form': form})
+    # Ensure only the user who created the exam can view its details
+    if exam.user != user_instance:
+        raise PermissionDenied
+
+    students = exam.students.all()  # Assuming there is a many-to-many relation between exams and students
+    
+    return render(request, 'exam_detail.html', {'exam': exam, 'students': students})
 
 def add_exam_view(request):
     if request.method == 'POST':

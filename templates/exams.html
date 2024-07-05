@@ -43,7 +43,7 @@
       {% for exam in exams %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
           <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ exam.name }}</td>
-          <td class="px-6 py-4">{{ exam.class.name }}</td>
+          <td class="px-6 py-4">{{ exam.class_assigned.name }}</td>
           <td class="px-6 py-4">
             <button data-modal-target="add-student-modal-{{ exam.id }}" data-modal-toggle="add-student-modal-{{ exam.id }}" class="text-green-600 hover:underline ml-4">Add Student</button>
             <a href="{% url 'exam_detail' exam.id %}" class="text-blue-600 hover:underline">View</a>
@@ -56,6 +56,7 @@
         </tr>
       {% endfor %}
     </tbody>
+    
   </table>
 </div>
 
@@ -106,7 +107,6 @@
     </div>
   </div>
 </div>
-
 <!-- Modals for adding students to each exam -->
 {% for exam in exams %}
 <div id="add-student-modal-{{ exam.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
