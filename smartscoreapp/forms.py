@@ -46,6 +46,7 @@ class ExamForm(forms.ModelForm):
             self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
 
 
+
 class ClassNameForm(forms.ModelForm):
     class Meta:
         model = Class

@@ -143,12 +143,38 @@ def update_class_name_view(request, class_id):
     }
     return render(request, 'class_detail.html', context)
 
+
 @login_required
 def exams_view(request):
-    user = request.user
-    user_classes = Class.objects.filter(user=user)
-    exams = Exam.objects.filter(class_assigned__in=user_classes)
-    return render(request, 'exams.html', {'exams': exams, 'classes': user_classes})
+    user_instance = request.user
+    
+    if request.method == 'POST':
+        form = ExamForm(request.POST, user=user_instance)
+        if form.is_valid():
+            new_exam = form.save(commit=False)
+            new_exam.save()
+            messages.success(request, 'Exam added successfully.')
+            return redirect('exams')
+        else:
+            messages.error(request, 'Failed to add exam. Please check the form for errors.')
+    else:
+        form = ExamForm(user=user_instance)
+
+    classes = Class.objects.filter(user=user_instance)
+    exams = Exam.objects.filter(class_assigned__user=user_instance)
+
+    context = {
+        'exams': exams,
+        'classes': classes,
+        'form': form,
+    }
+    return render(request, 'exams.html', context)
+
+def delete_exam(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    exam.delete()
+    messages.success(request, 'Exam deleted successfully.')
+    return redirect('exams')
 
 @login_required
 def exam_detail_view(request, exam_id):
