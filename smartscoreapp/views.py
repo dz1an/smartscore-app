@@ -148,7 +148,7 @@ def exams_view(request):
     user = request.user
     user_classes = Class.objects.filter(user=user)
     exams = Exam.objects.filter(class_assigned__in=user_classes)
-    return render(request, 'exams.html', {'exams': exams})
+    return render(request, 'exams.html', {'exams': exams, 'classes': user_classes})
 
 @login_required
 def exam_detail_view(request, exam_id):
@@ -165,19 +165,14 @@ def exam_detail_view(request, exam_id):
 
 def add_exam_view(request):
     if request.method == 'POST':
-        form = ExamForm(request.POST)
+        form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Exam added successfully!')
             return redirect('exams')
-        else:
-            messages.error(request, 'Error adding exam. Please check the form.')
     else:
-        form = ExamForm()
-    
-    classes = Class.objects.all()
-    exams = Exam.objects.all()
-    return render(request, 'add_exam.html', {'classes': classes, 'exams': exams, 'form': form})
+        form = ExamForm(user=request.user)
+    user_classes = Class.objects.filter(user=request.user)
+    return render(request, 'exams.html', {'form': form, 'classes': user_classes})
 
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
