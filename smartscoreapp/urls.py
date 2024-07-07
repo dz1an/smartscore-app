@@ -38,6 +38,7 @@ urlpatterns = [
     path('students/', students_view, name='students'),
     path('students/<int:student_id>/edit/', views.edit_student, name='edit_student'),
     path('students/<int:student_id>/delete/', views.delete_student, name='delete_student'),
+
     
     # Exams
     path('exams/', exams_view, name='exams'),
@@ -45,6 +46,8 @@ urlpatterns = [
     path('exams/add/', add_exam_view, name='add_exam'),
     path('exams/<int:exam_id>/add_student/', add_student_to_exam_view, name='add_student_to_exam'),
     path('exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
+    path('exams/', views.exams_view, name='exams'),
+     path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
 
     # Settings
     path('settings/', settings_view, name='settings'),

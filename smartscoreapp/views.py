@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from .forms import UserCreationWithEmailForm 
 from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseBadRequest
 
 User = get_user_model() 
 
@@ -176,18 +177,49 @@ def delete_exam(request, exam_id):
     messages.success(request, 'Exam deleted successfully.')
     return redirect('exams')
 
+# views.py
 @login_required
-def exam_detail_view(request, exam_id):
-    user_instance = request.user
+def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     
-    # Ensure only the user who created the exam can view its details
-    if exam.user != user_instance:
-        raise PermissionDenied
-
-    students = exam.students.all()  # Assuming there is a many-to-many relation between exams and students
+    if request.method == 'POST':
+        exam_title = request.POST.get('exam_title')
+        exam_description = request.POST.get('exam_description')
+        
+        # Update exam title and description if needed
+        if exam_title:
+            exam.title = exam_title
+        if exam_description:
+            exam.description = exam_description
+        exam.save()
+        
+        # Process each question submitted
+        question_count = request.POST.get('question_count')
+        for i in range(1, int(question_count) + 1):
+            question_text = request.POST.get(f'question_{i}')
+            option_a = request.POST.get(f'option_a_{i}')
+            option_b = request.POST.get(f'option_b_{i}')
+            option_c = request.POST.get(f'option_c_{i}')
+            option_d = request.POST.get(f'option_d_{i}')
+            
+            # Create Question objects
+            question = Question.objects.create(
+                exam=exam,
+                text=question_text,
+                option_a=option_a,
+                option_b=option_b,
+                option_c=option_c,
+                option_d=option_d
+            )
+            question.save()
+        
+        # Redirect or render as needed
+        return redirect('exam_detail', exam_id=exam.id)
     
-    return render(request, 'exam_detail.html', {'exam': exam, 'students': students})
+    # If not POST request, handle accordingly (display form)
+    return render(request, 'exam_detail.html', {'exam': exam})
+
+
 
 def add_exam_view(request):
     if request.method == 'POST':
