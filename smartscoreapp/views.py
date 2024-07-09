@@ -205,7 +205,7 @@ def add_question_view(request, exam_id):
 
 
 
-
+@login_required
 def add_exam_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=request.user)
@@ -221,7 +221,6 @@ def add_exam_view(request):
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if request.method == "POST":
-        # Process form submission
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
         option_b = request.POST.get('option_b')
@@ -242,7 +241,8 @@ def exam_detail_view(request, exam_id):
         else:
             messages.error(request, "Question text is required!")
 
-    return render(request, 'exam_detail.html', {'exam': exam})
+    return render(request, 'exam_detail.html', {'exam': exam, 'questions': exam.questions.all()})
+
 
 def students_view(request):
     students = Student.objects.all()
