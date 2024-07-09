@@ -177,47 +177,32 @@ def delete_exam(request, exam_id):
     messages.success(request, 'Exam deleted successfully.')
     return redirect('exams')
 
-# views.py
-@login_required
 def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    
     if request.method == 'POST':
-        exam_title = request.POST.get('exam_title')
-        exam_description = request.POST.get('exam_description')
+        question_text = request.POST.get('question_text')
+        option_a = request.POST.get('option_a')
+        option_b = request.POST.get('option_b')
+        option_c = request.POST.get('option_c')
+        option_d = request.POST.get('option_d')
         
-        # Update exam title and description if needed
-        if exam_title:
-            exam.title = exam_title
-        if exam_description:
-            exam.description = exam_description
-        exam.save()
-        
-        # Process each question submitted
-        question_count = request.POST.get('question_count')
-        for i in range(1, int(question_count) + 1):
-            question_text = request.POST.get(f'question_{i}')
-            option_a = request.POST.get(f'option_a_{i}')
-            option_b = request.POST.get(f'option_b_{i}')
-            option_c = request.POST.get(f'option_c_{i}')
-            option_d = request.POST.get(f'option_d_{i}')
-            
-            # Create Question objects
-            question = Question.objects.create(
+        if question_text and option_a and option_b and option_c and option_d:
+            Question.objects.create(
                 exam=exam,
-                text=question_text,
+                question_text=question_text,
                 option_a=option_a,
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d
             )
-            question.save()
+            messages.success(request, 'Question added successfully!')
+        else:
+            messages.error(request, 'All fields are required.')
         
-        # Redirect or render as needed
         return redirect('exam_detail', exam_id=exam.id)
     
-    # If not POST request, handle accordingly (display form)
-    return render(request, 'exam_detail.html', {'exam': exam})
+    return render(request, 'add_question.html', {'exam': exam})
+
 
 
 
@@ -232,21 +217,32 @@ def add_exam_view(request):
     user_classes = Class.objects.filter(user=request.user)
     return render(request, 'exams.html', {'form': form, 'classes': user_classes})
 
+@login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-
-    if request.method == 'POST':
+    if request.method == "POST":
+        # Process form submission
         question_text = request.POST.get('question_text')
-        correct_answer = request.POST.get('correct_answer')
-        if question_text and correct_answer:
-            Question.objects.create(exam=exam, question_text=question_text, correct_answer=correct_answer)
-            messages.success(request, 'Question added successfully!')
-            return redirect('exam_detail', exam_id=exam_id)
+        option_a = request.POST.get('option_a')
+        option_b = request.POST.get('option_b')
+        option_c = request.POST.get('option_c')
+        option_d = request.POST.get('option_d')
+
+        if question_text:
+            Question.objects.create(
+                exam=exam,
+                question_text=question_text,
+                option_a=option_a,
+                option_b=option_b,
+                option_c=option_c,
+                option_d=option_d,
+                correct_answer=request.POST.get('correct_answer')
+            )
+            messages.success(request, "Question added successfully!")
         else:
-            messages.error(request, 'Error adding question. Please check the form.')
-    
-    questions = exam.questions.all()
-    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
+            messages.error(request, "Question text is required!")
+
+    return render(request, 'exam_detail.html', {'exam': exam})
 
 def students_view(request):
     students = Student.objects.all()
