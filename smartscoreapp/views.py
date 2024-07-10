@@ -217,6 +217,17 @@ def add_exam_view(request):
     user_classes = Class.objects.filter(user=request.user)
     return render(request, 'exams.html', {'form': form, 'classes': user_classes})
 
+def delete_question(request, exam_id):
+    if request.method == 'POST':
+        question_id = request.POST.get('question_id')
+        # Delete logic here, e.g., using get_object_or_404
+        question = get_object_or_404(Question, id=question_id)
+        question.delete()
+        # Optionally, return a JSON response or redirect
+        return JsonResponse({'message': 'Question deleted successfully.'})
+    # Handle other cases or redirect if needed
+    return redirect('exam_detail', exam_id=exam_id)
+
 @login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
