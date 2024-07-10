@@ -47,8 +47,7 @@ urlpatterns = [
     path('exams/<int:exam_id>/add_student/', add_student_to_exam_view, name='add_student_to_exam'),
     path('exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
     path('exams/', views.exams_view, name='exams'),
-    path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
-    path('exams/<int:exam_id>/delete_question/', views.delete_question, name='delete_question'),
+     path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
 
     # Settings
     path('settings/', settings_view, name='settings'),
