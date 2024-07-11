@@ -147,21 +147,21 @@
   </div>
 </div>
 
-  <!-- Delete Question Modal -->
-  <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form id="deleteQuestionForm" method="post">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Question</h2>
-          <p class="mb-4">Are you sure you want to delete the following question?</p>
-          <div id="deleteQuestionText" class="mb-4 text-gray-900 dark:text-white"></div>
-          <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Delete</button>
-          <button type="button" onclick="closeDeleteQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+<!-- Delete Question Modal -->
+<div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form id="deleteQuestionForm" method="post">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Question</h2>
+        <p class="mb-4">Are you sure you want to delete the following question?</p>
+        <div id="deleteQuestionText" class="mb-4 text-gray-900 dark:text-white"></div>
+        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Delete</button>
+        <button type="button" onclick="closeDeleteQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
   <script>
     function openAddQuestionModal() {

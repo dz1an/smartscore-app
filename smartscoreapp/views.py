@@ -229,16 +229,15 @@ def edit_question_view(request, question_id):
     return render(request, 'edit_question.html', {'question': question})
 
 @login_required
-def delete_question_view(request, exam_id, question_id):
-    # Retrieve the question object or return a 404 error if not found
+def delete_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
+    exam_id = question.exam.id
 
     if request.method == 'POST':
-        # Delete the question if the request method is POST
         question.delete()
-        # Redirect to the exam detail page after deletion
+        messages.success(request, 'Question deleted successfully!')
         return redirect('exam_detail', exam_id=exam_id)
-    # Handle GET requests if needed
+
     return redirect('exam_detail', exam_id=exam_id)
 
 @login_required
