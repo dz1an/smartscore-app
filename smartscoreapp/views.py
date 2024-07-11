@@ -223,7 +223,7 @@ def edit_question_view(request, question_id):
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
-            question.correct_answer = correct_answer
+            question.correct_answer = correct_answer  # Update correct answer
             question.save()
             messages.success(request, 'Question updated successfully!')
         else:
@@ -232,7 +232,6 @@ def edit_question_view(request, question_id):
         return redirect('exam_detail', exam_id=question.exam.id)
 
     return render(request, 'edit_question.html', {'question': question})
-
 
 @login_required
 def delete_question_view(request, question_id):
