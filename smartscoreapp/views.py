@@ -203,7 +203,34 @@ def add_question_view(request, exam_id):
     
     return render(request, 'add_question.html', {'exam': exam})
 
+@login_required
+def edit_question_view(request, question_id):
+    question = get_object_or_404(Question, id=question_id)
+    if request.method == 'POST':
+        # Process form submission to update question details
+        question.question_text = request.POST.get('question_text')
+        question.option_a = request.POST.get('option_a')
+        question.option_b = request.POST.get('option_b')
+        question.option_c = request.POST.get('option_c')
+        question.option_d = request.POST.get('option_d')
+        question.correct_answer = request.POST.get('correct_answer')
+        question.save()
+        messages.success(request, 'Question updated successfully!')
+        return redirect('exam_detail', exam_id=question.exam.id)
+    # Return a JSON response or render a template for editing the question
 
+@login_required
+def delete_question_view(request, exam_id, question_id):
+    # Retrieve the question object or return a 404 error if not found
+    question = get_object_or_404(Question, id=question_id)
+
+    if request.method == 'POST':
+        # Delete the question if the request method is POST
+        question.delete()
+        # Redirect to the exam detail page after deletion
+        return redirect('exam_detail', exam_id=exam_id)
+    # Handle GET requests if needed
+    return redirect('exam_detail', exam_id=exam_id)
 
 @login_required
 def add_exam_view(request):

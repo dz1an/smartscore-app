@@ -43,6 +43,7 @@
       <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
         <tr>
           <th scope="col" class="px-6 py-3">Question</th>
+          <th scope="col" class="px-6 py-3">Options</th>
           <th scope="col" class="px-6 py-3">Actions</th>
         </tr>
       </thead>
@@ -51,15 +52,23 @@
           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
             <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
             <td class="px-6 py-4">
+              <ul>
+                <li>A: {{ question.option_a }}</li>
+                <li>B: {{ question.option_b }}</li>
+                <li>C: {{ question.option_c }}</li>
+                <li>D: {{ question.option_d }}</li>
+              </ul>
+            </td>
+            <td class="px-6 py-4">
               <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
-                onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Edit</button>
+                onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}')">Edit</button>
               <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
                 onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
             </td>
           </tr>
         {% empty %}
           <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td colspan="2" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
+            <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -102,7 +111,58 @@
     </div>
   </div>
 
-  <!-- JavaScript Section -->
+  <!-- Edit Question Modal -->
+  <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+        <form id="editQuestionForm" method="post">
+          {% csrf_token %}
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
+          <div class="mb-4">
+            <label for="editQuestionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
+            <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+          </div>
+          <div class="grid grid-cols-4 gap-4 mb-4">
+            <div>
+              <label for="editOptionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
+              <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            </div>
+            <div>
+              <label for="editOptionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
+              <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            </div>
+            <div>
+              <label for="editOptionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
+              <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            </div>
+            <div>
+              <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
+              <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            </div>
+          </div>
+          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Save Changes</button>
+          <button type="button" onclick="closeEditQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Question Modal -->
+  <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+        <form id="deleteQuestionForm" method="post">
+          {% csrf_token %}
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Question</h2>
+          <p class="mb-4">Are you sure you want to delete the following question?</p>
+          <div id="deleteQuestionText" class="mb-4 text-gray-900 dark:text-white"></div>
+          <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Delete</button>
+          <button type="button" onclick="closeDeleteQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     function openAddQuestionModal() {
       document.getElementById('addQuestionModal').classList.remove('hidden');
@@ -112,12 +172,28 @@
       document.getElementById('addQuestionModal').classList.add('hidden');
     }
 
-    function openEditQuestionModal(questionId, questionText) {
-      // Implement the functionality to open and populate the edit question modal
+    function openEditQuestionModal(id, text, a, b, c, d) {
+      document.getElementById('editQuestionForm').action = `/edit_question/${id}/`;
+      document.getElementById('editQuestionText').value = text;
+      document.getElementById('editOptionA').value = a;
+      document.getElementById('editOptionB').value = b;
+      document.getElementById('editOptionC').value = c;
+      document.getElementById('editOptionD').value = d;
+      document.getElementById('editQuestionModal').classList.remove('hidden');
     }
 
-    function openDeleteQuestionModal(questionId, questionText) {
-      // Implement the functionality to open and populate the delete question modal
+    function closeEditQuestionModal() {
+      document.getElementById('editQuestionModal').classList.add('hidden');
+    }
+
+    function openDeleteQuestionModal(id, text) {
+      document.getElementById('deleteQuestionForm').action = `/delete_question/${id}/`;
+      document.getElementById('deleteQuestionText').innerText = text;
+      document.getElementById('deleteQuestionModal').classList.remove('hidden');
+    }
+
+    function closeDeleteQuestionModal() {
+      document.getElementById('deleteQuestionModal').classList.add('hidden');
     }
   </script>
 {% endblock %}
