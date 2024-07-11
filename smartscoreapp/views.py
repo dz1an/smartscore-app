@@ -207,17 +207,26 @@ def add_question_view(request, exam_id):
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
     if request.method == 'POST':
-        # Process form submission to update question details
-        question.question_text = request.POST.get('question_text')
-        question.option_a = request.POST.get('option_a')
-        question.option_b = request.POST.get('option_b')
-        question.option_c = request.POST.get('option_c')
-        question.option_d = request.POST.get('option_d')
-        question.correct_answer = request.POST.get('correct_answer')
-        question.save()
-        messages.success(request, 'Question updated successfully!')
+        question_text = request.POST.get('question_text')
+        option_a = request.POST.get('option_a')
+        option_b = request.POST.get('option_b')
+        option_c = request.POST.get('option_c')
+        option_d = request.POST.get('option_d')
+
+        if question_text and option_a and option_b and option_c and option_d:
+            question.question_text = question_text
+            question.option_a = option_a
+            question.option_b = option_b
+            question.option_c = option_c
+            question.option_d = option_d
+            question.save()
+            messages.success(request, 'Question updated successfully!')
+        else:
+            messages.error(request, 'All fields are required.')
+
         return redirect('exam_detail', exam_id=question.exam.id)
-    # Return a JSON response or render a template for editing the question
+
+    return render(request, 'edit_question.html', {'question': question})
 
 @login_required
 def delete_question_view(request, exam_id, question_id):

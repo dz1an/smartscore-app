@@ -112,40 +112,40 @@
   </div>
 
   <!-- Edit Question Modal -->
-  <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form id="editQuestionForm" method="post">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
-          <div class="mb-4">
-            <label for="editQuestionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
-            <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+<div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form id="editQuestionForm" method="post">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
+        <div class="mb-4">
+          <label for="editQuestionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
+          <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+        </div>
+        <div class="grid grid-cols-4 gap-4 mb-4">
+          <div>
+            <label for="editOptionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
+            <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
           </div>
-          <div class="grid grid-cols-4 gap-4 mb-4">
-            <div>
-              <label for="editOptionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
-              <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="editOptionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
-              <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="editOptionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
-              <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
-              <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
+          <div>
+            <label for="editOptionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
+            <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
           </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Save Changes</button>
-          <button type="button" onclick="closeEditQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+          <div>
+            <label for="editOptionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
+            <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+          </div>
+          <div>
+            <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
+            <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+          </div>
+        </div>
+        <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Save Changes</button>
+        <button type="button" onclick="closeEditQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
   <!-- Delete Question Modal -->
   <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
