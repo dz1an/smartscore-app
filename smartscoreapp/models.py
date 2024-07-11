@@ -42,13 +42,13 @@ class Exam(models.Model):
         return self.name
 
 class Question(models.Model):
-    exam = models.ForeignKey(Exam, related_name='questions', on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     question_text = models.TextField()
     option_a = models.CharField(max_length=255)
     option_b = models.CharField(max_length=255)
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
-    correct_answer = models.CharField(max_length=10)
+    correct_answer = models.CharField(max_length=1, choices=[('A', 'Option A'), ('B', 'Option B'), ('C', 'Option C'), ('D', 'Option D')])
 
     def __str__(self):
         return self.question_text

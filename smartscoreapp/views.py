@@ -177,6 +177,7 @@ def delete_exam(request, exam_id):
     messages.success(request, 'Exam deleted successfully.')
     return redirect('exams')
 
+@login_required
 def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if request.method == 'POST':
@@ -185,20 +186,22 @@ def add_question_view(request, exam_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
-        
-        if question_text and option_a and option_b and option_c and option_d:
+        correct_answer = request.POST.get('correct_answer')
+
+        if question_text and option_a and option_b and option_c and option_d and correct_answer:
             Question.objects.create(
                 exam=exam,
                 question_text=question_text,
                 option_a=option_a,
                 option_b=option_b,
                 option_c=option_c,
-                option_d=option_d
+                option_d=option_d,
+                correct_answer=correct_answer
             )
             messages.success(request, 'Question added successfully!')
         else:
             messages.error(request, 'All fields are required.')
-        
+
         return redirect('exam_detail', exam_id=exam.id)
     
     return render(request, 'add_question.html', {'exam': exam})
@@ -212,13 +215,15 @@ def edit_question_view(request, question_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d:
+        if question_text and option_a and option_b and option_c and option_d and correct_answer:
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
+            question.correct_answer = correct_answer
             question.save()
             messages.success(request, 'Question updated successfully!')
         else:
@@ -227,6 +232,7 @@ def edit_question_view(request, question_id):
         return redirect('exam_detail', exam_id=question.exam.id)
 
     return render(request, 'edit_question.html', {'question': question})
+
 
 @login_required
 def delete_question_view(request, question_id):
@@ -255,12 +261,14 @@ def add_exam_view(request):
 @login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+
     if request.method == "POST":
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        correct_answer = request.POST.get('correct_answer')
 
         if question_text:
             Question.objects.create(
@@ -270,13 +278,16 @@ def exam_detail_view(request, exam_id):
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
-                correct_answer=request.POST.get('correct_answer')
+                correct_answer=correct_answer
             )
             messages.success(request, "Question added successfully!")
         else:
             messages.error(request, "Question text is required!")
 
-    return render(request, 'exam_detail.html', {'exam': exam, 'questions': exam.questions.all()})
+    # Retrieve questions related to the exam
+    questions = exam.question_set.all()
+
+    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
 
 
 def students_view(request):

@@ -37,81 +37,92 @@
     </button>
   </div>
 
-  <!-- Table of Exam Questions -->
-  <div class="relative overflow-x-auto mb-6">
-    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" class="px-6 py-3">Question</th>
-          <th scope="col" class="px-6 py-3">Options</th>
-          <th scope="col" class="px-6 py-3">Actions</th>
+<!-- Table of Exam Questions -->
+<div class="relative overflow-x-auto mb-6">
+  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <tr>
+        <th scope="col" class="px-6 py-3">Question</th>
+        <th scope="col" class="px-6 py-3">Options</th>
+        <th scope="col" class="px-6 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for question in exam.question_set.all %}
+        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
+          <td class="px-6 py-4">
+            <ul>
+              <li>A: {{ question.option_a }}</li>
+              <li>B: {{ question.option_b }}</li>
+              <li>C: {{ question.option_c }}</li>
+              <li>D: {{ question.option_d }}</li>
+            </ul>
+          </td>
+          <td class="px-6 py-4">
+            <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
+              onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}')">Edit</button>
+            <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
+              onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        {% for question in exam.questions.all %}
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
-            <td class="px-6 py-4">
-              <ul>
-                <li>A: {{ question.option_a }}</li>
-                <li>B: {{ question.option_b }}</li>
-                <li>C: {{ question.option_c }}</li>
-                <li>D: {{ question.option_d }}</li>
-              </ul>
-            </td>
-            <td class="px-6 py-4">
-              <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
-                onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}')">Edit</button>
-              <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
-                onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
-            </td>
-          </tr>
-        {% empty %}
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+      {% empty %}
+        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-  <!-- Add Question Modal -->
-  <div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form method="post" action="{% url 'add_question' exam.id %}">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Question to {{ exam.name }}</h2>
-          <div class="mb-4">
-            <label for="questionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
-            <textarea id="questionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+
+ <!-- Add Question Modal -->
+<div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form method="post" action="{% url 'add_question' exam.id %}">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Question to {{ exam.name }}</h2>
+        <div class="mb-4">
+          <label for="questionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
+          <textarea id="questionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+        </div>
+        <div class="grid grid-cols-4 gap-4 mb-4">
+          <div>
+            <label for="optionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
+            <input type="text" id="optionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
           </div>
-          <div class="grid grid-cols-4 gap-4 mb-4">
-            <div>
-              <label for="optionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
-              <input type="text" id="optionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
-              <input type="text" id="optionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
-              <input type="text" id="optionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
-              <input type="text" id="optionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
+          <div>
+            <label for="optionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
+            <input type="text" id="optionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
           </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Question</button>
-          <button type="button" onclick="closeAddQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+          <div>
+            <label for="optionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
+            <input type="text" id="optionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+          </div>
+          <div>
+            <label for="optionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
+            <input type="text" id="optionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="correctAnswer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Correct Answer</label>
+          <select id="correctAnswer" name="correct_answer" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <option value="A">Option A</option>
+            <option value="B">Option B</option>
+            <option value="C">Option C</option>
+            <option value="D">Option D</option>
+          </select>
+        </div>
+        <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Question</button>
+        <button type="button" onclick="closeAddQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
-  <!-- Edit Question Modal -->
+
+<!-- Edit Question Modal -->
 <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
@@ -120,25 +131,34 @@
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
         <div class="mb-4">
           <label for="editQuestionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
-          <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
+          <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">{{ question.question_text }}</textarea>
         </div>
         <div class="grid grid-cols-4 gap-4 mb-4">
           <div>
             <label for="editOptionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
-            <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_a }}">
           </div>
           <div>
             <label for="editOptionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
-            <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_b }}">
           </div>
           <div>
             <label for="editOptionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
-            <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_c }}">
           </div>
           <div>
             <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
-            <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_d }}">
           </div>
+        </div>
+        <div class="mb-4">
+          <label for="editCorrectAnswer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Correct Answer</label>
+          <select id="editCorrectAnswer" name="correct_answer" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+            <option value="A" {% if question.correct_answer == 'A' %} selected {% endif %}>Option A</option>
+            <option value="B" {% if question.correct_answer == 'B' %} selected {% endif %}>Option B</option>
+            <option value="C" {% if question.correct_answer == 'C' %} selected {% endif %}>Option C</option>
+            <option value="D" {% if question.correct_answer == 'D' %} selected {% endif %}>Option D</option>
+          </select>
         </div>
         <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Save Changes</button>
         <button type="button" onclick="closeEditQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
@@ -146,6 +166,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Delete Question Modal -->
 <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
