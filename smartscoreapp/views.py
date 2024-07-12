@@ -11,6 +11,8 @@ from django.http import JsonResponse
 from .forms import UserCreationWithEmailForm 
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 
 User = get_user_model() 
 
@@ -23,10 +25,13 @@ def login_view(request):
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
+            # Try to authenticate using the custom backend
+            user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
                 messages.success(request, "Login successful!")
+                # Print the backend used
+                print(f"Backend used: {user.backend}")
                 return redirect('index')
             else:
                 messages.error(request, "Invalid username or password.")
@@ -376,23 +381,23 @@ def add_class_view(request):
     
     return render(request, 'classes.html', {'form': form})
 
+@login_required
 def settings_view(request):
     if request.method == 'POST':
-        email = request.POST.get('email')  # Use 'email' instead of 'username' for clarity
-        password = request.POST.get('password')
-        user = request.user    
-        if email:
-            user.email = email
-            user.username = email  # Ensure the username is also updated to the email
-            if password:
-                user.set_password(password)
-            user.save()
-            messages.success(request, 'Settings updated successfully!')
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, form.user)
+            messages.success(request, 'Your password was successfully updated!')
             return redirect('settings')
         else:
-            messages.error(request, 'Email is required.')
-
-    return render(request, 'settings.html')
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field.capitalize()}: {error}')
+            return redirect('settings')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'settings.html', {'form': form})
 
 @login_required
 @require_http_methods(['POST'])
