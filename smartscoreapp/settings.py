@@ -49,16 +49,13 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            os.path.join(BASE_DIR, 'core', 'templates'),  # App-level templates directory
-            os.path.join(BASE_DIR, 'smartscoreapp', 'templates'),  # App-level templates directory (if needed)
-            os.path.join(BASE_DIR, 'templates'),  # Project-level templates directory
+            os.path.join(BASE_DIR, 'templates'),   
             os.path.join(BASE_DIR, 'templates', 'classes'), 
             os.path.join(BASE_DIR, 'templates', 'authentication'), 
             os.path.join(BASE_DIR, 'templates', 'exams'), 
             os.path.join(BASE_DIR, 'templates', 'settings'), 
             os.path.join(BASE_DIR, 'templates', 'students'), 
             os.path.join(BASE_DIR, 'templates', 'users'), 
-            
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -105,6 +102,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = (
+    'smartscoreapp.backends.EmailOrUsernameModelBackend',  
+    'django.contrib.auth.backends.ModelBackend',  
+)
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
