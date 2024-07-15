@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scan Result{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center">Scan Result</h1>
+    <p class="text-center">Score: {{ score }}</p>
+    <div class="text-center">
+        <h2>Result Image</h2>
+        <img src="{{ result_image }}" alt="Result Image" class="img-fluid">
+    </div>
+    <div class="text-center mt-4">
+        <h2>Stacked Image</h2>
+        <img src="{{ stacked_image }}" alt="Stacked Image" class="img-fluid">
+    </div>
+    <div class="text-center mt-4">
+        <a href="{% url 'index' %}" class="btn btn-primary">Back to Home</a>
+    </div>
+</div>
+{% endblock %}
