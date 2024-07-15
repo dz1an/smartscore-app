@@ -1,1 +1,5 @@
 node_modules
+venv
+.venv
+smartscoreapp/keras_model.h5
+

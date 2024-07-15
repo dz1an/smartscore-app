@@ -10,6 +10,7 @@ from smartscoreapp.views import (
 from django.conf.urls.static import static
 from django.conf import settings
 from . import views 
+from .views import scan_view
 
 urlpatterns = [
     # Admin
@@ -59,4 +60,6 @@ urlpatterns = [
 
     # Settings
     path('settings/', settings_view, name='settings'),
+    path('scan/', scan_view, name='scan'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+

@@ -13,6 +13,13 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.views.decorators.csrf import csrf_exempt 
+import os  
+from . import utilis
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
+from keras.models import load_model
 
 User = get_user_model() 
 
@@ -406,3 +413,129 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'name')
     data = list(students)
     return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def scan_view(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        # Save the uploaded image to a temporary file
+        image_file = request.FILES['image']
+        temp_image_path = os.path.join('temp', image_file.name)
+        with open(temp_image_path, 'wb+') as temp_file:
+            for chunk in image_file.chunks():
+                temp_file.write(chunk)
+        
+        # Load the saved image
+        img = cv2.imread(temp_image_path)
+        # Call the processing function
+        score, imgFinal, imgStacked = process_image(img)
+        
+        # Save the processed images to serve them
+        result_path = os.path.join('temp', 'result.jpg')
+        cv2.imwrite(result_path, imgFinal)
+        stacked_path = os.path.join('temp', 'stacked.jpg')
+        cv2.imwrite(stacked_path, imgStacked)
+        
+        # Clean up the temporary uploaded file
+        os.remove(temp_image_path)
+        
+        return render(request, 'scan_result.html', {
+            'score': score,
+            'result_image': result_path,
+            'stacked_image': stacked_path,
+        })
+    
+    return render(request, 'index.html')
+
+def process_image(img):
+    # Preprocess the image and apply the scanning logic
+    # Your `scan.py` logic goes here, adapted to fit in this function
+    widthImg = 700
+    heightImg = 713
+    img = cv2.resize(img, (widthImg, heightImg))
+    imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    imgBlur = cv2.GaussianBlur(imgGray, (5, 5), 1)
+    imgCanny = cv2.Canny(imgBlur, 10, 50, apertureSize=3, L2gradient=True)
+    
+    imgContours = img.copy()
+    imgWarpPage = img.copy()
+    
+    cnts, hierarchy = cv2.findContours(imgCanny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    pageCon = utilis.rectContour(cnts)
+    page = utilis.getCornerPoints(pageCon[0])
+    page = utilis.reorder(page)
+    
+    p1 = np.float32(page)
+    p2 = np.float32([[0, 0], [widthImg, 0], [0, heightImg], [widthImg, heightImg]])
+    matrix = cv2.getPerspectiveTransform(p1, p2)
+    imgWarp = cv2.warpPerspective(img, matrix, (widthImg, heightImg))
+    
+    imgWarpCopy = imgWarp.copy()
+    imgWarpCopy2 = imgWarp.copy()
+    imgFinal = imgWarp.copy()
+    
+    imgGray2 = cv2.cvtColor(imgWarp, cv2.COLOR_BGR2GRAY)
+    imgBlur2 = cv2.GaussianBlur(imgGray2, (5, 5), 1)
+    imgCanny2 = cv2.Canny(imgBlur2, 10, 50, apertureSize=3, L2gradient=True)
+    
+    contours, hierarchy = cv2.findContours(imgCanny2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    rectCon = utilis.rectContour(contours)
+    biggestCon = utilis.getCornerPoints(rectCon[0])
+    studId = utilis.getCornerPoints(rectCon[1])
+    scoreCon = utilis.getCornerPoints(rectCon[2])
+    
+    if biggestCon.size != 0 and studId.size != 0 and scoreCon.size != 0:
+        biggestCon = utilis.reorder(biggestCon)
+        studId = utilis.reorder(studId)
+        scoreCon = utilis.reorder(scoreCon)
+        
+        pt1 = np.float32(biggestCon)
+        pt2 = np.float32([[0, 0], [widthImg, 0], [0, heightImg], [widthImg, heightImg]])
+        matrix = cv2.getPerspectiveTransform(pt1, pt2)
+        imgWarpColored = cv2.warpPerspective(imgWarp, matrix, (widthImg, heightImg))
+        
+        ptS1 = np.float32(studId)
+        ptS2 = np.float32([[0, 0], [325, 0], [0, 150], [325, 150]])
+        matrixS = cv2.getPerspectiveTransform(ptS1, ptS2)
+        imgStudWarpColored = cv2.warpPerspective(imgWarp, matrixS, (325, 150))
+        
+        ptSc1 = np.float32(scoreCon)
+        ptSc2 = np.float32([[0, 0], [325, 0], [0, 150], [325, 150]])
+        matrixSc = cv2.getPerspectiveTransform(ptSc1, ptSc2)
+        imgScoreWarpColored = cv2.warpPerspective(imgWarp, matrixSc, (325, 150))
+        
+        imgWarpGray = cv2.cvtColor(imgWarpColored, cv2.COLOR_BGR2GRAY)
+        gaus = cv2.adaptiveThreshold(imgWarpGray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 99, 1)
+        
+        boxes = utilis.splitBoxes(gaus)
+        crop_circles = [utilis.crop_circle(box) for box in boxes]
+        
+        np.set_printoptions(suppress=True)
+        
+        model = load_model("keras_model.h5", compile=False)
+        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+        
+        # Define function to resize and normalize the image
+        def preprocess_image(image):
+            size = (224, 224)
+            image = ImageOps.fit(image, size, Image.ANTIALIAS)
+            image_array = np.asarray(image)
+            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+            return normalized_image_array
+        
+        answer_predictions = []
+        for circle in crop_circles:
+            image = Image.fromarray(circle)
+            normalized_image_array = preprocess_image(image)
+            data[0] = normalized_image_array
+            prediction = model.predict(data)
+            predicted_class = np.argmax(prediction)
+            answer_predictions.append(predicted_class)
+        
+        # Your custom logic to determine the score
+        score = sum(answer_predictions)  # This is a placeholder
+        
+        imgStacked = utilis.stackImages(([img, imgGray, imgCanny], [imgWarp, imgWarpCopy, imgFinal]), 0.4)
+        
+        return score, imgFinal, imgStacked
+
+    return None, img, img
