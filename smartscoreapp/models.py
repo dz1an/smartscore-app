@@ -48,10 +48,18 @@ class Question(models.Model):
     option_b = models.CharField(max_length=255)
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
-    correct_answer = models.CharField(max_length=1, choices=[('A', 'Option A'), ('B', 'Option B'), ('C', 'Option C'), ('D', 'Option D')])
+    option_e = models.CharField(max_length=255, default='') 
+    correct_answer = models.CharField(max_length=1, choices=[
+        ('A', 'Option A'),
+        ('B', 'Option B'),
+        ('C', 'Option C'),
+        ('D', 'Option D'),
+        ('E', 'Option E')
+    ])
 
     def __str__(self):
         return self.question_text
+
 
 
 class TestSet(models.Model):

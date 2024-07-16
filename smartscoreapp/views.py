@@ -191,9 +191,10 @@ def add_question_view(request, exam_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and correct_answer:
+        if question_text and option_a and option_b and option_c and option_d and option_e and correct_answer:
             Question.objects.create(
                 exam=exam,
                 question_text=question_text,
@@ -201,6 +202,7 @@ def add_question_view(request, exam_id):
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
+                option_e=option_e,
                 correct_answer=correct_answer
             )
             messages.success(request, 'Question added successfully!')
@@ -220,14 +222,16 @@ def edit_question_view(request, question_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and correct_answer:
+        if question_text and option_a and option_b and option_c and option_d and option_e and correct_answer:
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
+            question.option_e = option_e
             question.correct_answer = correct_answer  # Update correct answer
             question.save()
             messages.success(request, 'Question updated successfully!')
@@ -272,6 +276,7 @@ def exam_detail_view(request, exam_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
         if question_text:
@@ -282,6 +287,7 @@ def exam_detail_view(request, exam_id):
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
+                option_e=option_e,
                 correct_answer=correct_answer
             )
             messages.success(request, "Question added successfully!")
