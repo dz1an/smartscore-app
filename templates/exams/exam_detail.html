@@ -3,7 +3,22 @@
 {% block content %}
   <!-- Breadcrumb -->
   <nav class="flex mb-4" aria-label="Breadcrumb">
-    <!-- Your existing breadcrumb code -->
+    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+      <li class="inline-flex items-center">
+        <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+          <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+          </svg>
+          Home
+        </a>
+      </li>
+      <li class="flex items-center">
+        <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+        </svg>
+        <a href="{% url 'exams' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exams</a>
+      </li>
+    </ol>
   </nav>
 
   <!-- Exam Name -->
@@ -11,31 +26,31 @@
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ exam.name }}</h1>
   </div>
 
-  <!-- Messages Display -->
-  {% if messages %}
-    <div class="mb-4">
-      <ul>
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
+  {% include 'message_display.html' %}
 
   <!-- Questions Section -->
   <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Exam Questions</h2>
 
-  <!-- Add Question Button with Icon -->
-  <div class="mb-4">
-    <button 
-      class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none"
-      onclick="openAddQuestionModal()">
-      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-      </svg>
-      Add Question
-    </button>
-  </div>
+    <!-- Add Question Button with Icon -->
+    <div class="mb-4 flex items-center space-x-4">
+      <button 
+        class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none"
+        onclick="openAddQuestionModal()">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Question
+      </button>
+      <!-- Answer Key Button -->
+      <button 
+        class="flex items-center text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg focus:outline-none"
+        onclick="toggleAnswerKey()">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Answer Key
+      </button>
+    </div>
 
 <!-- Table of Exam Questions -->
 <div class="relative overflow-x-auto mb-6">
@@ -79,6 +94,7 @@
 </div>
 
 
+
  <!-- Add Question Modal -->
 <div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
@@ -119,6 +135,7 @@
             <option value="B">Option B</option>
             <option value="C">Option C</option>
             <option value="D">Option D</option>
+            <option value="E">Option E</option>
           </select>
         </div>
         <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Question</button>
@@ -159,7 +176,7 @@
           </div>
           <div>
             <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option E</label>
-            <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_e }}">
+            <input type="text" id="editOptionD" name="option_e" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_e }}">
           </div>
         </div>
         <div class="mb-4">
@@ -196,7 +213,61 @@
   </div>
 </div>
 
+<!-- Answer Key Modal -->
+<div id="answer-key-modal" class="fixed inset-0 z-10 overflow-y-auto hidden">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+      <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+    </div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div class="sm:flex sm:items-start">
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white" id="answer-key-title">
+              Answer Key
+            </h3>
+            <div class="mt-2">
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                Below is the answer key for the exam questions:
+              </p>
+              <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 mb-4">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                  <tr>
+                    <th scope="col" class="px-6 py-3">Question</th>
+                    <th scope="col" class="px-6 py-3">Correct Answer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for question in exam.question_set.all %}
+                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                      <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
+                      <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.get_correct_answer_display }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                      <td colspan="2" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-500 text-base font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
   <script>
+
+    
     function openAddQuestionModal() {
       document.getElementById('addQuestionModal').classList.remove('hidden');
     }

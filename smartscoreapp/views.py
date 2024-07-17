@@ -194,7 +194,7 @@ def add_question_view(request, exam_id):
         option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and option_e and correct_answer:
+        if question_text and option_a and option_b and correct_answer:
             Question.objects.create(
                 exam=exam,
                 question_text=question_text,
@@ -207,40 +207,43 @@ def add_question_view(request, exam_id):
             )
             messages.success(request, 'Question added successfully!')
         else:
-            messages.error(request, 'All fields are required.')
+            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
 
         return redirect('exam_detail', exam_id=exam.id)
     
     return render(request, 'add_question.html', {'exam': exam})
 
+
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
+    
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
-        option_a = request.POST.get('option_a')
-        option_b = request.POST.get('option_b')
-        option_c = request.POST.get('option_c')
-        option_d = request.POST.get('option_d')
-        option_e = request.POST.get('option_e')
+        option_a = request.POST.get('option_a',)
+        option_b = request.POST.get('option_b',)
+        option_c = request.POST.get('option_c',)
+        option_d = request.POST.get('option_d',)
+        option_e = request.POST.get('option_e',)  
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and option_e and correct_answer:
+        if question_text and option_a and option_b and correct_answer:
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
             question.option_e = option_e
-            question.correct_answer = correct_answer  # Update correct answer
+            question.correct_answer = correct_answer
             question.save()
             messages.success(request, 'Question updated successfully!')
+            return redirect('exam_detail', exam_id=question.exam.id)
         else:
-            messages.error(request, 'All fields are required.')
-
-        return redirect('exam_detail', exam_id=question.exam.id)
-
+            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
+    
     return render(request, 'edit_question.html', {'question': question})
+
+
 
 @login_required
 def delete_question_view(request, question_id):

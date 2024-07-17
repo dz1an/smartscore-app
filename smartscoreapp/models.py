@@ -48,7 +48,7 @@ class Question(models.Model):
     option_b = models.CharField(max_length=255)
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
-    option_e = models.CharField(max_length=255, default='') 
+    option_e = models.CharField(max_length=255)
     correct_answer = models.CharField(max_length=1, choices=[
         ('A', 'Option A'),
         ('B', 'Option B'),
@@ -56,6 +56,11 @@ class Question(models.Model):
         ('D', 'Option D'),
         ('E', 'Option E')
     ])
+    option_a_value = models.IntegerField(default=0)  #
+    option_b_value = models.IntegerField(default=1)
+    option_c_value = models.IntegerField(default=2)
+    option_d_value = models.IntegerField(default=3)
+    option_e_value = models.IntegerField(default=4)
 
     def __str__(self):
         return self.question_text
