@@ -258,6 +258,26 @@ def delete_question_view(request, question_id):
     return redirect('exam_detail', exam_id=exam_id)
 
 @login_required
+def select_questions_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    questions = Question.objects.filter(exam=exam)
+    
+    if request.method == 'POST':
+        selected_questions = request.POST.getlist('questions')
+        if selected_questions:
+            # Process the selected questions as needed
+            # For example, you can save them to a field in the Exam model
+            exam.selected_questions.set(selected_questions)
+            exam.save()
+            messages.success(request, 'Questions selected successfully!')
+        else:
+            messages.error(request, 'No questions selected.')
+
+        return redirect('exam_detail', exam_id=exam.id)
+    
+    return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+
+@login_required
 def add_exam_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=request.user)
