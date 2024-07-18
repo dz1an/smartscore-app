@@ -37,9 +37,12 @@ class Exam(models.Model):
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     date = models.DateField()
     exam_id = models.CharField(max_length=50, unique=True)  # Unique identifier for each exam set
+    questions = models.ManyToManyField('Question', related_name='exams')  # Specify a custom related_name
 
     def __str__(self):
         return self.name
+
+
 
 class Question(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)

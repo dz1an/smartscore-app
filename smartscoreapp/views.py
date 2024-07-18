@@ -13,6 +13,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from random import shuffle
 
 User = get_user_model() 
 
@@ -260,22 +261,40 @@ def delete_question_view(request, question_id):
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = Question.objects.filter(exam=exam)
-    
+
     if request.method == 'POST':
         selected_questions = request.POST.getlist('questions')
         if selected_questions:
-            # Process the selected questions as needed
-            # For example, you can save them to a field in the Exam model
-            exam.selected_questions.set(selected_questions)
-            exam.save()
+            # Clear previous selections
+            exam.questions.clear()
+            # Add selected questions
+            for question_id in selected_questions:
+                question = get_object_or_404(Question, id=question_id)
+                exam.questions.add(question)
             messages.success(request, 'Questions selected successfully!')
         else:
-            messages.error(request, 'No questions selected.')
+            messages.error(request, 'No questions were selected.')
+        return redirect('exam_detail', exam_id=exam_id)
 
-        return redirect('exam_detail', exam_id=exam.id)
-    
+    questions = Question.objects.all()
     return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+
+def generate_answers_list(exam):
+    selected_questions = exam.questions.all()
+    answers = []
+    for question in selected_questions:
+        if question.correct_answer == 'A':
+            answers.append(question.option_a_value)
+        elif question.correct_answer == 'B':
+            answers.append(question.option_b_value)
+        elif question.correct_answer == 'C':
+            answers.append(question.option_c_value)
+        elif question.correct_answer == 'D':
+            answers.append(question.option_d_value)
+        elif question.correct_answer == 'E':
+            answers.append(question.option_e_value)
+    return answers
+
 
 @login_required
 def add_exam_view(request):
