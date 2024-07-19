@@ -14,6 +14,7 @@ from django.http import HttpResponseBadRequest
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from random import shuffle
+import random
 
 User = get_user_model() 
 
@@ -261,23 +262,74 @@ def delete_question_view(request, question_id):
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    questions = Question.objects.all()
 
     if request.method == 'POST':
-        selected_questions = request.POST.getlist('questions')
-        if selected_questions:
-            # Clear previous selections
-            exam.questions.clear()
-            # Add selected questions
-            for question_id in selected_questions:
-                question = get_object_or_404(Question, id=question_id)
-                exam.questions.add(question)
-            messages.success(request, 'Questions selected successfully!')
-        else:
-            messages.error(request, 'No questions were selected.')
-        return redirect('exam_detail', exam_id=exam_id)
+        selected_question_ids = request.POST.getlist('questions')
+        selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        
+        # Clear existing questions and add selected questions
+        exam.questions.clear()
+        exam.questions.add(*selected_questions)
 
-    questions = Question.objects.all()
+        messages.success(request, 'Questions selected successfully!')
+        return redirect('generate_test_paper', exam_id=exam_id)
+
     return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+
+@login_required
+def print_test_paper_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    selected_questions = list(exam.questions.all())
+    random.shuffle(selected_questions)  # Randomize questions for each student
+
+    return render(request, 'print_test_paper.html', {'exam': exam, 'selected_questions': selected_questions})
+
+@login_required
+def generate_test_paper_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    selected_questions = list(exam.questions.all())
+    random.shuffle(selected_questions)  # Randomize questions for each student
+
+    # Prepare a list of questions with options for rendering
+    questions_with_options = [{'question_text': question.question_text,
+                               'options': [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]}
+                              for question in selected_questions]
+
+    return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options})
+
+@login_required
+def process_scanned_papers_view(request):
+    if request.method == 'POST':
+        exam_id = request.POST.get('exam_id')
+        exam = get_object_or_404(Exam, id=exam_id)
+        questions = list(exam.questions.all())
+        total_questions = len(questions)
+        
+        # Process scanned answers
+        marks = []
+        for question in questions:
+            answer_key = f'question{question.id}'  # Adjust as per your form structure
+            marked_option = request.POST.get(answer_key)
+            correct_option = question.correct_answer  # Adjust based on your model design
+
+            if marked_option is not None:
+                marks.append(1 if int(marked_option) == correct_option else 0)
+            else:
+                marks.append(0)  # Handle case where no option is marked (if needed)
+
+        # Calculate score and other relevant metrics
+        score = sum(marks)
+        total_marks = len(marks)
+
+        # Optionally, save the scanned papers or marks for further processing
+        # Ensure your file paths and processing align with your requirements
+
+        messages.success(request, f"Exam submitted successfully. Score: {score}/{total_marks}")
+        return redirect('exams')  # Redirect to exams page after processing
+
+    return redirect('exams')  # Redirect to exams page if not a POST request or processing fails
+
 
 def generate_answers_list(exam):
     selected_questions = exam.questions.all()

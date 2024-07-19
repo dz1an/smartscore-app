@@ -52,6 +52,9 @@ urlpatterns = [
     path('edit_question/<int:question_id>/', edit_question_view, name='edit_question'),
     path('delete_question/<int:question_id>/', delete_question_view, name='delete_question'),
     path('exams/<int:exam_id>/select-questions/', select_questions_view, name='select_questions'),
+    path('exams/<int:exam_id>/generate-test-paper/', views.generate_test_paper_view, name='generate_test_paper'),
+    path('exams/<int:exam_id>/print-test-paper/', views.print_test_paper_view, name='print_test_paper'),
+    path('process-scanned-papers/', views.process_scanned_papers_view, name='process_scanned_papers'),
 
     
  # Delete Question
