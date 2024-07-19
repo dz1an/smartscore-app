@@ -35,16 +35,7 @@
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white" onclick="openUpdateClassModal()">{{ class.name }}</h1>
   </div>
 
-  <!-- Messages Display -->
-  {% if messages %}
-    <div class="mb-4">
-      <ul>
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
+  {% include 'message_display.html' %}
 
   <!-- Enrolled Students Section -->
   <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Enrolled Students</h2>

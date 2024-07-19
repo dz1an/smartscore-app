@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<nav class="flex mb-4" aria-label="Breadcrumb">
+  <!-- Breadcrumb navigation -->
+</nav>
+
+<div class="mb-6 flex items-center cursor-pointer">
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ exam.name }}</h1>
+</div>
+
+{% include 'message_display.html' %}
+
+<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Generated Test Paper for {{ exam.name }}</h2>
+
+<form action="{% url 'process_scanned_papers' %}" method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden" name="exam_id" value="{{ exam.id }}">
+  
+  <ol>
+    {% for question in questions_with_options %}
+      <li>
+        <h4>{{ question.question_text }}</h4>
+        <ul>
+          {% for option in question.options %}
+            <li>
+              <label>
+                <input type="radio" name="question{{ forloop.parentloop.counter }}" value="{{ forloop.counter0 }}">
+                {{ option }}
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ol>
+
+  <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">Submit Answers</button>
+</form>
+
+<a href="{% url 'exams' %}" class="text-blue-500 hover:underline">Back to Exams</a>
+
+{% endblock %}

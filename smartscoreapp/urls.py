@@ -5,7 +5,8 @@ from smartscoreapp.views import (
     classes_view, class_detail_view, exams_view, exam_detail_view,
     logout_view, add_class_view, add_student_view, add_exam_view,
     add_student_to_exam_view, settings_view, edit_student,
-    update_class_name_view, students_view, delete_class_view, edit_question_view,delete_question_view
+    update_class_name_view, students_view, delete_class_view, edit_question_view,delete_question_view,
+    select_questions_view
 )
 from django.conf.urls.static import static
 from django.conf import settings
@@ -50,6 +51,10 @@ urlpatterns = [
     path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
     path('edit_question/<int:question_id>/', edit_question_view, name='edit_question'),
     path('delete_question/<int:question_id>/', delete_question_view, name='delete_question'),
+    path('exams/<int:exam_id>/select-questions/', select_questions_view, name='select_questions'),
+    path('exams/<int:exam_id>/generate-test-paper/', views.generate_test_paper_view, name='generate_test_paper'),
+    path('exams/<int:exam_id>/print-test-paper/', views.print_test_paper_view, name='print_test_paper'),
+    path('process-scanned-papers/', views.process_scanned_papers_view, name='process_scanned_papers'),
 
     
  # Delete Question

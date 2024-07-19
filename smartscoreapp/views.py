@@ -13,6 +13,9 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from random import shuffle
+import random
+from .forms import StudentForm, AddStudentToExamForm, TestSetForm
 
 User = get_user_model() 
 
@@ -191,9 +194,10 @@ def add_question_view(request, exam_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and correct_answer:
+        if question_text and option_a and option_b and correct_answer:
             Question.objects.create(
                 exam=exam,
                 question_text=question_text,
@@ -201,42 +205,48 @@ def add_question_view(request, exam_id):
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
+                option_e=option_e,
                 correct_answer=correct_answer
             )
             messages.success(request, 'Question added successfully!')
         else:
-            messages.error(request, 'All fields are required.')
+            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
 
         return redirect('exam_detail', exam_id=exam.id)
     
     return render(request, 'add_question.html', {'exam': exam})
 
+
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
+    
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
-        option_a = request.POST.get('option_a')
-        option_b = request.POST.get('option_b')
-        option_c = request.POST.get('option_c')
-        option_d = request.POST.get('option_d')
+        option_a = request.POST.get('option_a',)
+        option_b = request.POST.get('option_b',)
+        option_c = request.POST.get('option_c',)
+        option_d = request.POST.get('option_d',)
+        option_e = request.POST.get('option_e',)  
         correct_answer = request.POST.get('correct_answer')
 
-        if question_text and option_a and option_b and option_c and option_d and correct_answer:
+        if question_text and option_a and option_b and correct_answer:
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
-            question.correct_answer = correct_answer  # Update correct answer
+            question.option_e = option_e
+            question.correct_answer = correct_answer
             question.save()
             messages.success(request, 'Question updated successfully!')
+            return redirect('exam_detail', exam_id=question.exam.id)
         else:
-            messages.error(request, 'All fields are required.')
-
-        return redirect('exam_detail', exam_id=question.exam.id)
-
+            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
+    
     return render(request, 'edit_question.html', {'question': question})
+
+
 
 @login_required
 def delete_question_view(request, question_id):
@@ -249,6 +259,95 @@ def delete_question_view(request, question_id):
         return redirect('exam_detail', exam_id=exam_id)
 
     return redirect('exam_detail', exam_id=exam_id)
+
+@login_required
+def select_questions_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    questions = Question.objects.all()
+
+    if request.method == 'POST':
+        selected_question_ids = request.POST.getlist('questions')
+        selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        
+        # Clear existing questions and add selected questions
+        exam.questions.clear()
+        exam.questions.add(*selected_questions)
+
+        messages.success(request, 'Questions selected successfully!')
+        return redirect('generate_test_paper', exam_id=exam_id)
+
+    return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+
+@login_required
+def print_test_paper_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    selected_questions = list(exam.questions.all())
+    random.shuffle(selected_questions)  # Randomize questions for each student
+
+    return render(request, 'print_test_paper.html', {'exam': exam, 'selected_questions': selected_questions})
+
+@login_required
+def generate_test_paper_view(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    selected_questions = list(exam.questions.all())
+    random.shuffle(selected_questions)  # Randomize questions for each student
+
+    # Prepare a list of questions with options for rendering
+    questions_with_options = [{'question_text': question.question_text,
+                               'options': [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]}
+                              for question in selected_questions]
+
+    return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options})
+
+@login_required
+def process_scanned_papers_view(request):
+    if request.method == 'POST':
+        exam_id = request.POST.get('exam_id')
+        exam = get_object_or_404(Exam, id=exam_id)
+        questions = list(exam.questions.all())
+        total_questions = len(questions)
+        
+        # Process scanned answers
+        marks = []
+        for question in questions:
+            answer_key = f'question{question.id}'  # Adjust as per your form structure
+            marked_option = request.POST.get(answer_key)
+            correct_option = question.correct_answer  # Adjust based on your model design
+
+            if marked_option is not None:
+                marks.append(1 if int(marked_option) == correct_option else 0)
+            else:
+                marks.append(0)  # Handle case where no option is marked (if needed)
+
+        # Calculate score and other relevant metrics
+        score = sum(marks)
+        total_marks = len(marks)
+
+        # Optionally, save the scanned papers or marks for further processing
+        # Ensure your file paths and processing align with your requirements
+
+        messages.success(request, f"Exam submitted successfully. Score: {score}/{total_marks}")
+        return redirect('exams')  # Redirect to exams page after processing
+
+    return redirect('exams')  # Redirect to exams page if not a POST request or processing fails
+
+
+def generate_answers_list(exam):
+    selected_questions = exam.questions.all()
+    answers = []
+    for question in selected_questions:
+        if question.correct_answer == 'A':
+            answers.append(question.option_a_value)
+        elif question.correct_answer == 'B':
+            answers.append(question.option_b_value)
+        elif question.correct_answer == 'C':
+            answers.append(question.option_c_value)
+        elif question.correct_answer == 'D':
+            answers.append(question.option_d_value)
+        elif question.correct_answer == 'E':
+            answers.append(question.option_e_value)
+    return answers
+
 
 @login_required
 def add_exam_view(request):
@@ -272,6 +371,7 @@ def exam_detail_view(request, exam_id):
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
         if question_text:
@@ -282,6 +382,7 @@ def exam_detail_view(request, exam_id):
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
+                option_e=option_e,
                 correct_answer=correct_answer
             )
             messages.success(request, "Question added successfully!")
@@ -315,7 +416,7 @@ def add_student_view(request, class_id):
     else:
         form = StudentForm()
     
-    return render(request, 'add_student.html', {'form': form, 'class_instance': class_instance})
+    return render(request, 'add_student.html', {'form': form})
 
 
 @login_required
@@ -345,24 +446,30 @@ def delete_student(request, student_id):
 
     return redirect('class_detail', class_id=student.assigned_class.id)
 
-def add_student_to_exam_view(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
 
-    if request.method == 'POST':
-        form = StudentForm(request.POST)
-        if form.is_valid():
-            student = form.save(commit=False)
-            student.exam = exam
-            student.save()
-            messages.success(request, 'Student added to exam successfully!')
-            return redirect('exam_detail', exam_id=exam.id)
-        else:
-            messages.error(request, 'Error adding student to exam. Please check the form.')
-    else:
-        form = StudentForm()
+@login_required
+def add_student_to_exam_view(request, exam_id):
+    exam_instance = get_object_or_404(Exam, id=exam_id)
     
-    # Return to the exam detail page if not a POST request or if form is not valid
-    return redirect('exam_detail', exam_id=exam.id)
+    if request.method == 'POST':
+        student_form = AddStudentToExamForm(request.POST)
+        test_set_form = TestSetForm(request.POST)
+        
+        if student_form.is_valid() and test_set_form.is_valid():
+            student = student_form.save()
+            test_set = test_set_form.save(commit=False)
+            test_set.exam = exam_instance
+            test_set.student = student
+            test_set.save()
+            messages.success(request, 'Student and exam set added successfully!')
+            return redirect('exam_detail', exam_id=exam_id)
+        else:
+            messages.error(request, 'Error adding student and exam set. Please check the form.')
+    else:
+        student_form = AddStudentToExamForm()
+        test_set_form = TestSetForm()
+    
+    return render(request, 'add_student_to_exam.html', {'student_form': student_form, 'test_set_form': test_set_form})
 
 @login_required
 def add_class_view(request):

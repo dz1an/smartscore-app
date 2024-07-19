@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Printable Test Paper - {{ exam.name }}</title>
+  <style>
+    /* CSS for printable format */
+    body {
+      font-family: Arial, sans-serif;
+    }
+    ol {
+      list-style-type: none;
+      counter-reset: item;
+    }
+    li {
+      counter-increment: item;
+      margin-bottom: 20px;
+    }
+    li h4 {
+      font-weight: bold;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li ul li {
+      list-style-type: lower-alpha;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ exam.name }}</h1>
+  
+  <h2>Test Paper</h2>
+  
+  <ol>
+    {% for question in selected_questions %}
+      <li>
+        <h4>{{ forloop.counter }}. {{ question.question_text }}</h4>
+        <ul>
+          <li>{{ question.option_a }}</li>
+          <li>{{ question.option_b }}</li>
+          <li>{{ question.option_c }}</li>
+          <li>{{ question.option_d }}</li>
+          <li>{{ question.option_e }}</li>
+        </ul>
+      </li>
+    {% endfor %}
+  </ol>
+  
+  <script>
+    // JavaScript for handling print functionality
+    window.onload = function() {
+      window.print();
+    }
+  </script>
+</body>
+</html>
