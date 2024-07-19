@@ -45,8 +45,6 @@ class ExamForm(forms.ModelForm):
         if user:
             self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
 
-
-
 class ClassNameForm(forms.ModelForm):
     class Meta:
         model = Class
@@ -64,7 +62,7 @@ class EditStudentForm(forms.ModelForm):
 class TestSetForm(forms.ModelForm):
     class Meta:
         model = TestSet
-        fields = ['exam', 'student', 'name']
+        fields = ['exam', 'student', 'set_no']
 
 class UserCreationWithEmailForm(UserCreationForm):
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
@@ -73,7 +71,6 @@ class UserCreationWithEmailForm(UserCreationForm):
         model = User
         fields = ('email', 'username', 'password1', 'password2')
 
-# New form for adding students to exams
 class AddStudentToExamForm(forms.ModelForm):
     class Meta:
         model = Student

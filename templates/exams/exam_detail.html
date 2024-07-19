@@ -281,19 +281,20 @@
   }
 
   function openEditQuestionModal(id, text, a, b, c, d, e) {
-    document.getElementById('editQuestionForm').action = `/edit_question/${id}/`;
-    document.getElementById('editQuestionText').value = text;
-    document.getElementById('editOptionA').value = a;
-    document.getElementById('editOptionB').value = b;
-    document.getElementById('editOptionC').value = c;
-    document.getElementById('editOptionD').value = d;
-    document.getElementById('editOptionE').value = e; // Fixed this line to use editOptionE
-    document.getElementById('editQuestionModal').classList.remove('hidden');
-  }
+      document.getElementById('editQuestionForm').action = `/edit_question/${id}/`;
+      document.getElementById('editQuestionText').value = text;
+      document.getElementById('editOptionA').value = a;
+      document.getElementById('editOptionB').value = b;
+      document.getElementById('editOptionC').value = c;
+      document.getElementById('editOptionD').value = d;
+      document.getElementById('editOptionD').value = e;
+      document.getElementById('editQuestionModal').classList.remove('hidden');
+    }
 
-  function closeEditQuestionModal() {
-    document.getElementById('editQuestionModal').classList.add('hidden');
-  }
+    function closeEditQuestionModal() {
+      document.getElementById('editQuestionModal').classList.add('hidden');
+    }
+
 
   function openDeleteQuestionModal(id, text) {
     document.getElementById('deleteQuestionForm').action = `/delete_question/${id}/`;

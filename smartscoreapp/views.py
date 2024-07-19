@@ -15,6 +15,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from random import shuffle
 import random
+from .forms import StudentForm, AddStudentToExamForm, TestSetForm
 
 User = get_user_model() 
 
@@ -415,7 +416,7 @@ def add_student_view(request, class_id):
     else:
         form = StudentForm()
     
-    return render(request, 'add_student.html', {'form': form, 'class_instance': class_instance})
+    return render(request, 'add_student.html', {'form': form})
 
 
 @login_required
@@ -445,24 +446,30 @@ def delete_student(request, student_id):
 
     return redirect('class_detail', class_id=student.assigned_class.id)
 
-def add_student_to_exam_view(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
 
-    if request.method == 'POST':
-        form = StudentForm(request.POST)
-        if form.is_valid():
-            student = form.save(commit=False)
-            student.exam = exam
-            student.save()
-            messages.success(request, 'Student added to exam successfully!')
-            return redirect('exam_detail', exam_id=exam.id)
-        else:
-            messages.error(request, 'Error adding student to exam. Please check the form.')
-    else:
-        form = StudentForm()
+@login_required
+def add_student_to_exam_view(request, exam_id):
+    exam_instance = get_object_or_404(Exam, id=exam_id)
     
-    # Return to the exam detail page if not a POST request or if form is not valid
-    return redirect('exam_detail', exam_id=exam.id)
+    if request.method == 'POST':
+        student_form = AddStudentToExamForm(request.POST)
+        test_set_form = TestSetForm(request.POST)
+        
+        if student_form.is_valid() and test_set_form.is_valid():
+            student = student_form.save()
+            test_set = test_set_form.save(commit=False)
+            test_set.exam = exam_instance
+            test_set.student = student
+            test_set.save()
+            messages.success(request, 'Student and exam set added successfully!')
+            return redirect('exam_detail', exam_id=exam_id)
+        else:
+            messages.error(request, 'Error adding student and exam set. Please check the form.')
+    else:
+        student_form = AddStudentToExamForm()
+        test_set_form = TestSetForm()
+    
+    return render(request, 'add_student_to_exam.html', {'student_form': student_form, 'test_set_form': test_set_form})
 
 @login_required
 def add_class_view(request):
