@@ -9,6 +9,7 @@ GENDER_CHOICES = (
     ('O', 'Other'),
 )
 
+
 class ClassForm(forms.ModelForm):
     class Meta:
         model = Class
@@ -37,13 +38,7 @@ class StudentForm(forms.ModelForm):
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['name', 'class_assigned', 'date', 'exam_id']
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-        if user:
-            self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
+        fields = ['exam_id', 'name', 'class_assigned', 'date']
 
 class ClassNameForm(forms.ModelForm):
     class Meta:
@@ -76,8 +71,27 @@ class AddStudentToExamForm(forms.ModelForm):
         model = Student
         fields = ['name', 'year', 'gender']
 
+class StudentForm(forms.ModelForm):
+    year = forms.IntegerField(
+        label='Year', 
+        widget=forms.NumberInput(attrs={
+            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+        })
+    )
+
+    gender = forms.ChoiceField(
+        choices=GENDER_CHOICES,
+        label='Gender',
+        widget=forms.Select(attrs={
+            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+        })
+    )
+
+    class Meta:
+        model = Student
+        fields = ['name', 'year', 'gender', 'assigned_class']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['name'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
-        self.fields['year'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
-        self.fields['gender'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
+        self.fields['assigned_class'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})

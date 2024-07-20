@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Class, Student, Exam, Question
+from .models import Class, Student, Exam, Question, Answer, ExamSet
 from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentForm 
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
@@ -16,6 +16,10 @@ from django.contrib.auth.forms import PasswordChangeForm
 from random import shuffle
 import random
 from .forms import StudentForm, AddStudentToExamForm, TestSetForm
+from django.utils.crypto import get_random_string
+from django.db import models
+from .models import Student
+
 
 User = get_user_model() 
 
@@ -100,8 +104,6 @@ def classes_view(request):
         'form': ClassNameForm()  # Assuming ClassNameForm is your form for adding a new class
     }
     return render(request, 'classes.html', context)
-
-
 
 def delete_class_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -198,17 +200,24 @@ def add_question_view(request, exam_id):
         correct_answer = request.POST.get('correct_answer')
 
         if question_text and option_a and option_b and correct_answer:
-            Question.objects.create(
+            # Create the Question object
+            question = Question.objects.create(
                 exam=exam,
                 question_text=question_text,
                 option_a=option_a,
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
-                option_e=option_e,
+                option_e=option_e
+            )
+            
+            # Create the associated Answer object
+            Answer.objects.create(
+                question=question,
                 correct_answer=correct_answer
             )
-            messages.success(request, 'Question added successfully!')
+            
+            messages.success(request, 'Question and answer added successfully!')
         else:
             messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
 
@@ -216,37 +225,58 @@ def add_question_view(request, exam_id):
     
     return render(request, 'add_question.html', {'exam': exam})
 
+@login_required
+def create_exam_set(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    if request.method == 'POST':
+        set_number = request.POST.get('set_number')
+        student_ids = request.POST.getlist('students')
+        
+        exam_set = ExamSet.objects.create(exam=exam, set_number=set_number)
+        students = Student.objects.filter(student_id__in=student_ids)
+        exam_set.students.add(*students)
+        
+        messages.success(request, f'Exam Set {set_number} created and assigned to students.')
+        return redirect('exam_detail', exam_id=exam.id)
+    
+    students = Student.objects.filter(assigned_class=exam.class_assigned)
+    return render(request, 'create_exam_set.html', {'exam': exam, 'students': students})
+
 
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
-    
+    answer = question.answer  # Get the associated answer
+
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
-        option_a = request.POST.get('option_a',)
-        option_b = request.POST.get('option_b',)
-        option_c = request.POST.get('option_c',)
-        option_d = request.POST.get('option_d',)
-        option_e = request.POST.get('option_e',)  
+        option_a = request.POST.get('option_a')
+        option_b = request.POST.get('option_b')
+        option_c = request.POST.get('option_c')
+        option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e')
         correct_answer = request.POST.get('correct_answer')
 
         if question_text and option_a and option_b and correct_answer:
+            # Update question
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
             question.option_e = option_e
-            question.correct_answer = correct_answer
             question.save()
-            messages.success(request, 'Question updated successfully!')
+
+            # Update answer
+            answer.correct_answer = correct_answer
+            answer.save()
+
+            messages.success(request, 'Question and answer updated successfully!')
             return redirect('exam_detail', exam_id=question.exam.id)
         else:
             messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
     
-    return render(request, 'edit_question.html', {'question': question})
-
-
+    return render(request, 'edit_question.html', {'question': question, 'answer': answer})
 
 @login_required
 def delete_question_view(request, question_id):
@@ -254,8 +284,9 @@ def delete_question_view(request, question_id):
     exam_id = question.exam.id
 
     if request.method == 'POST':
+        # The associated answer will be automatically deleted due to the OneToOneField with on_delete=models.CASCADE
         question.delete()
-        messages.success(request, 'Question deleted successfully!')
+        messages.success(request, 'Question and answer deleted successfully!')
         return redirect('exam_detail', exam_id=exam_id)
 
     return redirect('exam_detail', exam_id=exam_id)

@@ -1,6 +1,10 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from django.utils.crypto import get_random_string
+
+def generate_student_id():
+    return 'TEMP_' + get_random_string(8)
 
 class User(AbstractUser):
     class Meta:
@@ -23,22 +27,35 @@ class Student(models.Model):
     ]
 
     name = models.CharField(max_length=100)
+    student_id = models.CharField(max_length=20, unique=True, default=generate_student_id)
     year = models.IntegerField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.student_id})"
+    
 
 class Exam(models.Model):
+    exam_id = models.CharField(max_length=50, unique=True)  # Add this if you need it
     name = models.CharField(max_length=100)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     date = models.DateField()
-    exam_id = models.CharField(max_length=50, unique=True)  # Unique identifier for each exam set
-    questions = models.ManyToManyField('Question', related_name='exams')  # Specify a custom related_name
+    questions = models.ManyToManyField('Question', related_name='exams')
 
     def __str__(self):
         return self.name
+    
+class ExamSet(models.Model):
+    exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
+    set_number = models.IntegerField()
+    students = models.ManyToManyField(Student, related_name='exam_sets')
+
+    class Meta:
+        unique_together = ('exam', 'set_number')
+
+    def __str__(self):
+        return f"{self.exam.name} - Set {self.set_number}"
 
 class Question(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
@@ -48,6 +65,13 @@ class Question(models.Model):
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
     option_e = models.CharField(max_length=255)
+    question_order = models.IntegerField(default=1)
+
+    def __str__(self):
+        return self.question_text
+
+class Answer(models.Model):
+    question = models.OneToOneField(Question, on_delete=models.CASCADE, related_name='answer')
     correct_answer = models.CharField(max_length=1, choices=[
         ('A', 'Option A'),
         ('B', 'Option B'),
@@ -60,14 +84,10 @@ class Question(models.Model):
     option_c_value = models.IntegerField(default=2)
     option_d_value = models.IntegerField(default=3)
     option_e_value = models.IntegerField(default=4)
-    question_order = models.IntegerField(default=1)  #
 
     def __str__(self):
-        return self.question_text
-
-
-    def __str__(self):
-        return self.question_text
+        return f"Answer for: {self.question.question_text[:50]}..."
+    
 
 class TestSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='test_sets', on_delete=models.CASCADE)
