@@ -40,6 +40,12 @@ class ExamForm(forms.ModelForm):
         model = Exam
         fields = ['exam_id', 'name', 'class_assigned', 'date']
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(ExamForm, self).__init__(*args, **kwargs)
+        if user:
+            self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
+
 class ClassNameForm(forms.ModelForm):
     class Meta:
         model = Class
