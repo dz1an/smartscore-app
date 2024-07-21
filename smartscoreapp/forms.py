@@ -9,7 +9,6 @@ GENDER_CHOICES = (
     ('O', 'Other'),
 )
 
-
 class ClassForm(forms.ModelForm):
     class Meta:
         model = Class

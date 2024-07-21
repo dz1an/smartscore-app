@@ -70,9 +70,24 @@ class Question(models.Model):
     def __str__(self):
         return self.question_text
 
+class StudentQuestion(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='student_questions')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student_answer = models.CharField(max_length=1, choices=[
+        ('A', 'Option A'),
+        ('B', 'Option B'),
+        ('C', 'Option C'),
+        ('D', 'Option D'),
+        ('E', 'Option E')
+    ], null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('student', 'question', 'exam')
+
 class Answer(models.Model):
     question = models.OneToOneField(Question, on_delete=models.CASCADE, related_name='answer')
-    correct_answer = models.CharField(max_length=1, choices=[
+    answer = models.CharField(max_length=1, choices=[
         ('A', 'Option A'),
         ('B', 'Option B'),
         ('C', 'Option C'),
