@@ -26,7 +26,6 @@ class Exam(models.Model):
     exam_id = models.CharField(max_length=50, unique=True)  # Add this field if needed
     name = models.CharField(max_length=100)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
-    date = models.DateField()
     questions = models.ManyToManyField('Question', related_name='exams')
 
     def __str__(self):

@@ -53,7 +53,7 @@ class StudentForm(forms.ModelForm):
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['name', 'class_assigned', 'date', 'questions'] 
+        fields = ['name', 'class_assigned', 'questions'] 
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)

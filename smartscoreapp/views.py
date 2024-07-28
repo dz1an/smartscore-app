@@ -451,18 +451,21 @@ def students_view(request):
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
-    exam = class_instance.exams.first()
-
-    if not exam:
-        messages.error(request, 'No exams associated with this class. Please create an exam first.')
-        return redirect('class_detail', class_id=class_id)
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
             student = form.save(commit=False)
             student.assigned_class = class_instance
-            student.student_id = generate_student_code(exam.id)  # Generate the student ID
+
+            # Generate student_id if it is not set
+            if not student.student_id:
+                if class_instance.exams.exists():
+                    exam = class_instance.exams.first()
+                    student.student_id = generate_student_code(exam.id)
+                else:
+                    student.student_id = generate_student_code(random.randint(1, 9999))
+
             student.save()
             messages.success(request, 'Student added successfully!')
             return redirect('class_detail', class_id=class_id)
@@ -470,8 +473,10 @@ def add_student_view(request, class_id):
             messages.error(request, 'Error adding student. Please check the form.')
     else:
         form = StudentForm()
-    
+
     return render(request, 'add_student.html', {'form': form})
+
+
 
 
 
