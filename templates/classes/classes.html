@@ -117,8 +117,12 @@
         {% csrf_token %}
         <div class="grid gap-4 mb-4 grid-cols-1">
           <div>
-            <label for="student_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Student Name</label>
-            <input type="text" name="name" id="student_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter student name" required>
+            <label for="student_first_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">First Name</label>
+            <input type="text" name="first_name" id="student_first_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter first name" required>
+          </div>
+          <div>
+            <label for="student_last_name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Last Name</label>
+            <input type="text" name="last_name" id="student_last_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500" placeholder="Enter last name" required>
           </div>
           <div>
             <label for="student_year" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Year</label>
@@ -144,6 +148,7 @@
   </div>
 </div>
 {% endfor %}
+
 
 
 
