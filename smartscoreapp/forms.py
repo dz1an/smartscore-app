@@ -16,13 +16,6 @@ class ClassForm(forms.ModelForm):
 
 
 class StudentForm(forms.ModelForm):
-    gender = forms.ChoiceField(
-        choices=GENDER_CHOICES,
-        label='Gender',
-        widget=forms.Select(attrs={
-            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
-        })
-    )
 
     year = forms.IntegerField(
         label='Year',
@@ -33,7 +26,7 @@ class StudentForm(forms.ModelForm):
 
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year']
         widgets = {
             'first_name': forms.TextInput(attrs={
                 'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
@@ -69,7 +62,7 @@ class ClassNameForm(forms.ModelForm):
 class EditStudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender', 'assigned_class']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'assigned_class']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -91,7 +84,7 @@ class UserCreationWithEmailForm(UserCreationForm):
 class AddStudentToExamForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

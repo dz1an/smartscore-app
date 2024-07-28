@@ -42,10 +42,10 @@ class Student(models.Model):
     last_name = models.CharField(max_length=50, default='')
     middle_initial = models.CharField(max_length=1, blank=True, default='')
     suffix = models.CharField(max_length=10, blank=True, default='')
-    student_id = models.CharField(max_length=6, unique=True, editable=False, default='')
+    student_id = models.CharField(max_length=7, unique=True, editable=False, default='')
     assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
     year = models.IntegerField()
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+
 
 
     class Meta:
@@ -64,11 +64,9 @@ def clean(self):
 
 def save(self, *args, **kwargs):
     if not self.student_id:
-        exam = self.assigned_class.exams.first()
-        if exam:
-            self.student_id = generate_student_code(exam.id)
-        else:
-            self.student_id = generate_student_code(random.randint(1, 9999))
+        year_part = str(self.year_enrolled)[-2:] 
+        id_part = ''.join([str(random.randint(0, 9)) for _ in range(5)])  
+        self.student_id = f"{year_part}{id_part}"
     super(Student, self).save(*args, **kwargs)
 
 
