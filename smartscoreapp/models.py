@@ -1,10 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-from django.utils.crypto import get_random_string
+import random
+from django.core.exceptions import ValidationError
 
-def generate_student_id():
-    return 'TEMP_' + get_random_string(8)
+def generate_student_code(exam_id):
+    set_identifier = random.randint(0, 99)
+    id_part = exam_id % 10000
+    return f"{set_identifier:02d}-{id_part:04d}"
 
 class User(AbstractUser):
     class Meta:
@@ -19,25 +22,8 @@ class Class(models.Model):
     def __str__(self):
         return self.name
 
-class Student(models.Model):
-    GENDER_CHOICES = [
-        ('M', 'Male'),
-        ('F', 'Female'),
-        ('O', 'Other'),
-    ]
-
-    name = models.CharField(max_length=100)
-    student_id = models.CharField(max_length=20, unique=True, default=generate_student_id)
-    year = models.IntegerField()
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
-
-    def __str__(self):
-        return f"{self.name} ({self.student_id})"
-    
-
 class Exam(models.Model):
-    exam_id = models.CharField(max_length=50, unique=True)  # Add this if you need it
+    exam_id = models.CharField(max_length=50, unique=True)  # Add this field if needed
     name = models.CharField(max_length=100)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     date = models.DateField()
@@ -45,7 +31,48 @@ class Exam(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+
+class Student(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+    first_name = models.CharField(max_length=50, default='')
+    last_name = models.CharField(max_length=50, default='')
+    middle_initial = models.CharField(max_length=1, blank=True, default='')
+    suffix = models.CharField(max_length=10, blank=True, default='')
+    student_id = models.CharField(max_length=6, unique=True, editable=False, default='')
+    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
+    year = models.IntegerField()
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+
+
+    class Meta:
+        unique_together = ('first_name', 'last_name', 'middle_initial', 'suffix', 'assigned_class')
+
+def clean(self):
+    existing_student = Student.objects.filter(
+        first_name=self.first_name,
+        last_name=self.last_name,
+        middle_initial=self.middle_initial,
+        suffix=self.suffix,
+        assigned_class=self.assigned_class
+    ).exclude(pk=self.pk).exists()
+    if existing_student:
+        raise ValidationError(f"A student with this name already exists in this class.")
+
+def save(self, *args, **kwargs):
+    if not self.student_id:
+        exam = self.assigned_class.exams.first()
+        if exam:
+            self.student_id = generate_student_code(exam.id)
+        else:
+            self.student_id = generate_student_code(random.randint(1, 9999))
+    super(Student, self).save(*args, **kwargs)
+
+
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
     set_number = models.IntegerField()
@@ -103,14 +130,13 @@ class Answer(models.Model):
     def __str__(self):
         return f"Answer for: {self.question.question_text[:50]}..."
     
-
 class TestSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='test_sets', on_delete=models.CASCADE)
     student = models.ForeignKey(Student, related_name='test_sets', on_delete=models.CASCADE)
     set_no = models.IntegerField()  # Set number to identify the exam set for the student
 
     def __str__(self):
-        return f"{self.exam.name} - {self.student.name} (Set {self.set_no})"
+        return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no})"
 
 # Specify unique related_name attributes for groups and user_permissions fields
 User._meta.get_field('groups').remote_field.related_name = 'custom_user_groups'

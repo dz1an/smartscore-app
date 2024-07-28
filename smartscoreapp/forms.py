@@ -14,14 +14,8 @@ class ClassForm(forms.ModelForm):
         model = Class
         fields = ['name', 'description']
 
-class StudentForm(forms.ModelForm):
-    year = forms.IntegerField(
-        label='Year', 
-        widget=forms.NumberInput(attrs={
-            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
-        })
-    )
 
+class StudentForm(forms.ModelForm):
     gender = forms.ChoiceField(
         choices=GENDER_CHOICES,
         label='Gender',
@@ -30,14 +24,36 @@ class StudentForm(forms.ModelForm):
         })
     )
 
+    year = forms.IntegerField(
+        label='Year',
+        widget=forms.NumberInput(attrs={
+            'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+        })
+    )
+
     class Meta:
         model = Student
-        fields = ['name', 'year', 'gender']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender']
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+            }),
+            'middle_initial': forms.TextInput(attrs={
+                'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500',
+                'maxlength': '1'
+            }),
+            'suffix': forms.TextInput(attrs={
+                'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'
+            }),
+        }
 
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['exam_id', 'name', 'class_assigned', 'date']
+        fields = ['name', 'class_assigned', 'date', 'questions'] 
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -53,11 +69,12 @@ class ClassNameForm(forms.ModelForm):
 class EditStudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['name', 'year', 'assigned_class']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender', 'assigned_class']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['name'].widget.attrs.update({'class': 'mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white'})
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white'})
 
 class TestSetForm(forms.ModelForm):
     class Meta:
@@ -74,9 +91,9 @@ class UserCreationWithEmailForm(UserCreationForm):
 class AddStudentToExamForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['name', 'year', 'gender']
+        fields = ['first_name', 'last_name', 'middle_initial', 'suffix', 'year', 'gender']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['name'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
-        self.fields['assigned_class'].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})

@@ -23,6 +23,12 @@ from .models import Student
 
 User = get_user_model() 
 
+def generate_student_code(exam_id):
+    set_identifier = random.randint(0, 99)
+    id_part = exam_id % 10000
+    return f"{set_identifier:02d}-{id_part:04d}"
+
+
 def index(request):
     return render(request, 'index.html')
 
@@ -445,21 +451,32 @@ def students_view(request):
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
-    
+
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
             student = form.save(commit=False)
             student.assigned_class = class_instance
-            student.save()
-            messages.success(request, 'Student added successfully!')
-            return redirect('class_detail', class_id=class_id)
+            
+            # Check for duplicate student
+            if Student.objects.filter(
+                first_name=student.first_name,
+                last_name=student.last_name,
+                middle_initial=student.middle_initial,
+                suffix=student.suffix,
+                assigned_class=class_instance
+            ).exists():
+                messages.error(request, f"A student with this name already exists in this class.")
+            else:
+                student.save()
+                messages.success(request, 'Student added successfully!')
+                return redirect('class_detail', class_id=class_id)
         else:
             messages.error(request, 'Error adding student. Please check the form.')
     else:
         form = StudentForm()
     
-    return render(request, 'add_student.html', {'form': form})
+    return render(request, 'class_detail.html', {'form': form})
 
 
 @login_required
@@ -467,14 +484,25 @@ def edit_student(request, student_id):
     student = get_object_or_404(Student, pk=student_id)
     
     if request.method == 'POST':
-        student.name = request.POST.get('name')
-        student.save()
-        # Optionally add success message
-        messages.success(request, 'Student updated successfully.')
-        return redirect('class_detail', class_id=student.assigned_class.id)  # Redirect to appropriate page
+        form = StudentForm(request.POST, instance=student)
+        if form.is_valid():
+            # Check for duplicate student
+            if Student.objects.filter(
+                first_name=form.cleaned_data['first_name'],
+                last_name=form.cleaned_data['last_name'],
+                middle_initial=form.cleaned_data['middle_initial'],
+                suffix=form.cleaned_data['suffix'],
+                assigned_class=student.assigned_class
+            ).exclude(pk=student_id).exists():
+                messages.error(request, f"A student with this name already exists in this class.")
+            else:
+                form.save()
+                messages.success(request, 'Student updated successfully.')
+                return redirect('class_detail', class_id=student.assigned_class.id)
+    else:
+        form = StudentForm(instance=student)
     
-    # Handle other HTTP methods or render form for GET request
-    return render(request, 'edit_student.html', {'student': student})
+    return render(request, 'edit_student.html', {'form': form, 'student': student})
 
 def delete_student(request, student_id):
     student = get_object_or_404(Student, pk=student_id)
@@ -556,3 +584,5 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'name')
     data = list(students)
     return JsonResponse(data, safe=False)
+
+
