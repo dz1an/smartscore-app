@@ -85,29 +85,23 @@ def registered_users_view(request):
 
 @login_required
 def classes_view(request):
-    user_instance = request.user  # Get the logged-in User instance
+    user_instance = request.user
     
     if request.method == 'POST':
-        # Handle form submission to add a new class
-        form = ClassNameForm(request.POST)
+        form = ClassForm(request.POST)
         if form.is_valid():
             new_class = form.save(commit=False)
-            new_class.user = user_instance  # Associate the logged-in user with the class
+            new_class.user = user_instance
             new_class.save()
-            return redirect('classes')  # Redirect to the classes page after successful creation
+            return redirect('classes')
     else:
-        # Fetch classes associated with the logged-in user
-        if user_instance.is_superuser:
-            # For superuser, fetch all classes
-            classes = Class.objects.all()
-        else:
-            # For regular users, fetch classes they manage (assuming user is the admin)
-            classes = Class.objects.filter(user=user_instance)
+        form = ClassForm()
     
-    # Render your template with classes data and form
+    classes = Class.objects.filter(user=user_instance)
+    
     context = {
         'classes': classes,
-        'form': ClassNameForm()  # Assuming ClassNameForm is your form for adding a new class
+        'form': form
     }
     return render(request, 'classes.html', context)
 
@@ -168,21 +162,16 @@ def exams_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=user_instance)
         if form.is_valid():
-            new_exam = form.save(commit=False)
-            new_exam.save()
+            new_exam = form.save()
             messages.success(request, 'Exam added successfully.')
             return redirect('exams')
-        else:
-            messages.error(request, 'Failed to add exam. Please check the form for errors.')
     else:
         form = ExamForm(user=user_instance)
 
-    classes = Class.objects.filter(user=user_instance)
     exams = Exam.objects.filter(class_assigned__user=user_instance)
 
     context = {
         'exams': exams,
-        'classes': classes,
         'form': form,
     }
     return render(request, 'exams.html', context)
@@ -206,7 +195,6 @@ def add_question_view(request, exam_id):
         answer = request.POST.get('answer')
 
         if question_text and option_a and option_b and answer:
-            # Create the Question object
             question = Question.objects.create(
                 exam=exam,
                 question_text=question_text,
@@ -217,7 +205,6 @@ def add_question_view(request, exam_id):
                 option_e=option_e
             )
             
-            # Create the associated Answer object
             Answer.objects.create(
                 question=question,
                 answer=answer
@@ -235,19 +222,18 @@ def add_question_view(request, exam_id):
 def create_exam_set(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if request.method == 'POST':
-        set_number = request.POST.get('set_number')
-        student_ids = request.POST.getlist('students')
-        
-        exam_set = ExamSet.objects.create(exam=exam, set_number=set_number)
-        students = Student.objects.filter(student_id__in=student_ids)
-        exam_set.students.add(*students)
-        
-        messages.success(request, f'Exam Set {set_number} created and assigned to students.')
-        return redirect('exam_detail', exam_id=exam.id)
+        form = TestSetForm(request.POST)
+        if form.is_valid():
+            test_set = form.save(commit=False)
+            test_set.exam = exam
+            test_set.save()
+            messages.success(request, f'Exam Set {test_set.set_no} created for {test_set.student}.')
+            return redirect('exam_detail', exam_id=exam.id)
+    else:
+        form = TestSetForm()
     
     students = Student.objects.filter(assigned_class=exam.class_assigned)
-    return render(request, 'create_exam_set.html', {'exam': exam, 'students': students})
-
+    return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
 
 @login_required
 def edit_question_view(request, question_id):
@@ -457,27 +443,13 @@ def add_student_view(request, class_id):
         if form.is_valid():
             student = form.save(commit=False)
             student.assigned_class = class_instance
-
-            # Generate student_id if it is not set
-            if not student.student_id:
-                if class_instance.exams.exists():
-                    exam = class_instance.exams.first()
-                    student.student_id = generate_student_code(exam.id)
-                else:
-                    student.student_id = generate_student_code(random.randint(1, 9999))
-
             student.save()
             messages.success(request, 'Student added successfully!')
             return redirect('class_detail', class_id=class_id)
-        else:
-            messages.error(request, 'Error adding student. Please check the form.')
     else:
-        form = StudentForm()
+        form = StudentForm(initial={'assigned_class': class_instance})
 
-    return render(request, 'add_student.html', {'form': form})
-
-
-
+    return render(request, 'add_student.html', {'form': form, 'class': class_instance})
 
 
 @login_required
