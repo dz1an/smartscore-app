@@ -33,7 +33,7 @@ urlpatterns = [
     path('classes/add/', add_class_view, name='add_class'),
     path('classes/<int:class_id>/delete/', delete_class_view, name='delete_class'),
     path('classes/<int:class_id>/update/', update_class_name_view, name='update_class_name'),
-    path('classes/<int:class_id>/add_student/', views.add_student_view, name='add_student'),
+    path('classes/<int:class_id>/add_student/', add_student_view, name='add_student'),
     
 
     # Students
@@ -43,8 +43,8 @@ urlpatterns = [
 
     
     # Exams
-    path('exams/', exams_view, name='exams'),
-    path('exams/<int:exam_id>/', exam_detail_view, name='exam_detail'),
+    path('exams/', views.exams_view, name='exams'),
+    path('exams/add/', views.add_exam_view, name='add_exam'),
     path('exams/add/', add_exam_view, name='add_exam'),
     path('exams/<int:exam_id>/add_student/', add_student_to_exam_view, name='add_student_to_exam'),
     path('exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
