@@ -33,7 +33,8 @@ urlpatterns = [
     path('classes/add/', add_class_view, name='add_class'),
     path('classes/<int:class_id>/delete/', delete_class_view, name='delete_class'),
     path('classes/<int:class_id>/update/', update_class_name_view, name='update_class_name'),
-    path('classes/<int:class_id>/add_student/', add_student_view, name='add_student'),
+    path('classes/<int:class_id>/add_student/', views.add_student_view, name='add_student'),
+    
 
     # Students
     path('students/', students_view, name='students'),

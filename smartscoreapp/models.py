@@ -31,7 +31,6 @@ class Exam(models.Model):
     def __str__(self):
         return self.name
 
-
 class Student(models.Model):
     GENDER_CHOICES = [
         ('M', 'Male'),
@@ -48,22 +47,13 @@ class Student(models.Model):
     class Meta:
         unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class')
 
-    def clean(self):
-        existing_student = Student.objects.filter(
-            first_name=self.first_name,
-            last_name=self.last_name,
-            middle_initial=self.middle_initial,
-            assigned_class=self.assigned_class
-        ).exclude(pk=self.pk).exists()
-        if existing_student:
-            raise ValidationError(f"A student with this name already exists in this class.")
-
     def save(self, *args, **kwargs):
         if not self.student_id:
-            year_part = str(self.year_enrolled)[-2:] 
+            year_part = str(self.year)[-2:] 
             id_part = ''.join([str(random.randint(0, 9)) for _ in range(5)])  
             self.student_id = f"{year_part}{id_part}"
         super(Student, self).save(*args, **kwargs)
+
 
 
 class ExamSet(models.Model):

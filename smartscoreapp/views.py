@@ -113,23 +113,37 @@ def delete_class_view(request, class_id):
 
 @login_required
 def class_detail_view(request, class_id):
-    user_instance = request.user  # Get the logged-in User instance
-
-    # Fetch the class instance for the given class_id
+    user_instance = request.user
     class_instance = get_object_or_404(Class, id=class_id)
 
-    # Check if the logged-in user is authorized to view this class
     if class_instance.user != user_instance:
-        # You may want to handle unauthorized access here, like redirecting or showing an error message
         raise PermissionDenied("You are not authorized to view this class.")
 
-    # Fetch students enrolled in this class
     students = Student.objects.filter(assigned_class=class_instance)
 
-    # Render your template with class details and enrolled students
+    if request.method == 'POST':
+        form = StudentForm(request.POST)
+        if form.is_valid():
+            student = form.save(commit=False)
+            student.assigned_class = class_instance
+            print(f"Assigned class before save: {student.assigned_class}")  # Debug statement
+            try:
+                student.save()
+                messages.success(request, 'Student added successfully!')
+                return redirect('class_detail', class_id=class_id)
+            except Exception as e:
+                print(f"Error saving student: {e}")  # Debug statement
+                messages.error(request, f"Error saving student: {e}")
+        else:
+            print(form.errors)  # Debug statement
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = StudentForm()
+
     context = {
         'class': class_instance,
         'students': students,
+        'form': form,
     }
     return render(request, 'class_detail.html', context)
 
@@ -437,17 +451,27 @@ def students_view(request):
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
+    print(f"Class instance: {class_instance}")  # Debug statement
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
         if form.is_valid():
             student = form.save(commit=False)
             student.assigned_class = class_instance
-            student.save()
-            messages.success(request, 'Student added successfully!')
-            return redirect('class_detail', class_id=class_id)
+            print(f"Assigned class before save: {student.assigned_class}")  # Debug statement
+            try:
+                student.save()
+                print(f"Student saved with assigned_class: {student.assigned_class}")  # Debug statement
+                messages.success(request, 'Student added successfully!')
+                return redirect('class_detail', class_id=class_id)
+            except Exception as e:
+                print(f"Error saving student: {e}")  # Debug statement
+                messages.error(request, f"Error saving student: {e}")
+        else:
+            print(form.errors)  # Debug statement
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = StudentForm(initial={'assigned_class': class_instance})
+        form = StudentForm()
 
     return render(request, 'add_student.html', {'form': form, 'class': class_instance})
 
