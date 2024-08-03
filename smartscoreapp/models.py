@@ -2,12 +2,6 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
 import random
-from django.core.exceptions import ValidationError
-
-def generate_student_code(exam_id):
-    set_identifier = random.randint(0, 99)
-    id_part = exam_id % 10000
-    return f"{set_identifier:02d}-{id_part:04d}"
 
 class User(AbstractUser):
     class Meta:
@@ -27,29 +21,45 @@ class Exam(models.Model):
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     questions = models.ManyToManyField('Question', related_name='exams')
+    set_id = models.CharField(max_length=9, unique=True, blank=True)  # Format: '012-54321'
 
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if not self.set_id:
+            self.set_id = self.generate_set_id()
+        super().save(*args, **kwargs)
+
+    def generate_set_id(self):
+        exam_id = str(random.randint(0, 99)).zfill(3)
+        set_number = str(random.randint(0, 99999)).zfill(5)
+        return f"{exam_id}-{set_number}"
+
 class Student(models.Model):
-    first_name = models.CharField(max_length=50, default='')
-    last_name = models.CharField(max_length=50, default='')
-    middle_initial = models.CharField(max_length=1, blank=True, default='')
-    student_id = models.CharField(max_length=7, unique=True, editable=False, default='')
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    middle_initial = models.CharField(max_length=1, blank=True)
+    student_id = models.CharField(max_length=12, unique=True)
     assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
-    year = models.IntegerField()
+    short_id = models.CharField(max_length=8, unique=True, editable=False, null=True, blank=True)
 
     class Meta:
-        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class')
+        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class', 'student_id')
 
     def save(self, *args, **kwargs):
         if not self.student_id:
-            year_part = str(self.year)[-2:] 
-            id_part = ''.join([str(random.randint(0, 9)) for _ in range(5)])  
-            self.student_id = f"{year_part}{id_part}"
+            self.student_id = self.generate_student_id()
+        self.short_id = self.student_id[-7:]
         super(Student, self).save(*args, **kwargs)
 
+    def generate_student_id(self):
+        prefix = 'xt'
+        random_digits = ''.join([str(random.randint(0, 9)) for _ in range(9)])
+        return f"{prefix}{random_digits}"
 
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.short_id})"
 
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
@@ -107,20 +117,23 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"Answer for: {self.question.question_text[:50]}..."
-    
+
 class TestSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='test_sets', on_delete=models.CASCADE)
     student = models.ForeignKey(Student, related_name='test_sets', on_delete=models.CASCADE)
     set_no = models.IntegerField()
-    set_id = models.CharField(max_length=8, unique=True)
+    set_id = models.CharField(max_length=8, unique=True, editable=False)
 
     def save(self, *args, **kwargs):
         if not self.set_id:
-            exam_id = str(self.exam.id).zfill(3)[:3]
-            set_number = str(random.randint(0, 99)).zfill(2)
-            random_digits = ''.join([str(random.randint(0, 9)) for _ in range(3)])
-            self.set_id = f"{exam_id}{random_digits}{set_number}"
+            self.set_id = self.generate_set_id()
         super().save(*args, **kwargs)
+
+    def generate_set_id(self):
+        exam_id = str(self.exam.id).zfill(3)[:3]
+        random_digits = ''.join([str(random.randint(0, 9)) for _ in range(3)])
+        set_number = str(random.randint(0, 99)).zfill(2)
+        return f"{exam_id}{random_digits}{set_number}"
 
     def __str__(self):
         return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no}, ID: {self.set_id})"

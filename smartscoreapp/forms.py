@@ -1,14 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import Class, Student, Exam, TestSet
-from django.contrib.auth.models import User 
-from .models import Student
-
-GENDER_CHOICES = (
-    ('M', 'Male'),
-    ('F', 'Female'),
-    ('O', 'Other'),
-)
+from django.contrib.auth.models import User
 
 class ClassForm(forms.ModelForm):
     class Meta:
@@ -18,7 +11,7 @@ class ClassForm(forms.ModelForm):
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'year']
+        fields = ['first_name', 'last_name', 'middle_initial', 'student_id']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,7 +21,7 @@ class StudentForm(forms.ModelForm):
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['name', 'class_assigned', 'exam_id']
+        fields = ['name', 'class_assigned']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
@@ -36,6 +29,13 @@ class ExamForm(forms.ModelForm):
         if user:
             self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not instance.set_id:
+            instance.set_id = instance.generate_set_id()
+        if commit:
+            instance.save()
+        return instance
 
 class ClassNameForm(forms.ModelForm):
     class Meta:
@@ -45,7 +45,7 @@ class ClassNameForm(forms.ModelForm):
 class EditStudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'year', 'assigned_class']
+        fields = ['first_name', 'last_name', 'middle_initial', 'assigned_class']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -67,7 +67,7 @@ class UserCreationWithEmailForm(UserCreationForm):
 class AddStudentToExamForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'year']
+        fields = ['first_name', 'last_name', 'middle_initial', 'student_id']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
