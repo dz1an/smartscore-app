@@ -48,7 +48,6 @@
       {% empty %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
           <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No exams available.</td>
-        </tr>
       {% endfor %}
     </tbody>
   </table>
@@ -75,7 +74,7 @@
           <span class="sr-only">Close modal</span>
         </button>
       </div>
-      <form method="post" action="{% url 'exams' %}" class="p-4 md:p-5">
+      <form method="post" action="{% url 'add_exam' %}" class="p-4 md:p-5">
         {% csrf_token %}
         <div class="grid gap-4 mb-4 grid-cols-1">
           <div>
@@ -84,7 +83,7 @@
           </div>
           <div>
             <label for="exam_class" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Class</label>
-            <select name="class_assigned" id="exam_class" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white">
+            <select name="class_assigned" id="exam_class" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" required>
               {% for class in classes %}
                 <option value="{{ class.id }}">{{ class.name }}</option>
               {% endfor %}

@@ -397,18 +397,22 @@ def generate_answers_list(exam):
             answers.append(question.option_e_value)
     return answers
 
-
 @login_required
 def add_exam_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Exam added successfully!')
             return redirect('exams')
+        else:
+            messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
     else:
         form = ExamForm(user=request.user)
+
     user_classes = Class.objects.filter(user=request.user)
-    return render(request, 'exams.html', {'form': form, 'classes': user_classes})
+    context = {'form': form, 'classes': user_classes}
+    return render(request, 'exams.html', context)
 
 @login_required
 def exam_detail_view(request, exam_id):

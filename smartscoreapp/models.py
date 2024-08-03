@@ -23,7 +23,7 @@ class Class(models.Model):
         return self.name
 
 class Exam(models.Model):
-    exam_id = models.CharField(max_length=3, unique=True)  # Add this field if needed
+    exam_id = models.CharField(max_length=3, unique=True)
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     questions = models.ManyToManyField('Question', related_name='exams')
@@ -32,11 +32,6 @@ class Exam(models.Model):
         return self.name
 
 class Student(models.Model):
-    GENDER_CHOICES = [
-        ('M', 'Male'),
-        ('F', 'Female'),
-        ('O', 'Other'),
-    ]
     first_name = models.CharField(max_length=50, default='')
     last_name = models.CharField(max_length=50, default='')
     middle_initial = models.CharField(max_length=1, blank=True, default='')

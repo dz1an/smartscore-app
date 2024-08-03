@@ -28,13 +28,14 @@ class StudentForm(forms.ModelForm):
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['name', 'class_assigned', 'questions'] 
+        fields = ['name', 'class_assigned', 'exam_id']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(ExamForm, self).__init__(*args, **kwargs)
         if user:
             self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
+
 
 class ClassNameForm(forms.ModelForm):
     class Meta:
