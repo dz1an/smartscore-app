@@ -176,19 +176,28 @@ def exams_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=user_instance)
         if form.is_valid():
-            new_exam = form.save()
-            messages.success(request, 'Exam added successfully.')
+            form.save()
+            messages.success(request, 'Exam added successfully!')
             return redirect('exams')
+        else:
+            messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
     else:
         form = ExamForm(user=user_instance)
 
     exams = Exam.objects.filter(class_assigned__user=user_instance)
+    classes = Class.objects.filter(user=user_instance)
+
+    # Debug prints
+    print(f"Classes: {classes}")
+    print(f"Exams: {exams}")
 
     context = {
         'exams': exams,
         'form': form,
+        'classes': classes,
     }
     return render(request, 'exams.html', context)
+
 
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
