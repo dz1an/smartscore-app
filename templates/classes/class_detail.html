@@ -1,44 +1,43 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <!-- Breadcrumb -->
-  <nav class="flex mb-4" aria-label="Breadcrumb">
-    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
-      <li class="inline-flex items-center">
-        <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
-          <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
-          </svg>
-          Home
-        </a>
-      </li>
-      <li class="flex items-center">
-        <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+<nav class="flex mb-4" aria-label="Breadcrumb">
+  <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+    <li class="inline-flex items-center">
+      <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+        <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
         </svg>
-        <a href="{% url 'classes' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Classes</a>
-      </li>
-      <li class="flex items-center">
-        <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-        </svg>
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-400">{{ class.name }}</span>
-      </li>
-    </ol>
-  </nav>
+        Home
+      </a>
+    </li>
+    <li class="flex items-center">
+      <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+      </svg>
+      <a href="{% url 'classes' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Classes</a>
+    </li>
+    <li class="flex items-center">
+      <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+      </svg>
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-400">{{ class.name }}</span>
+    </li>
+  </ol>
+</nav>
 
-  <!-- Class Name -->
-  <div class="mb-6 flex items-center cursor-pointer" onclick="openUpdateClassModal()">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-500 mr-2 cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" onclick="openUpdateClassModal()">
-      <path d="M18 2 L15.59 4.41 L19.59 8.41 L22 6 L18 2 z M14.08 5.92 L3 17 L3 21 L7 21 L18.08 9.92 L14.08 5.92 z"></path>
-    </svg>
-    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white" onclick="openUpdateClassModal()">{{ class.name }}</h1>
-  </div>
+<!-- Class Name -->
+<div class="mb-6 flex items-center cursor-pointer" onclick="openUpdateClassModal()">
+  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-500 mr-2 cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" onclick="openUpdateClassModal()">
+    <path d="M18 2 L15.59 4.41 L19.59 8.41 L22 6 L18 2 z M14.08 5.92 L3 17 L3 21 L7 21 L18.08 9.92 L14.08 5.92 z"></path>
+  </svg>
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white" onclick="openUpdateClassModal()">{{ class.name }}</h1>
+</div>
 
-  {% include 'message_display.html' %}
+{% include 'message_display.html' %}
 
-  <!-- Enrolled Students Section -->
-  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Enrolled Students</h2>
+<!-- Enrolled Students Section -->
+<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Enrolled Students</h2>
 
 <!-- Add Student Button with Icon -->
 <div class="mb-4">
@@ -59,7 +58,7 @@
       <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
               <th scope="col" class="px-6 py-3">Student Name</th>
-              <th scope="col" class="px-6 py-3">Year</th>
+              <th scope="col" class="px-6 py-3">Student ID</th>
               <th scope="col" class="px-6 py-3">Actions</th>
           </tr>
       </thead>
@@ -69,30 +68,29 @@
                   <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
                       {{ student.first_name }} {{ student.middle_initial }} {{ student.last_name }}
                   </td>
-                  <td class="px-6 py-4 text-gray-900 dark:text-white">{{ student.year }}</td>
+                  <td class="px-6 py-4 text-gray-900 dark:text-white">{{ student.student_id }}</td>
                   <td class="px-6 py-4">
                       <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
-                          onclick="openEditModal('{{ student.id }}', '{{ student.first_name }} {{ student.middle_initial }} {{ student.last_name }}', '{{ student.year }}')">Edit</button>
+                          onclick="openEditModal('{{ student.id }}', '{{ student.first_name }}', '{{ student.middle_initial }}', '{{ student.last_name }}', '{{ student.student_id }}')">Edit</button>
                       <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
                           onclick="openDeleteModal('{{ student.id }}', '{{ student.first_name }} {{ student.middle_initial }} {{ student.last_name }}')">Delete</button>
                   </td>
               </tr>
           {% empty %}
               <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No students enrolled yet.</td>
+                  <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No students enrolled yet.</td>
               </tr>
           {% endfor %}
       </tbody>
   </table>
 </div>
 
-
-  <!-- Modals -->
+<!-- Modals -->
 <!-- Add Student Modal -->
 <div id="addStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
       <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-          <form method="post" action="">
+          <form method="post" action="{% url 'add_student' class.id %}">
               {% csrf_token %}
               <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Student to {{ class.name }}</h2>
               {{ form.as_p }}
@@ -103,90 +101,105 @@
   </div>
 </div>
 
-
-  <div id="editStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form id="editStudentForm" method="post" action="">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Student</h2>
-          <div class="mb-4">
-            <label for="editStudentName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-            <input type="text" id="editStudentName" name="name" value="" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-          </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Update</button>
-          <button type="button" onclick="closeEditModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+<!-- Edit Student Modal -->
+<div id="editStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form id="editStudentForm" method="post" action="">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Student</h2>
+        <div class="mb-4">
+          <label for="editFirstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
+          <input type="text" id="editFirstName" name="first_name" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="editMiddleInitial" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Middle Initial</label>
+          <input type="text" id="editMiddleInitial" name="middle_initial" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="editLastName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
+          <input type="text" id="editLastName" name="last_name" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+        </div>
+        <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Update</button>
+        <button type="button" onclick="closeEditModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
-  
-  <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form id="deleteStudentForm" method="post">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Student</h2>
-          <p class="mb-4">Are you sure you want to delete <span id="deleteStudentName" class="font-bold"></span>?</p>
-          <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Delete</button>
-          <button type="button" onclick="closeDeleteModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+</div>
+
+
+<!-- Delete Student Modal -->
+<div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form id="deleteStudentForm" method="post">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Delete Student</h2>
+        <p class="mb-4">Are you sure you want to delete <span id="deleteStudentName" class="font-bold"></span>?</p>
+        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Delete</button>
+        <button type="button" onclick="closeDeleteModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
-  <div id="updateClassModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form method="post" action="{% url 'update_class_name' class.id %}">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Update Class Name</h2>
-          <div class="mb-4">
-            <label for="className" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Class Name</label>
-            <input type="text" id="className" name="name" value="{{ class.name }}" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-          </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Update</button>
-          <button type="button" onclick="closeUpdateClassModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+<!-- Update Class Modal -->
+<div id="updateClassModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form method="post" action="{% url 'update_class_name' class.id %}">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Update Class Name</h2>
+        <div class="mb-4">
+          <label for="className" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Class Name</label>
+          <input type="text" id="className" name="name" value="{{ class.name }}" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
+        </div>
+        <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Update</button>
+        <button type="button" onclick="closeUpdateClassModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+      </form>
     </div>
   </div>
+</div>
 
-  <!-- JavaScript Section -->
-  <script>
-    function openUpdateClassModal() {
-      document.getElementById('updateClassModal').classList.remove('hidden');
-    }
+<!-- JavaScript Section -->
+<script>
+function openUpdateClassModal() {
+  document.getElementById('updateClassModal').classList.remove('hidden');
+}
 
-    function closeUpdateClassModal() {
-      document.getElementById('updateClassModal').classList.add('hidden');
-    }
+function closeUpdateClassModal() {
+  document.getElementById('updateClassModal').classList.add('hidden');
+}
 
-    function openEditModal(studentId, studentName) {
-    document.getElementById('editStudentModal').classList.remove('hidden');
-    document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`; // Adjust URL as per your URL pattern
-    document.getElementById('editStudentName').value = studentName;
-  }
+function openAddStudentModal() {
+  document.getElementById('addStudentModal').classList.remove('hidden');
+}
 
-  function closeEditModal() {
-    document.getElementById('editStudentModal').classList.add('hidden');
-  }
-    function openAddStudentModal() {
-      document.getElementById('addStudentModal').classList.remove('hidden');
-    }
+function closeAddStudentModal() {
+  document.getElementById('addStudentModal').classList.add('hidden');
+}
 
-    function closeAddStudentModal() {
-      document.getElementById('addStudentModal').classList.add('hidden');
-    }
+function openEditModal(studentId, firstName, middleInitial, lastName) {
+  document.getElementById('editStudentModal').classList.remove('hidden');
+  document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`;
+  document.getElementById('editFirstName').value = firstName;
+  document.getElementById('editMiddleInitial').value = middleInitial;
+  document.getElementById('editLastName').value = lastName;
+}
 
-    function openDeleteModal(studentId, studentName) {
-    document.getElementById('deleteStudentModal').classList.remove('hidden');
-    document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;
-    document.getElementById('deleteStudentName').textContent = studentName;
-  }
+function closeEditModal() {
+  document.getElementById('editStudentModal').classList.add('hidden');
+}
 
-  function closeDeleteModal() {
-    document.getElementById('deleteStudentModal').classList.add('hidden');
-  }
-  </script>
+function openDeleteModal(studentId, studentName) {
+  document.getElementById('deleteStudentModal').classList.remove('hidden');
+  document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;
+  document.getElementById('deleteStudentName').textContent = studentName;
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteStudentModal').classList.add('hidden');
+}
+
+</script>
 {% endblock %}

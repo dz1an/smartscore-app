@@ -451,19 +451,21 @@ def add_student_view(request, class_id):
             student.assigned_class = class_instance
             try:
                 student.save()
-                messages.success(request, f'Student added successfully! Student ID: {student.short_id}')
-                return redirect('classes')
+                messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
+                return redirect('class_detail', class_id=class_id)  # Redirect to class detail page
             except Exception as e:
                 messages.error(request, f"Error saving student: {e}")
         else:
             messages.error(request, 'Please correct the errors below.')
     
-    return redirect('classes')
+    form = StudentForm()
+    return render(request, 'add_student.html', {'form': form, 'class': class_instance})
+
 
 @login_required
 def edit_student(request, student_id):
-    student = get_object_or_404(Student, pk=student_id)
-    
+    student = get_object_or_404(Student, student_id=student_id)
+
     if request.method == 'POST':
         form = EditStudentForm(request.POST, instance=student)
         if form.is_valid():
@@ -473,17 +475,18 @@ def edit_student(request, student_id):
         else:
             messages.error(request, 'Please correct the errors below.')
     
+    form = EditStudentForm(instance=student)
     return render(request, 'edit_student.html', {'form': form, 'student': student})
 
 @login_required
 def delete_student(request, student_id):
-    student = get_object_or_404(Student, pk=student_id)
+    student = get_object_or_404(Student, student_id=student_id)
 
     if request.method == 'POST':
         assigned_class_id = student.assigned_class.id
         student.delete()
         messages.success(request, 'Student deleted successfully.')
-        return redirect('class_detail', class_id=assigned_class_id)
+        return redirect('class_detail', class_id=assigned_class_id)  # Correctly pass class_id
 
     return redirect('class_detail', class_id=student.assigned_class.id)
 
