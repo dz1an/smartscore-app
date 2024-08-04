@@ -13,6 +13,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 import random
 import logging
 from django.views.decorators.http import require_POST
+from django.db import IntegrityError
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -391,20 +392,27 @@ def generate_answers_list(exam):
             answers.append(question.option_e_value)
     return answers
 
+
 @login_required
 def add_exam_view(request):
     if request.method == 'POST':
         form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Exam added successfully!')
-            return redirect('exams')
+            try:
+                form.save()
+                messages.success(request, 'Exam added successfully!')
+                return redirect('exams')
+            except IntegrityError as e:
+                form.add_error('exam_id', 'Exam ID must be unique.')
+                messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
         else:
             messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
     else:
         form = ExamForm(user=request.user)
 
     user_classes = Class.objects.filter(user=request.user)
+    # Debug print
+    print(f"Classes: {user_classes}")
     context = {'form': form, 'classes': user_classes}
     return render(request, 'exams.html', context)
 

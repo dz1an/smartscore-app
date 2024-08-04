@@ -36,6 +36,7 @@ class Exam(models.Model):
         set_number = str(random.randint(0, 99999)).zfill(5)
         return f"{exam_id}-{set_number}"
 
+
 class Student(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)

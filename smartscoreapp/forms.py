@@ -19,23 +19,17 @@ class StudentForm(forms.ModelForm):
             self.fields[field].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
 
 class ExamForm(forms.ModelForm):
+    exam_id = forms.CharField(max_length=3, required=True, label='Exam ID')
+
     class Meta:
         model = Exam
-        fields = ['name', 'class_assigned']
+        fields = ['name', 'class_assigned', 'exam_id']
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(ExamForm, self).__init__(*args, **kwargs)
         if user:
             self.fields['class_assigned'].queryset = Class.objects.filter(user=user)
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        if not instance.set_id:
-            instance.set_id = instance.generate_set_id()
-        if commit:
-            instance.save()
-        return instance
 
 class ClassNameForm(forms.ModelForm):
     class Meta:
@@ -51,7 +45,7 @@ class EditStudentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white'})
-            
+
 class TestSetForm(forms.ModelForm):
     class Meta:
         model = TestSet
