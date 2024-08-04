@@ -6,7 +6,8 @@ from smartscoreapp.views import (
     logout_view, add_class_view, add_student_view, add_exam_view,
     add_student_to_exam_view, settings_view, edit_student,
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
-    select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view
+    select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
+    generate_questionnaire_view, list_classes_view, class_exams_view, save_test_paper_view
 )
 from django.conf.urls.static import static
 from django.conf import settings
@@ -53,6 +54,11 @@ urlpatterns = [
     path('exams/<int:exam_id>/generate-test-paper/', generate_test_paper_view, name='generate_test_paper'),
     path('exams/<int:exam_id>/print-test-paper/', print_test_paper_view, name='print_test_paper'),
     path('process-scanned-papers/', process_scanned_papers_view, name='process_scanned_papers'),
+
+    path('generate_questionnaire/<int:exam_id>/<int:student_id>/', generate_questionnaire_view, name='generate_questionnaire'),
+    path('list_classes/', list_classes_view, name='list_classes'),
+    path('class_exams/<int:class_id>/', class_exams_view, name='class_exams'),
+    path('exams/<int:exam_id>/save_test_paper/', save_test_paper_view, name='save_test_paper'),
 
     # Settings
     path('settings/', settings_view, name='settings'),

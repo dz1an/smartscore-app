@@ -14,6 +14,9 @@ import random
 import logging
 from django.views.decorators.http import require_POST
 from django.db import IntegrityError
+from io import BytesIO
+from reportlab.pdfgen import canvas
+from django.http import HttpResponse
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -337,17 +340,40 @@ def print_test_paper_view(request, exam_id):
 
     return render(request, 'print_test_paper.html', {'exam': exam, 'selected_questions': selected_questions})
 
+
+@login_required
+def save_test_paper_view(request, exam_id):
+    if request.method == 'POST':
+        exam = get_object_or_404(Exam, id=exam_id)
+        student_id = request.POST.get('student_id')
+        student = get_object_or_404(Student, id=student_id)
+
+        # Create a TestSet for the student and the exam
+        test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
+
+        # Optional: save questions and answers here if needed
+
+        messages.success(request, f'Test paper for {exam.name} saved for student {student.first_name} {student.last_name}!')
+        return redirect('exam_detail', exam_id=exam.id)
+    else:
+        messages.error(request, 'Invalid request method.')
+        return redirect('exams')
+
 @login_required
 def generate_test_paper_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     selected_questions = list(exam.questions.all())
     random.shuffle(selected_questions)
 
+    # Prepare a list of questions with options for rendering
     questions_with_options = [{'question_text': question.question_text,
                                'options': [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]}
                               for question in selected_questions]
 
-    return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options})
+    students = Student.objects.filter(assigned_class=exam.class_assigned)
+
+    return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
+
 
 @login_required
 def process_scanned_papers_view(request):
@@ -376,6 +402,7 @@ def process_scanned_papers_view(request):
 
     return redirect('exams')
 
+
 def generate_answers_list(exam):
     selected_questions = exam.questions.all()
     answers = []
@@ -392,6 +419,42 @@ def generate_answers_list(exam):
             answers.append(question.option_e_value)
     return answers
 
+@login_required
+def generate_questionnaire_view(request, exam_id, student_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    student = get_object_or_404(Student, id=student_id)
+    
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer)
+    p.drawString(100, 800, f"Exam: {exam.name}")
+    p.drawString(100, 780, f"Student: {student.first_name} {student.last_name}")
+    p.drawString(100, 760, f"Set ID: {exam.set_id}")
+    
+    y = 740
+    for question in exam.questions.all():
+        p.drawString(100, y, f"{question.question_order}. {question.question_text}")
+        y -= 20
+        for option in [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]:
+            p.drawString(120, y, option)
+            y -= 20
+        y -= 10
+    
+    p.showPage()
+    p.save()
+    
+    buffer.seek(0)
+    return HttpResponse(buffer, content_type='application/pdf')
+
+@login_required
+def list_classes_view(request):
+    classes = Class.objects.filter(user=request.user)
+    return render(request, 'list_classes.html', {'classes': classes})
+
+@login_required
+def class_exams_view(request, class_id):
+    class_instance = get_object_or_404(Class, id=class_id)
+    exams = class_instance.exams.all()
+    return render(request, 'class_exams.html', {'class_instance': class_instance, 'exams': exams})
 
 @login_required
 def add_exam_view(request):

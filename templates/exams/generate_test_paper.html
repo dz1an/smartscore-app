@@ -2,7 +2,22 @@
 
 {% block content %}
 <nav class="flex mb-4" aria-label="Breadcrumb">
-  <!-- Breadcrumb navigation -->
+  <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+    <li class="inline-flex items-center">
+      <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+        <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+        </svg>
+        Home
+      </a>
+    </li>
+    <li class="flex items-center">
+      <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+      </svg>
+      <a href="{% url 'exams' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exams</a>
+    </li>
+  </ol>
 </nav>
 
 <div class="mb-6 flex items-center cursor-pointer">
@@ -11,22 +26,29 @@
 
 {% include 'message_display.html' %}
 
-<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Generated Test Paper for {{ exam.name }}</h2>
+<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Generate Test Paper for {{ exam.name }}</h2>
 
-<form action="{% url 'process_scanned_papers' %}" method="POST" enctype="multipart/form-data">
+<form action="{% url 'save_test_paper' exam.id %}" method="POST">
   {% csrf_token %}
   <input type="hidden" name="exam_id" value="{{ exam.id }}">
-  
-  <ol>
+
+  <label for="student_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Student</label>
+  <select name="student_id" id="student_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" required>
+    {% for student in students %}
+      <option value="{{ student.id }}">{{ student.first_name }} {{ student.last_name }}</option>
+    {% endfor %}
+  </select>
+
+  <ol class="list-decimal pl-5 mt-4">
     {% for question in questions_with_options %}
-      <li>
-        <h4>{{ question.question_text }}</h4>
-        <ul>
+      <li class="mb-4">
+        <h4 class="font-medium text-gray-900 dark:text-white">{{ question.question_text }}</h4>
+        <ul class="list-disc pl-5 mt-2">
           {% for option in question.options %}
-            <li>
-              <label>
-                <input type="radio" name="question{{ forloop.parentloop.counter }}" value="{{ forloop.counter0 }}">
-                {{ option }}
+            <li class="mb-2">
+              <label class="flex items-center">
+                <input type="radio" name="question{{ forloop.parentloop.counter }}" value="{{ forloop.counter0 }}" class="form-radio text-blue-500">
+                <span class="ml-2 text-gray-900 dark:text-white">{{ option }}</span>
               </label>
             </li>
           {% endfor %}
@@ -35,9 +57,11 @@
     {% endfor %}
   </ol>
 
-  <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">Submit Answers</button>
+  <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">Save Test Paper</button>
 </form>
 
-<a href="{% url 'exams' %}" class="text-blue-500 hover:underline">Back to Exams</a>
+<a href="{% url 'exams' %}" class="text-blue-500 hover:underline mt-4 inline-block">Back to Exams</a>
+
+<button onclick="window.print()" class="mt-4 text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Print Test Paper</button>
 
 {% endblock %}
