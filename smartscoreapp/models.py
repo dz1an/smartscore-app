@@ -61,6 +61,7 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.short_id})"
 
+
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
     set_number = models.IntegerField()

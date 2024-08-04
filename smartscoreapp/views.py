@@ -11,8 +11,12 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 import random
+import logging
+from django.views.decorators.http import require_POST
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
 
 def generate_student_code(exam_id):
     set_identifier = random.randint(0, 99)
@@ -452,7 +456,7 @@ def add_student_view(request, class_id):
             try:
                 student.save()
                 messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
-                return redirect('class_detail', class_id=class_id)  # Redirect to class detail page
+                return redirect('class_detail', class_id=class_id)
             except Exception as e:
                 messages.error(request, f"Error saving student: {e}")
         else:
@@ -463,20 +467,21 @@ def add_student_view(request, class_id):
 
 
 @login_required
+@require_POST
 def edit_student(request, student_id):
     student = get_object_or_404(Student, student_id=student_id)
+    form = EditStudentForm(request.POST, instance=student)
+    if form.is_valid():
+        updated_student = form.save(commit=False)
+        updated_student.assigned_class = student.assigned_class  # Keep the original assigned_class
+        updated_student.save()
+        messages.success(request, 'Student updated successfully!')
+        return redirect('class_detail', class_id=updated_student.assigned_class.id)
+    else:
+        messages.error(request, 'Please correct the errors below.')
+        return redirect('class_detail', class_id=student.assigned_class.id)
 
-    if request.method == 'POST':
-        form = EditStudentForm(request.POST, instance=student)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Student updated successfully.')
-            return redirect('class_detail', class_id=student.assigned_class.id)
-        else:
-            messages.error(request, 'Please correct the errors below.')
-    
-    form = EditStudentForm(instance=student)
-    return render(request, 'edit_student.html', {'form': form, 'student': student})
+
 
 @login_required
 def delete_student(request, student_id):
@@ -489,6 +494,8 @@ def delete_student(request, student_id):
         return redirect('class_detail', class_id=assigned_class_id)  # Correctly pass class_id
 
     return redirect('class_detail', class_id=student.assigned_class.id)
+
+
 
 @login_required
 def add_student_to_exam_view(request, exam_id):

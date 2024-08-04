@@ -71,15 +71,15 @@
                   <td class="px-6 py-4 text-gray-900 dark:text-white">{{ student.student_id }}</td>
                   <td class="px-6 py-4">
                       <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
-                          onclick="openEditModal('{{ student.id }}', '{{ student.first_name }}', '{{ student.middle_initial }}', '{{ student.last_name }}', '{{ student.student_id }}')">Edit</button>
+                          onclick="openEditModal('{{ student.student_id }}', '{{ student.first_name }}', '{{ student.middle_initial }}', '{{ student.last_name }}')">Edit</button>
                       <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
-                          onclick="openDeleteModal('{{ student.id }}', '{{ student.first_name }} {{ student.middle_initial }} {{ student.last_name }}')">Delete</button>
+                          onclick="openDeleteModal('{{ student.student_id }}', '{{ student.first_name }} {{ student.middle_initial }} {{ student.last_name }}')">Delete</button>
                   </td>
               </tr>
           {% empty %}
               <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                   <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No students enrolled yet.</td>
-              </tr>
+          </tr>
           {% endfor %}
       </tbody>
   </table>
@@ -105,7 +105,7 @@
 <div id="editStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-      <form id="editStudentForm" method="post" action="">
+      <form id="editStudentForm" method="post">
         {% csrf_token %}
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Student</h2>
         <div class="mb-4">
@@ -126,7 +126,6 @@
     </div>
   </div>
 </div>
-
 
 <!-- Delete Student Modal -->
 <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
@@ -163,43 +162,43 @@
 
 <!-- JavaScript Section -->
 <script>
-function openUpdateClassModal() {
-  document.getElementById('updateClassModal').classList.remove('hidden');
-}
+  function openUpdateClassModal() {
+    document.getElementById('updateClassModal').classList.remove('hidden');
+  }
 
-function closeUpdateClassModal() {
-  document.getElementById('updateClassModal').classList.add('hidden');
-}
+  function closeUpdateClassModal() {
+    document.getElementById('updateClassModal').classList.add('hidden');
+  }
 
-function openAddStudentModal() {
-  document.getElementById('addStudentModal').classList.remove('hidden');
-}
+  function openAddStudentModal() {
+    document.getElementById('addStudentModal').classList.remove('hidden');
+  }
 
-function closeAddStudentModal() {
-  document.getElementById('addStudentModal').classList.add('hidden');
-}
+  function closeAddStudentModal() {
+    document.getElementById('addStudentModal').classList.add('hidden');
+  }
 
-function openEditModal(studentId, firstName, middleInitial, lastName) {
-  document.getElementById('editStudentModal').classList.remove('hidden');
-  document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`;
-  document.getElementById('editFirstName').value = firstName;
-  document.getElementById('editMiddleInitial').value = middleInitial;
-  document.getElementById('editLastName').value = lastName;
-}
+  function openEditModal(studentId, firstName, middleInitial, lastName) {
+    document.getElementById('editStudentModal').classList.remove('hidden');
+    document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`;
+    document.getElementById('editFirstName').value = firstName;
+    document.getElementById('editMiddleInitial').value = middleInitial;
+    document.getElementById('editLastName').value = lastName;
+  }
 
-function closeEditModal() {
-  document.getElementById('editStudentModal').classList.add('hidden');
-}
+  function closeEditModal() {
+    document.getElementById('editStudentModal').classList.add('hidden');
+  }
 
-function openDeleteModal(studentId, studentName) {
-  document.getElementById('deleteStudentModal').classList.remove('hidden');
-  document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;
-  document.getElementById('deleteStudentName').textContent = studentName;
-}
+  function openDeleteModal(studentId, studentName) {
+    document.getElementById('deleteStudentModal').classList.remove('hidden');
+    document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;
+    document.getElementById('deleteStudentName').textContent = studentName;
+  }
 
-function closeDeleteModal() {
-  document.getElementById('deleteStudentModal').classList.add('hidden');
-}
-
+  function closeDeleteModal() {
+    document.getElementById('deleteStudentModal').classList.add('hidden');
+  }
 </script>
+
 {% endblock %}

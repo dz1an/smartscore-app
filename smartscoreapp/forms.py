@@ -45,13 +45,13 @@ class ClassNameForm(forms.ModelForm):
 class EditStudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'middle_initial', 'assigned_class']
+        fields = ['first_name', 'last_name', 'middle_initial']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields:
             self.fields[field].widget.attrs.update({'class': 'mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white'})
-
+            
 class TestSetForm(forms.ModelForm):
     class Meta:
         model = TestSet
