@@ -32,7 +32,7 @@
   {% csrf_token %}
   <input type="hidden" name="exam_id" value="{{ exam.id }}">
 
-  <label for="student_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Select Student</label>
+  <label for="student_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Student Name</label>
   <select name="student_id" id="student_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" required>
     {% for student in students %}
       <option value="{{ student.id }}">{{ student.first_name }} {{ student.last_name }}</option>

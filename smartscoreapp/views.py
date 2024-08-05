@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
 from .models import Class, Student, Exam, Question, Answer, ExamSet, StudentQuestion
-from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentForm, UserCreationWithEmailForm, AddStudentToExamForm, TestSetForm
+from .forms import ClassForm, StudentForm, ExamForm, ClassNameForm, EditStudentForm, UserCreationWithEmailForm, AddStudentToExamForm, TestSetForm, TestSet
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
@@ -318,7 +318,7 @@ def assign_questions_to_student(request, student_id, exam_id):
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = Question.objects.all()
+    questions = Question.objects.filter(exam=exam)  # Fetch questions related to the exam
 
     if request.method == 'POST':
         selected_question_ids = request.POST.getlist('questions')
@@ -591,6 +591,18 @@ def add_student_to_exam_view(request, exam_id):
         test_set_form = TestSetForm()
     
     return render(request, 'add_student_to_exam.html', {'student_form': student_form, 'test_set_form': test_set_form})
+
+@login_required
+def student_test_papers_view(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    test_sets = TestSet.objects.filter(student=student)
+    return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
+
+@login_required
+def view_test_set_view(request, test_set_id):
+    test_set = get_object_or_404(TestSet, id=test_set_id)
+    return render(request, 'view_test_set.html', {'test_set': test_set})
+
 
 @login_required
 def add_class_view(request):
