@@ -55,7 +55,8 @@ TEMPLATES = [
             os.path.join(BASE_DIR, 'templates', 'exams'), 
             os.path.join(BASE_DIR, 'templates', 'settings'), 
             os.path.join(BASE_DIR, 'templates', 'students'), 
-            os.path.join(BASE_DIR, 'templates', 'users'), 
+            os.path.join(BASE_DIR, 'templates', 'users'),
+            os.path.join(BASE_DIR, 'templates', 'registration'),  
         ],
         'APP_DIRS': True,
         'OPTIONS': {
