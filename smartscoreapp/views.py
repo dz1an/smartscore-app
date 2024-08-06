@@ -217,20 +217,15 @@ def add_question_view(request, exam_id):
 
         if question_text and option_a and option_b and answer:
             question = Question.objects.create(
-                exam=exam,
                 question_text=question_text,
                 option_a=option_a,
                 option_b=option_b,
                 option_c=option_c,
                 option_d=option_d,
-                option_e=option_e
-            )
-            
-            Answer.objects.create(
-                question=question,
+                option_e=option_e,
                 answer=answer
             )
-            
+            exam.questions.add(question)  # Add the question to the exam
             messages.success(request, 'Question and answer added successfully!')
         else:
             messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
@@ -259,7 +254,6 @@ def create_exam_set(request, exam_id):
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
-    answer = question.answer  # Get the associated answer
 
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
@@ -278,18 +272,17 @@ def edit_question_view(request, question_id):
             question.option_c = option_c
             question.option_d = option_d
             question.option_e = option_e
+            question.answer = correct_answer
             question.save()
 
-            # Update answer
-            answer.answer = correct_answer
-            answer.save()
-
             messages.success(request, 'Question and answer updated successfully!')
-            return redirect('exam_detail', exam_id=question.exam.id)
+            return redirect('exam_detail', exam_id=question.exams.first().id)  # Get the first exam this question belongs to
         else:
             messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
     
-    return render(request, 'edit_question.html', {'question': question, 'answer': answer})
+    return render(request, 'edit_question.html', {'question': question})
+
+
 
 @login_required
 def delete_question_view(request, question_id):
@@ -318,7 +311,7 @@ def assign_questions_to_student(request, student_id, exam_id):
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = Question.objects.filter(exam=exam)  # Fetch questions related to the exam
+    questions = Question.objects.filter(exams=exam)  # Filter questions related to the exam
 
     if request.method == 'POST':
         selected_question_ids = request.POST.getlist('questions')
@@ -331,6 +324,9 @@ def select_questions_view(request, exam_id):
         return redirect('generate_test_paper', exam_id=exam_id)
 
     return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+
+
+
 
 @login_required
 def print_test_paper_view(request, exam_id):
@@ -434,7 +430,7 @@ def generate_questionnaire_view(request, exam_id, student_id):
     
     y = 740
     for question in exam.questions.all():
-        p.drawString(100, y, f"{question.question_order}. {question.question_text}")
+        p.drawString(100, y, f"{question.id}. {question.question_text}")
         y -= 20
         for option in [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]:
             p.drawString(120, y, option)
@@ -446,6 +442,7 @@ def generate_questionnaire_view(request, exam_id, student_id):
     
     buffer.seek(0)
     return HttpResponse(buffer, content_type='application/pdf')
+
 
 @login_required
 def list_classes_view(request):
@@ -484,8 +481,9 @@ def add_exam_view(request):
 @login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    questions = exam.questions.all()  # Corrected to use the 'questions' related name
 
-    if request.method == "POST":
+    if request.method == 'POST':
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
         option_b = request.POST.get('option_b')
@@ -494,9 +492,8 @@ def exam_detail_view(request, exam_id):
         option_e = request.POST.get('option_e')
         answer = request.POST.get('answer')
 
-        if question_text:
-            Question.objects.create(
-                exam=exam,
+        if question_text and option_a and option_b and answer:
+            question = Question.objects.create(
                 question_text=question_text,
                 option_a=option_a,
                 option_b=option_b,
@@ -505,13 +502,13 @@ def exam_detail_view(request, exam_id):
                 option_e=option_e,
                 answer=answer
             )
+            exam.questions.add(question)  # Add the question to the exam
             messages.success(request, "Question added successfully!")
         else:
-            messages.error(request, "Question text is required!")
-
-    questions = exam.question_set.all()
+            messages.error(request, "Question text, Option A, Option B, and Correct Answer are required!")
 
     return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
+
 
 def students_view(request):
     students = Student.objects.all()

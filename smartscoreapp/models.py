@@ -36,7 +36,6 @@ class Exam(models.Model):
         set_number = str(random.randint(0, 99999)).zfill(5)
         return f"{exam_id}-{set_number}"
 
-
 class Student(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -62,7 +61,6 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.short_id})"
 
-
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
     set_number = models.IntegerField()
@@ -75,17 +73,25 @@ class ExamSet(models.Model):
         return f"{self.exam.name} - Set {self.set_number}"
 
 class Question(models.Model):
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    question_text = models.TextField()
+    ANSWER_CHOICES = [
+        ('A', 'Option A'),
+        ('B', 'Option B'),
+        ('C', 'Option C'),
+        ('D', 'Option D'),
+        ('E', 'Option E'),
+    ]
+
+    question_text = models.CharField(max_length=255)
     option_a = models.CharField(max_length=255)
     option_b = models.CharField(max_length=255)
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
     option_e = models.CharField(max_length=255)
-    question_order = models.IntegerField(default=1)
+    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
 
     def __str__(self):
         return self.question_text
+
 
 class StudentQuestion(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='student_questions')
@@ -103,7 +109,7 @@ class StudentQuestion(models.Model):
         unique_together = ('student', 'question', 'exam')
 
 class Answer(models.Model):
-    question = models.OneToOneField(Question, on_delete=models.CASCADE, related_name='answer')
+    question = models.OneToOneField(Question, on_delete=models.CASCADE, related_name='correct_answer')
     answer = models.CharField(max_length=1, choices=[
         ('A', 'Option A'),
         ('B', 'Option B'),
