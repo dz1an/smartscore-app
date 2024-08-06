@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+<!-- Breadcrumb -->
 {% block content %}
 <nav class="flex mb-4" aria-label="Breadcrumb">
   <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
@@ -29,6 +29,7 @@
         <th scope="col" class="px-6 py-3">Exam Name</th>
         <th scope="col" class="px-6 py-3">Set Number</th>
         <th scope="col" class="px-6 py-3">Set ID</th>
+        <th scope="col" class="px-6 py-3">Questions and Answers</th>
       </tr>
     </thead>
     <tbody>
@@ -37,15 +38,33 @@
           <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ test_set.exam.name }}</td>
           <td class="px-6 py-4">{{ test_set.set_no }}</td>
           <td class="px-6 py-4">{{ test_set.set_id }}</td>
+          <td class="px-6 py-4">
+            <ul>
+              {% for question in test_set.exam.questions.all %}
+                <li>
+                  {{ question.question_text }}
+                  <ul>
+                    {% for student_question in student.student_questions.all %}
+                      {% if student_question.question == question %}
+                        <li><strong>Answer:</strong> {{ student_question.student_answer }}</li>
+                      {% endif %}
+                    {% endfor %}
+                  </ul>
+                </li>
+              {% endfor %}
+            </ul>
+          </td>
         </tr>
       {% empty %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
+          <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
 <a href="{% url 'students' %}" class="text-blue-500 hover:underline">Back to Students</a>
+
 
 {% endblock %}

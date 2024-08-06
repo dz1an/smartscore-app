@@ -419,6 +419,8 @@ def generate_answers_list(exam):
             answers.append(question.option_e_value)
     return answers
 
+
+
 @login_required
 def generate_questionnaire_view(request, exam_id, student_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -595,8 +597,10 @@ def add_student_to_exam_view(request, exam_id):
 @login_required
 def student_test_papers_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)
-    test_sets = TestSet.objects.filter(student=student)
+    test_sets = TestSet.objects.filter(student=student)  # Correct the query here
+
     return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
+
 
 @login_required
 def view_test_set_view(request, test_set_id):

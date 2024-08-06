@@ -44,9 +44,6 @@ urlpatterns = [
     path('students/<int:student_id>/test_papers/', student_test_papers_view, name='student_test_papers'),
     path('test_set/<int:test_set_id>/', view_test_set_view, name='view_test_set'),
     
-    
-    
-
     # Exams
     path('exams/', exams_view, name='exams'),
     path('exams/add/', add_exam_view, name='add_exam'),
