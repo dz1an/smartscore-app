@@ -251,6 +251,7 @@ def create_exam_set(request, exam_id):
     students = Student.objects.filter(assigned_class=exam.class_assigned)
     return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
 
+
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
@@ -509,6 +510,44 @@ def exam_detail_view(request, exam_id):
 
     return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
 
+@login_required
+def grade_exam_view(request, exam_id, student_id):
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        student = Student.objects.get(id=student_id)
+        student_questions = StudentQuestion.objects.filter(exam=exam, student=student)
+
+        if request.method == 'POST':
+            for student_question in student_questions:
+                marks_field = f'marks_{student_question.id}'
+                marks = request.POST.get(marks_field, 0)
+                # Auto-grading logic
+                if student_question.student_answer == student_question.question.answer:
+                    student_question.marks = 1  # Assign 1 mark for correct answers, you can adjust the value
+                else:
+                    student_question.marks = 0  # Assign 0 mark for incorrect answers, you can adjust the value
+                # Allow manual adjustment
+                if marks:
+                    student_question.marks = int(marks)
+                student_question.save()
+
+            messages.success(request, "Grades saved successfully!")
+            return redirect('grade_exam', exam_id=exam.id, student_id=student.id)
+
+        return render(request, 'exams/grade_exam.html', {
+            'exam': exam,
+            'student': student,
+            'student_questions': student_questions
+        })
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+        return redirect('exams')
+    except Student.DoesNotExist:
+        messages.error(request, "Student not found.")
+        return redirect('exams')
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+        return redirect('exams')
 
 def students_view(request):
     students = Student.objects.all()

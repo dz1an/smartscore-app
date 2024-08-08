@@ -13,11 +13,13 @@ class StudentForm(forms.ModelForm):
         model = Student
         fields = ['first_name', 'last_name', 'middle_initial', 'student_id']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields:
-            self.fields[field].widget.attrs.update({'class': 'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500'})
-
+    def clean_student_id(self):
+        student_id = self.cleaned_data['student_id']
+        assigned_class = self.instance.assigned_class if self.instance else self.data.get('assigned_class')
+        if Student.objects.filter(student_id=student_id, assigned_class=assigned_class).exists():
+            raise forms.ValidationError("Student ID must be unique within the assigned class.")
+        return student_id
+    
 class ExamForm(forms.ModelForm):
     exam_id = forms.CharField(max_length=3, required=True, label='Exam ID')
 
