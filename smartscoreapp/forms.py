@@ -13,12 +13,19 @@ class StudentForm(forms.ModelForm):
         model = Student
         fields = ['first_name', 'last_name', 'middle_initial', 'student_id']
 
+    def __init__(self, *args, **kwargs):
+        class_instance = kwargs.pop('assigned_class', None)
+        super(StudentForm, self).__init__(*args, **kwargs)
+        if class_instance:
+            self.instance.assigned_class = class_instance
+
     def clean_student_id(self):
         student_id = self.cleaned_data['student_id']
-        assigned_class = self.instance.assigned_class if self.instance else self.data.get('assigned_class')
+        assigned_class = self.instance.assigned_class
         if Student.objects.filter(student_id=student_id, assigned_class=assigned_class).exists():
             raise forms.ValidationError("Student ID must be unique within the assigned class.")
         return student_id
+
     
 class ExamForm(forms.ModelForm):
     exam_id = forms.CharField(max_length=3, required=True, label='Exam ID')

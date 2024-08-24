@@ -558,12 +558,12 @@ def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        form = StudentForm(request.POST)
+        form = StudentForm(request.POST, assigned_class=class_instance)
         if form.is_valid():
-            student = form.save(commit=False)
-            student.assigned_class = class_instance
+            student = form.save(commit=False)  # Don't save to the database yet
+            student.assigned_class = class_instance  # Assign the class
             try:
-                student.save()
+                student.save()  # Now save the student with the assigned class
                 messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
                 return redirect('class_detail', class_id=class_id)
             except Exception as e:
@@ -571,8 +571,9 @@ def add_student_view(request, class_id):
         else:
             messages.error(request, 'Please correct the errors below.')
     
-    form = StudentForm()
+    form = StudentForm(assigned_class=class_instance)
     return render(request, 'add_student.html', {'form': form, 'class': class_instance})
+
 
 
 @login_required
