@@ -17,6 +17,8 @@ from django.db import IntegrityError
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
+from .forms import StudentBulkUploadForm
+import csv
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -574,7 +576,40 @@ def add_student_view(request, class_id):
     form = StudentForm(assigned_class=class_instance)
     return render(request, 'add_student.html', {'form': form, 'class': class_instance})
 
+@login_required
+def bulk_upload_students_view(request, class_id):
+    class_instance = Class.objects.get(id=class_id)
 
+    if request.method == 'POST':
+        csv_file = request.FILES['csv_file']
+        decoded_file = csv_file.read().decode('utf-8').splitlines()
+        reader = csv.reader(decoded_file)
+
+        # Skip the header row if necessary
+        header = next(reader)
+
+        try:
+            for row in reader:
+                if len(row) < 4:
+                    raise ValueError("Not enough columns in the CSV file")
+                # Adjust the number of variables based on the actual number of columns in your CSV
+                first_name, last_name, middle_initial, student_id = row[:4]  # Only take the first 4 columns
+
+                Student.objects.create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_initial=middle_initial,
+                    student_id=student_id,
+                    assigned_class=class_instance
+                )
+
+            messages.success(request, "Students added successfully!")
+            return redirect('class_detail', class_id=class_id)
+
+        except ValueError as e:
+            messages.error(request, f"Error processing file: {e}")
+
+    return render(request, 'bulk_upload.html', {'class': class_instance})
 
 @login_required
 @require_POST

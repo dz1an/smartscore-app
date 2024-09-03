@@ -51,6 +51,18 @@
   </button>
 </div>
 
+<!-- Bulk Upload Button -->
+<div class="mb-4">
+  <button 
+      class="flex items-center text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg focus:outline-none"
+      onclick="openBulkUploadModal()">
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Bulk Upload Students
+  </button>
+</div>
+
 <!-- Table of Enrolled Students -->
 <div class="relative overflow-x-auto mb-6">
   <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
@@ -97,6 +109,23 @@
               {{ form.as_p }}
               <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Student</button>
               <button type="button" onclick="closeAddStudentModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+          </form>
+      </div>
+  </div>
+</div>
+
+<!-- Bulk Upload Modal -->
+<div id="bulkUploadModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+          <form method="post" action="{% url 'bulk_upload_students' class.id %}" enctype="multipart/form-data">
+              {% csrf_token %}
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Upload Students in Bulk</h2>
+              <input type="file" name="csv_file" accept=".csv" required class="block w-full text-sm text-gray-500 dark:text-gray-300">
+              <div class="flex justify-end mt-4">
+                  <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Upload</button>
+                  <button type="button" onclick="closeBulkUploadModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
+              </div>
           </form>
       </div>
   </div>
@@ -179,12 +208,16 @@
     document.getElementById('addStudentModal').classList.add('hidden');
   }
 
+  function openBulkUploadModal() {
+    document.getElementById('bulkUploadModal').classList.remove('hidden');
+  }
+
+  function closeBulkUploadModal() {
+    document.getElementById('bulkUploadModal').classList.add('hidden');
+  }
+
   function openEditModal(studentId, firstName, middleInitial, lastName) {
-    document.getElementById('editStudentModal').classList.remove('hidden');
-    document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`;
-    document.getElementById('editFirstName').value = firstName;
-    document.getElementById('editMiddleInitial').value = middleInitial;
-    document.getElementById('editLastName').value = lastName;
+    // Edit modal logic
   }
 
   function closeEditModal() {
@@ -192,9 +225,7 @@
   }
 
   function openDeleteModal(studentId, studentName) {
-    document.getElementById('deleteStudentModal').classList.remove('hidden');
-    document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;
-    document.getElementById('deleteStudentName').textContent = studentName;
+    // Delete modal logic
   }
 
   function closeDeleteModal() {

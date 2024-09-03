@@ -8,7 +8,7 @@ from smartscoreapp.views import (
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
     select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
     generate_questionnaire_view, list_classes_view, class_exams_view, save_test_paper_view, student_test_papers_view,
-    view_test_set_view, grade_exam_view
+    view_test_set_view, grade_exam_view, bulk_upload_students_view
 )
 from django.conf.urls.static import static
 from django.conf import settings
@@ -36,7 +36,7 @@ urlpatterns = [
     path('classes/<int:class_id>/delete/', delete_class_view, name='delete_class'),
     path('classes/<int:class_id>/update/', update_class_name_view, name='update_class_name'),
     path('classes/<int:class_id>/add_student/', add_student_view, name='add_student'),
-
+    
     
     
 
@@ -46,6 +46,7 @@ urlpatterns = [
     path('students/<str:student_id>/delete/', views.delete_student, name='delete_student'),  # Changed to str
     path('students/<int:student_id>/test_papers/', student_test_papers_view, name='student_test_papers'),
     path('test_set/<int:test_set_id>/', view_test_set_view, name='view_test_set'),
+    path('classes/<int:class_id>/bulk_upload/', bulk_upload_students_view, name='bulk_upload_students'),
     
     # Exams
     path('exams/', exams_view, name='exams'),

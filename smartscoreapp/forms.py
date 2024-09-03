@@ -8,6 +8,9 @@ class ClassForm(forms.ModelForm):
         model = Class
         fields = ['name', 'description']
 
+class StudentBulkUploadForm(forms.Form):
+    csv_file = forms.FileField(label="Upload CSV")
+
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
