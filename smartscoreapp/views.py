@@ -208,6 +208,8 @@ def delete_exam(request, exam_id):
 @login_required
 def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    available_exams = Exam.objects.exclude(id=exam_id)  # List of other exams
+    
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
@@ -216,7 +218,10 @@ def add_question_view(request, exam_id):
         option_d = request.POST.get('option_d')
         option_e = request.POST.get('option_e')
         answer = request.POST.get('answer')
+        
+        selected_question_ids = request.POST.getlist('selected_questions')  # Fetch selected questions
 
+        # Add manually entered question
         if question_text and option_a and option_b and answer:
             question = Question.objects.create(
                 question_text=question_text,
@@ -227,14 +232,23 @@ def add_question_view(request, exam_id):
                 option_e=option_e,
                 answer=answer
             )
-            exam.questions.add(question)  # Add the question to the exam
-            messages.success(request, 'Question and answer added successfully!')
-        else:
-            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
+            exam.questions.add(question)  # Add the newly created question to the current exam
+            messages.success(request, 'New question added successfully!')
+
+        # Add selected questions from other exams
+        if selected_question_ids:
+            selected_questions = Question.objects.filter(id__in=selected_question_ids)
+            exam.questions.add(*selected_questions)  # Add selected questions from other exams
+            messages.success(request, 'Selected questions added successfully!')
 
         return redirect('exam_detail', exam_id=exam.id)
-    
-    return render(request, 'add_question.html', {'exam': exam})
+
+    return render(request, 'add_question.html', {
+        'exam': exam,
+        'available_exams': available_exams,
+        'questions': []  # Initially no questions shown from other exams
+    })
+
 
 @login_required
 def create_exam_set(request, exam_id):
@@ -311,24 +325,35 @@ def assign_questions_to_student(request, student_id, exam_id):
     messages.success(request, f'Questions assigned to {student.name} for {exam.name}')
     return redirect('some_appropriate_url')
 
+
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = Question.objects.filter(exams=exam)  # Filter questions related to the exam
-
+    available_exams = Exam.objects.exclude(id=exam_id)  # Exclude the current exam
+    
+    questions = []  # Initialize an empty list for questions
+    
     if request.method == 'POST':
-        selected_question_ids = request.POST.getlist('questions')
-        selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        exam_source_id = request.POST.get('exam_source_id')
         
-        exam.questions.clear()
-        exam.questions.add(*selected_questions)
+        # If an exam is selected, fetch its questions
+        if exam_source_id:
+            source_exam = get_object_or_404(Exam, id=exam_source_id)
+            questions = source_exam.questions.all()  # Fetch questions from the selected exam
+        
+        selected_question_ids = request.POST.getlist('questions')
+        if selected_question_ids:
+            selected_questions = Question.objects.filter(id__in=selected_question_ids)
+            exam.questions.clear()  # Clear previous questions and assign new ones
+            exam.questions.add(*selected_questions)
+            messages.success(request, 'Questions selected successfully!')
+            return redirect('exam_detail', exam_id=exam.id)
 
-        messages.success(request, 'Questions selected successfully!')
-        return redirect('generate_test_paper', exam_id=exam_id)
-
-    return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
-
-
+    return render(request, 'select_questions.html', {
+        'exam': exam,
+        'available_exams': available_exams,
+        'questions': questions  # This will be populated if an exam is selected
+    })
 
 
 @login_required
