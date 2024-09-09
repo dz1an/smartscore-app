@@ -300,18 +300,26 @@ def edit_question_view(request, question_id):
     return render(request, 'edit_question.html', {'question': question})
 
 
-
 @login_required
 def delete_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
-    exam_id = question.exam.id
+    
+    # Retrieve the first exam associated with the question (or modify this based on your logic)
+    exam = question.exams.first()
+
+    if not exam:
+        messages.error(request, 'No exam is associated with this question.')
+        return redirect('exams')  # Redirect to exams list if no exam is found
+
+    exam_id = exam.id  # Get the associated exam's ID
 
     if request.method == 'POST':
-        question.delete()
+        question.delete()  # Delete the question from the database
         messages.success(request, 'Question and answer deleted successfully!')
         return redirect('exam_detail', exam_id=exam_id)
 
     return redirect('exam_detail', exam_id=exam_id)
+
 
 @login_required
 def assign_questions_to_student(request, student_id, exam_id):
@@ -325,35 +333,46 @@ def assign_questions_to_student(request, student_id, exam_id):
     messages.success(request, f'Questions assigned to {student.name} for {exam.name}')
     return redirect('some_appropriate_url')
 
-
 @login_required
 def select_questions_view(request, exam_id):
+    # Get the current exam
     exam = get_object_or_404(Exam, id=exam_id)
-    available_exams = Exam.objects.exclude(id=exam_id)  # Exclude the current exam
     
-    questions = []  # Initialize an empty list for questions
+    # Fetch available exams, excluding the current one
+    available_exams = Exam.objects.exclude(id=exam_id)  
+    
+    # Initialize empty list for questions
+    questions = []
     
     if request.method == 'POST':
+        # Get the selected exam ID from the form
         exam_source_id = request.POST.get('exam_source_id')
         
-        # If an exam is selected, fetch its questions
+        # If a source exam is selected, fetch its questions
         if exam_source_id:
             source_exam = get_object_or_404(Exam, id=exam_source_id)
-            questions = source_exam.questions.all()  # Fetch questions from the selected exam
-        
-        selected_question_ids = request.POST.getlist('questions')
-        if selected_question_ids:
-            selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            exam.questions.clear()  # Clear previous questions and assign new ones
-            exam.questions.add(*selected_questions)
-            messages.success(request, 'Questions selected successfully!')
-            return redirect('exam_detail', exam_id=exam.id)
+            questions = source_exam.questions.all()  # Get all questions from the selected exam
 
+        # Handle selected questions from the source exam
+        selected_question_ids = request.POST.getlist('questions')  # Get selected questions IDs
+        
+        if selected_question_ids:
+            # Fetch selected questions and add them to the current exam
+            selected_questions = Question.objects.filter(id__in=selected_question_ids)
+            
+            # Add selected questions to the current exam without replacing existing ones
+            exam.questions.add(*selected_questions)  # This adds the questions, doesn't replace them
+            
+            messages.success(request, 'Selected questions added successfully!')
+            return redirect('exam_detail', exam_id=exam_id)
+
+    # Render the page with available exams and questions
     return render(request, 'select_questions.html', {
         'exam': exam,
         'available_exams': available_exams,
-        'questions': questions  # This will be populated if an exam is selected
+        'questions': questions,
     })
+
 
 
 @login_required
@@ -444,7 +463,6 @@ def generate_answers_list(exam):
     return answers
 
 
-
 @login_required
 def generate_questionnaire_view(request, exam_id, student_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -509,33 +527,57 @@ def add_exam_view(request):
 @login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = exam.questions.all()  # Corrected to use the 'questions' related name
+    available_exams = Exam.objects.exclude(id=exam_id)  # Other exams to copy questions from
+    questions = exam.questions.all()  # Questions already added to the current exam
 
     if request.method == 'POST':
-        question_text = request.POST.get('question_text')
-        option_a = request.POST.get('option_a')
-        option_b = request.POST.get('option_b')
-        option_c = request.POST.get('option_c')
-        option_d = request.POST.get('option_d')
-        option_e = request.POST.get('option_e')
-        answer = request.POST.get('answer')
+        # Get the selected exam ID to copy questions from
+        selected_exam_id = request.POST.get('exam_source_id')
+        if selected_exam_id:
+            source_exam = get_object_or_404(Exam, id=selected_exam_id)
+            selected_question_ids = request.POST.getlist('questions')  # Get the selected questions
 
-        if question_text and option_a and option_b and answer:
-            question = Question.objects.create(
-                question_text=question_text,
-                option_a=option_a,
-                option_b=option_b,
-                option_c=option_c,
-                option_d=option_d,
-                option_e=option_e,
-                answer=answer
-            )
-            exam.questions.add(question)  # Add the question to the exam
-            messages.success(request, "Question added successfully!")
+            if selected_question_ids:
+                selected_questions = Question.objects.filter(id__in=selected_question_ids)
+                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                messages.success(request, 'Selected questions copied successfully!')
+            else:
+                messages.error(request, 'No questions selected to copy!')
+
+        # If manually adding a new question
         else:
-            messages.error(request, "Question text, Option A, Option B, and Correct Answer are required!")
+            question_text = request.POST.get('question_text')
+            option_a = request.POST.get('option_a')
+            option_b = request.POST.get('option_b')
+            option_c = request.POST.get('option_c')
+            option_d = request.POST.get('option_d')
+            option_e = request.POST.get('option_e')
+            answer = request.POST.get('answer')
 
-    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
+            if question_text and option_a and option_b and answer:
+                question = Question.objects.create(
+                    question_text=question_text,
+                    option_a=option_a,
+                    option_b=option_b,
+                    option_c=option_c,
+                    option_d=option_d,
+                    option_e=option_e,
+                    answer=answer
+                )
+                exam.questions.add(question)  # Add the newly created question to the exam
+                messages.success(request, 'New question added successfully!')
+            else:
+                messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required!')
+
+    # Refetch the questions after copying/adding
+    questions = exam.questions.all()
+
+    return render(request, 'exam_detail.html', {
+        'exam': exam,
+        'questions': questions,
+        'available_exams': available_exams
+    })
+
 
 @login_required
 def grade_exam_view(request, exam_id, student_id):
