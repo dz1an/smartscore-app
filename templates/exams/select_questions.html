@@ -31,6 +31,8 @@
     <label for="class_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Class to Copy Questions From</label>
     <select name="class_source_id" id="class_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
       <option value="">-- Select a Class --</option>
+      <!-- Include the current class -->
+      <option value="{{ current_class.id }}" {% if current_class.id == request.POST.class_source_id %}selected{% endif %}>{{ current_class.name }} (Current Class)</option>
       {% for other_class in available_classes %}
         <option value="{{ other_class.id }}" {% if other_class.id == request.POST.class_source_id %}selected{% endif %}>{{ other_class.name }}</option>
       {% endfor %}

@@ -337,9 +337,10 @@ def assign_questions_to_student(request, student_id, exam_id):
 def select_questions_view(request, exam_id):
     # Get the current exam
     exam = get_object_or_404(Exam, id=exam_id)
-    
-    # Fetch all classes, excluding the class of the current exam
-    available_classes = Class.objects.exclude(exams__id=exam_id).distinct()
+    current_class = exam.class_assigned  # Get the class for the current exam
+
+    # Exclude the current class from the list of available classes
+    available_classes = Class.objects.exclude(id=current_class.id)
 
     # Initialize variables for exams and questions
     available_exams = []
@@ -352,7 +353,7 @@ def select_questions_view(request, exam_id):
         # If a class is selected, fetch its exams
         if class_source_id:
             source_class = get_object_or_404(Class, id=class_source_id)
-            available_exams = source_class.exams.exclude(id=exam_id)  # Exclude current exam
+            available_exams = source_class.exams.all()  # Fetch all exams for the selected class
         
         # Get the selected exam ID from the form
         exam_source_id = request.POST.get('exam_source_id')
@@ -363,7 +364,7 @@ def select_questions_view(request, exam_id):
             questions = source_exam.questions.all()  # Get all questions from the selected exam
 
         # Handle selected questions from the source exam
-        selected_question_ids = request.POST.getlist('questions')  # Get selected questions IDs
+        selected_question_ids = request.POST.getlist('questions')  # Get selected question IDs
         
         if selected_question_ids:
             # Fetch selected questions and add them to the current exam
@@ -375,10 +376,12 @@ def select_questions_view(request, exam_id):
 
     return render(request, 'select_questions.html', {
         'exam': exam,
+        'current_class': current_class,
         'available_classes': available_classes,
         'available_exams': available_exams,
         'questions': questions,
     })
+
 
 
 @login_required
