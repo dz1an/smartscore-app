@@ -22,31 +22,45 @@
 </nav>
 
 <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Select Questions for {{ exam.name }}</h1>
+
 <form method="post" action="{% url 'select_questions' exam.id %}">
   {% csrf_token %}
 
-  <!-- Select an Exam to Copy Questions From -->
+  <!-- Select a Class to Copy Questions From -->
   <div class="mb-4">
-    <label for="exam_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Exam to Copy Questions From</label>
-    <select name="exam_source_id" id="exam_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
-      <option value="">-- Select an Exam --</option>
-      {% for other_exam in available_exams %}
-        <option value="{{ other_exam.id }}" {% if other_exam.id == request.POST.exam_source_id %}selected{% endif %}>{{ other_exam.name }}</option>
+    <label for="class_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Class to Copy Questions From</label>
+    <select name="class_source_id" id="class_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
+      <option value="">-- Select a Class --</option>
+      {% for other_class in available_classes %}
+        <option value="{{ other_class.id }}" {% if other_class.id == request.POST.class_source_id %}selected{% endif %}>{{ other_class.name }}</option>
       {% endfor %}
     </select>
   </div>
 
+  <!-- Select an Exam to Copy Questions From (if a class is selected) -->
+  {% if available_exams %}
+    <div class="mb-4">
+      <label for="exam_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Exam to Copy Questions From</label>
+      <select name="exam_source_id" id="exam_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
+        <option value="">-- Select an Exam --</option>
+        {% for other_exam in available_exams %}
+          <option value="{{ other_exam.id }}" {% if other_exam.id == request.POST.exam_source_id %}selected{% endif %}>{{ other_exam.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+
   <!-- Display the Questions from the Selected Exam -->
-  <div class="relative overflow-x-auto mb-6">
-    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" class="px-6 py-3">Select</th>
-          <th scope="col" class="px-6 py-3">Question</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if questions %}
+  {% if questions %}
+    <div class="relative overflow-x-auto mb-6">
+      <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th scope="col" class="px-6 py-3">Select</th>
+            <th scope="col" class="px-6 py-3">Question</th>
+          </tr>
+        </thead>
+        <tbody>
           {% for question in questions %}
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               <td class="px-6 py-4">
@@ -55,14 +69,10 @@
               <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
             </tr>
           {% endfor %}
-        {% else %}
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td colspan="2" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions available from this exam.</td>
-          </tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
 
   <!-- Submit and Save Selected Questions -->
   <div class="flex items-center justify-end space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600">

@@ -338,13 +338,22 @@ def select_questions_view(request, exam_id):
     # Get the current exam
     exam = get_object_or_404(Exam, id=exam_id)
     
-    # Fetch available exams, excluding the current one
-    available_exams = Exam.objects.exclude(id=exam_id)  
-    
-    # Initialize empty list for questions
+    # Fetch all classes, excluding the class of the current exam
+    available_classes = Class.objects.exclude(exams__id=exam_id).distinct()
+
+    # Initialize variables for exams and questions
+    available_exams = []
     questions = []
-    
+
     if request.method == 'POST':
+        # Get the selected class ID from the form
+        class_source_id = request.POST.get('class_source_id')
+        
+        # If a class is selected, fetch its exams
+        if class_source_id:
+            source_class = get_object_or_404(Class, id=class_source_id)
+            available_exams = source_class.exams.exclude(id=exam_id)  # Exclude current exam
+        
         # Get the selected exam ID from the form
         exam_source_id = request.POST.get('exam_source_id')
         
@@ -359,20 +368,17 @@ def select_questions_view(request, exam_id):
         if selected_question_ids:
             # Fetch selected questions and add them to the current exam
             selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            
-            # Add selected questions to the current exam without replacing existing ones
-            exam.questions.add(*selected_questions)  # This adds the questions, doesn't replace them
-            
+            exam.questions.add(*selected_questions)  # Add questions to the current exam
+
             messages.success(request, 'Selected questions added successfully!')
             return redirect('exam_detail', exam_id=exam_id)
 
-    # Render the page with available exams and questions
     return render(request, 'select_questions.html', {
         'exam': exam,
+        'available_classes': available_classes,
         'available_exams': available_exams,
         'questions': questions,
     })
-
 
 
 @login_required
@@ -684,29 +690,22 @@ def edit_student(request, student_id):
     student = get_object_or_404(Student, student_id=student_id)
     form = EditStudentForm(request.POST, instance=student)
     if form.is_valid():
-        updated_student = form.save(commit=False)
-        updated_student.assigned_class = student.assigned_class  # Keep the original assigned_class
-        updated_student.save()
+        form.save()
         messages.success(request, 'Student updated successfully!')
-        return redirect('class_detail', class_id=updated_student.assigned_class.id)
     else:
-        messages.error(request, 'Please correct the errors below.')
-        return redirect('class_detail', class_id=student.assigned_class.id)
+        messages.error(request, 'There was an error updating the student.')
+    return redirect('class_detail', class_id=student.assigned_class.id)
 
 
 
 @login_required
+@require_POST
 def delete_student(request, student_id):
     student = get_object_or_404(Student, student_id=student_id)
-
-    if request.method == 'POST':
-        assigned_class_id = student.assigned_class.id
-        student.delete()
-        messages.success(request, 'Student deleted successfully.')
-        return redirect('class_detail', class_id=assigned_class_id)  # Correctly pass class_id
-
-    return redirect('class_detail', class_id=student.assigned_class.id)
-
+    assigned_class_id = student.assigned_class.id
+    student.delete()
+    messages.success(request, 'Student deleted successfully.')
+    return redirect('class_detail', class_id=assigned_class_id)
 
 
 @login_required

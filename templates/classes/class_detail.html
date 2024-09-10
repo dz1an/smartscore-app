@@ -217,16 +217,24 @@
   }
 
   function openEditModal(studentId, firstName, middleInitial, lastName) {
-    // Edit modal logic
-  }
+    document.getElementById('editStudentModal').classList.remove('hidden');
+    document.getElementById('editStudentForm').action = `/students/${studentId}/edit/`;  // Set form action to the correct URL
+    document.getElementById('editFirstName').value = firstName;  // Prepopulate first name
+    document.getElementById('editMiddleInitial').value = middleInitial;  // Prepopulate middle initial
+    document.getElementById('editLastName').value = lastName;  // Prepopulate last name
+}
+
 
   function closeEditModal() {
     document.getElementById('editStudentModal').classList.add('hidden');
   }
 
   function openDeleteModal(studentId, studentName) {
-    // Delete modal logic
-  }
+    document.getElementById('deleteStudentModal').classList.remove('hidden');
+    document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete/`;  // Set form action to the correct URL
+    document.getElementById('deleteStudentName').textContent = studentName;  // Display student's name in the confirmation message
+}
+
 
   function closeDeleteModal() {
     document.getElementById('deleteStudentModal').classList.add('hidden');
