@@ -335,52 +335,42 @@ def assign_questions_to_student(request, student_id, exam_id):
 
 @login_required
 def select_questions_view(request, exam_id):
-    # Get the current exam
     exam = get_object_or_404(Exam, id=exam_id)
-    current_class = exam.class_assigned  # Get the class for the current exam
+    current_class = exam.class_assigned
+    selected_class_id = request.POST.get('class_source_id', current_class.id)
+    selected_exam_id = request.POST.get('exam_source_id', None)
 
-    # Exclude the current class from the list of available classes
-    available_classes = Class.objects.exclude(id=current_class.id)
+    # If a different class is selected, fetch exams from that class
+    if selected_class_id:
+        selected_class = get_object_or_404(Class, id=selected_class_id)
+        available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
+    else:
+        available_exams = None
 
-    # Initialize variables for exams and questions
-    available_exams = []
-    questions = []
+    # If an exam is selected, fetch its questions
+    if selected_exam_id:
+        selected_exam = get_object_or_404(Exam, id=selected_exam_id)
+        questions = selected_exam.questions.all()
+    else:
+        questions = []
 
-    if request.method == 'POST':
-        # Get the selected class ID from the form
-        class_source_id = request.POST.get('class_source_id')
-        
-        # If a class is selected, fetch its exams
-        if class_source_id:
-            source_class = get_object_or_404(Class, id=class_source_id)
-            available_exams = source_class.exams.all()  # Fetch all exams for the selected class
-        
-        # Get the selected exam ID from the form
-        exam_source_id = request.POST.get('exam_source_id')
-        
-        # If a source exam is selected, fetch its questions
-        if exam_source_id:
-            source_exam = get_object_or_404(Exam, id=exam_source_id)
-            questions = source_exam.questions.all()  # Get all questions from the selected exam
-
-        # Handle selected questions from the source exam
-        selected_question_ids = request.POST.getlist('questions')  # Get selected question IDs
-        
-        if selected_question_ids:
-            # Fetch selected questions and add them to the current exam
-            selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            exam.questions.add(*selected_questions)  # Add questions to the current exam
-
-            messages.success(request, 'Selected questions added successfully!')
-            return redirect('exam_detail', exam_id=exam_id)
+    if request.method == 'POST' and 'questions' in request.POST:
+        selected_question_ids = request.POST.getlist('questions')
+        selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+        messages.success(request, 'Questions added successfully!')
+        return redirect('exam_detail', exam_id=exam_id)
 
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
-        'available_classes': available_classes,
+        'available_classes': Class.objects.exclude(id=current_class.id),  # Exclude current class
         'available_exams': available_exams,
         'questions': questions,
+        'selected_class_id': int(selected_class_id),
+        'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
+
 
 
 
