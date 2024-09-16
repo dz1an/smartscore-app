@@ -17,6 +17,8 @@ from django.db import IntegrityError
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
+from .forms import StudentBulkUploadForm
+import csv
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -206,6 +208,8 @@ def delete_exam(request, exam_id):
 @login_required
 def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    available_exams = Exam.objects.exclude(id=exam_id)  # List of other exams
+    
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
@@ -214,7 +218,10 @@ def add_question_view(request, exam_id):
         option_d = request.POST.get('option_d')
         option_e = request.POST.get('option_e')
         answer = request.POST.get('answer')
+        
+        selected_question_ids = request.POST.getlist('selected_questions')  # Fetch selected questions
 
+        # Add manually entered question
         if question_text and option_a and option_b and answer:
             question = Question.objects.create(
                 question_text=question_text,
@@ -225,14 +232,23 @@ def add_question_view(request, exam_id):
                 option_e=option_e,
                 answer=answer
             )
-            exam.questions.add(question)  # Add the question to the exam
-            messages.success(request, 'Question and answer added successfully!')
-        else:
-            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
+            exam.questions.add(question)  # Add the newly created question to the current exam
+            messages.success(request, 'New question added successfully!')
+
+        # Add selected questions from other exams
+        if selected_question_ids:
+            selected_questions = Question.objects.filter(id__in=selected_question_ids)
+            exam.questions.add(*selected_questions)  # Add selected questions from other exams
+            messages.success(request, 'Selected questions added successfully!')
 
         return redirect('exam_detail', exam_id=exam.id)
-    
-    return render(request, 'add_question.html', {'exam': exam})
+
+    return render(request, 'add_question.html', {
+        'exam': exam,
+        'available_exams': available_exams,
+        'questions': []  # Initially no questions shown from other exams
+    })
+
 
 @login_required
 def create_exam_set(request, exam_id):
@@ -250,6 +266,7 @@ def create_exam_set(request, exam_id):
     
     students = Student.objects.filter(assigned_class=exam.class_assigned)
     return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
+
 
 @login_required
 def edit_question_view(request, question_id):
@@ -283,18 +300,26 @@ def edit_question_view(request, question_id):
     return render(request, 'edit_question.html', {'question': question})
 
 
-
 @login_required
 def delete_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
-    exam_id = question.exam.id
+    
+    # Retrieve the first exam associated with the question (or modify this based on your logic)
+    exam = question.exams.first()
+
+    if not exam:
+        messages.error(request, 'No exam is associated with this question.')
+        return redirect('exams')  # Redirect to exams list if no exam is found
+
+    exam_id = exam.id  # Get the associated exam's ID
 
     if request.method == 'POST':
-        question.delete()
+        question.delete()  # Delete the question from the database
         messages.success(request, 'Question and answer deleted successfully!')
         return redirect('exam_detail', exam_id=exam_id)
 
     return redirect('exam_detail', exam_id=exam_id)
+
 
 @login_required
 def assign_questions_to_student(request, student_id, exam_id):
@@ -311,19 +336,40 @@ def assign_questions_to_student(request, student_id, exam_id):
 @login_required
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = Question.objects.filter(exams=exam)  # Filter questions related to the exam
+    current_class = exam.class_assigned
+    selected_class_id = request.POST.get('class_source_id', current_class.id)
+    selected_exam_id = request.POST.get('exam_source_id', None)
 
-    if request.method == 'POST':
+    # If a different class is selected, fetch exams from that class
+    if selected_class_id:
+        selected_class = get_object_or_404(Class, id=selected_class_id)
+        available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
+    else:
+        available_exams = None
+
+    # If an exam is selected, fetch its questions
+    if selected_exam_id:
+        selected_exam = get_object_or_404(Exam, id=selected_exam_id)
+        questions = selected_exam.questions.all()
+    else:
+        questions = []
+
+    if request.method == 'POST' and 'questions' in request.POST:
         selected_question_ids = request.POST.getlist('questions')
         selected_questions = Question.objects.filter(id__in=selected_question_ids)
-        
-        exam.questions.clear()
-        exam.questions.add(*selected_questions)
+        exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+        messages.success(request, 'Questions added successfully!')
+        return redirect('exam_detail', exam_id=exam_id)
 
-        messages.success(request, 'Questions selected successfully!')
-        return redirect('generate_test_paper', exam_id=exam_id)
-
-    return render(request, 'select_questions.html', {'exam': exam, 'questions': questions})
+    return render(request, 'select_questions.html', {
+        'exam': exam,
+        'current_class': current_class,
+        'available_classes': Class.objects.exclude(id=current_class.id),  # Exclude current class
+        'available_exams': available_exams,
+        'questions': questions,
+        'selected_class_id': int(selected_class_id),
+        'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
+    })
 
 
 
@@ -416,7 +462,6 @@ def generate_answers_list(exam):
     return answers
 
 
-
 @login_required
 def generate_questionnaire_view(request, exam_id, student_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -481,34 +526,96 @@ def add_exam_view(request):
 @login_required
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    questions = exam.questions.all()  # Corrected to use the 'questions' related name
+    available_exams = Exam.objects.exclude(id=exam_id)  # Other exams to copy questions from
+    questions = exam.questions.all()  # Questions already added to the current exam
 
     if request.method == 'POST':
-        question_text = request.POST.get('question_text')
-        option_a = request.POST.get('option_a')
-        option_b = request.POST.get('option_b')
-        option_c = request.POST.get('option_c')
-        option_d = request.POST.get('option_d')
-        option_e = request.POST.get('option_e')
-        answer = request.POST.get('answer')
+        # Get the selected exam ID to copy questions from
+        selected_exam_id = request.POST.get('exam_source_id')
+        if selected_exam_id:
+            source_exam = get_object_or_404(Exam, id=selected_exam_id)
+            selected_question_ids = request.POST.getlist('questions')  # Get the selected questions
 
-        if question_text and option_a and option_b and answer:
-            question = Question.objects.create(
-                question_text=question_text,
-                option_a=option_a,
-                option_b=option_b,
-                option_c=option_c,
-                option_d=option_d,
-                option_e=option_e,
-                answer=answer
-            )
-            exam.questions.add(question)  # Add the question to the exam
-            messages.success(request, "Question added successfully!")
+            if selected_question_ids:
+                selected_questions = Question.objects.filter(id__in=selected_question_ids)
+                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                messages.success(request, 'Selected questions copied successfully!')
+            else:
+                messages.error(request, 'No questions selected to copy!')
+
+        # If manually adding a new question
         else:
-            messages.error(request, "Question text, Option A, Option B, and Correct Answer are required!")
+            question_text = request.POST.get('question_text')
+            option_a = request.POST.get('option_a')
+            option_b = request.POST.get('option_b')
+            option_c = request.POST.get('option_c')
+            option_d = request.POST.get('option_d')
+            option_e = request.POST.get('option_e')
+            answer = request.POST.get('answer')
 
-    return render(request, 'exam_detail.html', {'exam': exam, 'questions': questions})
+            if question_text and option_a and option_b and answer:
+                question = Question.objects.create(
+                    question_text=question_text,
+                    option_a=option_a,
+                    option_b=option_b,
+                    option_c=option_c,
+                    option_d=option_d,
+                    option_e=option_e,
+                    answer=answer
+                )
+                exam.questions.add(question)  # Add the newly created question to the exam
+                messages.success(request, 'New question added successfully!')
+            else:
+                messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required!')
 
+    # Refetch the questions after copying/adding
+    questions = exam.questions.all()
+
+    return render(request, 'exam_detail.html', {
+        'exam': exam,
+        'questions': questions,
+        'available_exams': available_exams
+    })
+
+
+@login_required
+def grade_exam_view(request, exam_id, student_id):
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        student = Student.objects.get(id=student_id)
+        student_questions = StudentQuestion.objects.filter(exam=exam, student=student)
+
+        if request.method == 'POST':
+            for student_question in student_questions:
+                marks_field = f'marks_{student_question.id}'
+                marks = request.POST.get(marks_field, 0)
+                # Auto-grading logic
+                if student_question.student_answer == student_question.question.answer:
+                    student_question.marks = 1  # Assign 1 mark for correct answers, you can adjust the value
+                else:
+                    student_question.marks = 0  # Assign 0 mark for incorrect answers, you can adjust the value
+                # Allow manual adjustment
+                if marks:
+                    student_question.marks = int(marks)
+                student_question.save()
+
+            messages.success(request, "Grades saved successfully!")
+            return redirect('grade_exam', exam_id=exam.id, student_id=student.id)
+
+        return render(request, 'exams/grade_exam.html', {
+            'exam': exam,
+            'student': student,
+            'student_questions': student_questions
+        })
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+        return redirect('exams')
+    except Student.DoesNotExist:
+        messages.error(request, "Student not found.")
+        return redirect('exams')
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+        return redirect('exams')
 
 def students_view(request):
     students = Student.objects.all()
@@ -519,12 +626,12 @@ def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        form = StudentForm(request.POST)
+        form = StudentForm(request.POST, assigned_class=class_instance)
         if form.is_valid():
-            student = form.save(commit=False)
-            student.assigned_class = class_instance
+            student = form.save(commit=False)  # Don't save to the database yet
+            student.assigned_class = class_instance  # Assign the class
             try:
-                student.save()
+                student.save()  # Now save the student with the assigned class
                 messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
                 return redirect('class_detail', class_id=class_id)
             except Exception as e:
@@ -532,9 +639,43 @@ def add_student_view(request, class_id):
         else:
             messages.error(request, 'Please correct the errors below.')
     
-    form = StudentForm()
+    form = StudentForm(assigned_class=class_instance)
     return render(request, 'add_student.html', {'form': form, 'class': class_instance})
 
+@login_required
+def bulk_upload_students_view(request, class_id):
+    class_instance = Class.objects.get(id=class_id)
+
+    if request.method == 'POST':
+        csv_file = request.FILES['csv_file']
+        decoded_file = csv_file.read().decode('utf-8').splitlines()
+        reader = csv.reader(decoded_file)
+
+        # Skip the header row if necessary
+        header = next(reader)
+
+        try:
+            for row in reader:
+                if len(row) < 4:
+                    raise ValueError("Not enough columns in the CSV file")
+                # Adjust the number of variables based on the actual number of columns in your CSV
+                first_name, last_name, middle_initial, student_id = row[:4]  # Only take the first 4 columns
+
+                Student.objects.create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_initial=middle_initial,
+                    student_id=student_id,
+                    assigned_class=class_instance
+                )
+
+            messages.success(request, "Students added successfully!")
+            return redirect('class_detail', class_id=class_id)
+
+        except ValueError as e:
+            messages.error(request, f"Error processing file: {e}")
+
+    return render(request, 'bulk_upload.html', {'class': class_instance})
 
 @login_required
 @require_POST
@@ -542,29 +683,22 @@ def edit_student(request, student_id):
     student = get_object_or_404(Student, student_id=student_id)
     form = EditStudentForm(request.POST, instance=student)
     if form.is_valid():
-        updated_student = form.save(commit=False)
-        updated_student.assigned_class = student.assigned_class  # Keep the original assigned_class
-        updated_student.save()
+        form.save()
         messages.success(request, 'Student updated successfully!')
-        return redirect('class_detail', class_id=updated_student.assigned_class.id)
     else:
-        messages.error(request, 'Please correct the errors below.')
-        return redirect('class_detail', class_id=student.assigned_class.id)
+        messages.error(request, 'There was an error updating the student.')
+    return redirect('class_detail', class_id=student.assigned_class.id)
 
 
 
 @login_required
+@require_POST
 def delete_student(request, student_id):
     student = get_object_or_404(Student, student_id=student_id)
-
-    if request.method == 'POST':
-        assigned_class_id = student.assigned_class.id
-        student.delete()
-        messages.success(request, 'Student deleted successfully.')
-        return redirect('class_detail', class_id=assigned_class_id)  # Correctly pass class_id
-
-    return redirect('class_detail', class_id=student.assigned_class.id)
-
+    assigned_class_id = student.assigned_class.id
+    student.delete()
+    messages.success(request, 'Student deleted successfully.')
+    return redirect('class_detail', class_id=assigned_class_id)
 
 
 @login_required

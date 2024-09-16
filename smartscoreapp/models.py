@@ -17,7 +17,7 @@ class Class(models.Model):
         return self.name
 
 class Exam(models.Model):
-    exam_id = models.CharField(max_length=3, unique=True)
+    exam_id = models.CharField(max_length=3, unique=True, editable=False)  # Automatically generated
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
     questions = models.ManyToManyField('Question', related_name='exams')
@@ -27,14 +27,28 @@ class Exam(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        if not self.exam_id:
+            self.exam_id = self.generate_exam_id()
+
         if not self.set_id:
             self.set_id = self.generate_set_id()
+
         super().save(*args, **kwargs)
+
+    def generate_exam_id(self):
+        # Get the last used exam_id and increment it
+        last_exam = Exam.objects.order_by('-exam_id').first()
+        if last_exam and last_exam.exam_id.isdigit():
+            next_id = int(last_exam.exam_id) + 1
+        else:
+            next_id = 1
+        return str(next_id).zfill(3)  # Zero-fill to ensure 3 digits (e.g., 001, 002)
 
     def generate_set_id(self):
         exam_id = str(random.randint(0, 99)).zfill(3)
         set_number = str(random.randint(0, 99999)).zfill(5)
         return f"{exam_id}-{set_number}"
+
 
 class Student(models.Model):
     first_name = models.CharField(max_length=50)
@@ -139,10 +153,9 @@ class TestSet(models.Model):
 
     def generate_set_id(self):
         exam_id = str(self.exam.id).zfill(3)[:3]
-        random_digits = ''.join([str(random.randint(0, 9)) for _ in range(3)])
-        set_number = str(random.randint(0, 99)).zfill(2)
-        return f"{exam_id}{random_digits}{set_number}"
-
+        set_number = str(random.randint(0, 99)).zfill(2)  # Removed random_digits
+        return f"{exam_id}{set_number}"
+    
     def __str__(self):
         return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no}, ID: {self.set_id})"
 

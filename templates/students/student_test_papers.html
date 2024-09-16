@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-<!-- Breadcrumb -->
 {% block content %}
+<!-- Breadcrumb -->
 <nav class="flex mb-4" aria-label="Breadcrumb">
   <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
     <li class="inline-flex items-center">
@@ -21,8 +21,15 @@
   </ol>
 </nav>
 
-<h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Test Papers for {{ student.first_name }} {{ student.last_name }}</h1>
+<!-- Header -->
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Test Papers for {{ student.first_name }} {{ student.last_name }}</h1>
+  <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+</div>
 
+{% include 'message_display.html' %}
+
+<!-- Table of Test Papers -->
 <div class="relative overflow-x-auto mb-6">
   <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -31,6 +38,7 @@
         <th scope="col" class="px-6 py-3">Set Number</th>
         <th scope="col" class="px-6 py-3">Set ID</th>
         <th scope="col" class="px-6 py-3">Questions and Answers</th>
+        <th scope="col" class="px-6 py-3">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -40,14 +48,14 @@
           <td class="px-6 py-4">{{ test_set.set_no }}</td>
           <td class="px-6 py-4">{{ test_set.set_id }}</td>
           <td class="px-6 py-4">
-            <ul>
+            <ul class="list-disc pl-4">
               {% for question in test_set.exam.questions.all %}
-                <li>
-                  {{ question.question_text }}
-                  <ul>
+                <li class="mb-2">
+                  <strong>{{ question.question_text }}</strong>
+                  <ul class="list-none pl-4 mt-1">
                     {% for student_question in student.student_questions.all %}
                       {% if student_question.question == question %}
-                        <li><strong>Answer:</strong> {{ student_question.student_answer }}</li>
+                        <li class="text-gray-700 dark:text-gray-300"><strong>Answer:</strong> {{ student_question.student_answer }}</li>
                       {% endif %}
                     {% endfor %}
                   </ul>
@@ -55,16 +63,23 @@
               {% endfor %}
             </ul>
           </td>
+          <td class="px-6 py-4">
+            <a href="{% url 'grade_exam' test_set.exam.id student.id %}" class="text-blue-500 hover:underline">Grade Exam</a>
+          </td>
         </tr>
       {% empty %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
+          <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+<!-- Back Button and Print Button -->
+<div class="flex items-center justify-between">
+  <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+  <button onclick="window.print()" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Print Test Paper</button>
+</div>
 
 {% endblock %}
