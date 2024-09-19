@@ -644,38 +644,52 @@ def add_student_view(request, class_id):
 
 @login_required
 def bulk_upload_students_view(request, class_id):
-    class_instance = Class.objects.get(id=class_id)
+    class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        csv_file = request.FILES['csv_file']
-        decoded_file = csv_file.read().decode('utf-8').splitlines()
-        reader = csv.reader(decoded_file)
-
-        # Skip the header row if necessary
-        header = next(reader)
-
-        try:
+        form = StudentBulkUploadForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            csv_file = request.FILES['csv_file']
+            
+            # Read the uploaded CSV file
+            decoded_file = csv_file.read().decode('utf-8').splitlines()
+            reader = csv.DictReader(decoded_file)
+            
             for row in reader:
-                if len(row) < 4:
-                    raise ValueError("Not enough columns in the CSV file")
-                # Adjust the number of variables based on the actual number of columns in your CSV
-                first_name, last_name, middle_initial, student_id = row[:4]  # Only take the first 4 columns
-
-                Student.objects.create(
-                    first_name=first_name,
-                    last_name=last_name,
-                    middle_initial=middle_initial,
-                    student_id=student_id,
-                    assigned_class=class_instance
-                )
-
-            messages.success(request, "Students added successfully!")
+                student_id = row.get('student_id')
+                first_name = row.get('first_name')
+                last_name = row.get('last_name')
+                middle_initial = row.get('middle_initial', '')
+                
+                # Check if the student ID already exists
+                if Student.objects.filter(student_id=student_id).exists():
+                    # You can choose to update existing students instead of skipping them
+                    messages.warning(request, f"Student with ID {student_id} already exists. Skipping.")
+                    continue  # Skip this student and move to the next one
+                
+                # Create the new student record
+                try:
+                    Student.objects.create(
+                        student_id=student_id,
+                        first_name=first_name,
+                        last_name=last_name,
+                        middle_initial=middle_initial,
+                        assigned_class=class_instance
+                    )
+                except IntegrityError:
+                    messages.error(request, f"Error creating student with ID {student_id}. Skipping.")
+            
+            messages.success(request, 'Student bulk upload completed successfully!')
             return redirect('class_detail', class_id=class_id)
+    
+    else:
+        form = StudentBulkUploadForm()
 
-        except ValueError as e:
-            messages.error(request, f"Error processing file: {e}")
-
-    return render(request, 'bulk_upload.html', {'class': class_instance})
+    return render(request, 'bulk_upload_students.html', {
+        'form': form,
+        'class_instance': class_instance,
+    })
 
 @login_required
 @require_POST
