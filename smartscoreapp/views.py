@@ -337,12 +337,17 @@ def assign_questions_to_student(request, student_id, exam_id):
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = exam.class_assigned
+    
+    # Fetch classes assigned to the logged-in user
+    user_classes = Class.objects.filter(user=request.user)
+
+    # Get selected class and exam from POST data
     selected_class_id = request.POST.get('class_source_id', current_class.id)
     selected_exam_id = request.POST.get('exam_source_id', None)
 
     # If a different class is selected, fetch exams from that class
     if selected_class_id:
-        selected_class = get_object_or_404(Class, id=selected_class_id)
+        selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
         available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
     else:
         available_exams = None
@@ -364,12 +369,13 @@ def select_questions_view(request, exam_id):
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
-        'available_classes': Class.objects.exclude(id=current_class.id),  # Exclude current class
+        'available_classes': user_classes,  # Only user-specific classes
         'available_exams': available_exams,
         'questions': questions,
         'selected_class_id': int(selected_class_id),
         'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
+
 
 
 
