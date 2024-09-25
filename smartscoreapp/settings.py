@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-5y6@@b^mt-)(=*q0n3pc0jtfa)(u#owmhtjq%+_6&wk5uvami1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['smartscoreapp.test', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
