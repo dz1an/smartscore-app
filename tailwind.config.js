@@ -1,9 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content:[
+  content: [
     './templates/**/*.html',
     './node_modules/flowbite/**/*.js'
-],
+  ],
   theme: {
     screens: {
       sm: '480px',
@@ -11,32 +11,46 @@ module.exports = {
       lg: '976px',
       xl: '1440px',
     },
-    colors: {
-      'blue': '#1fb6ff',
-      'purple': '#7e5bef',
-      'pink': '#ff49db',
-      'orange': '#ff7849',
-      'green': '#13ce66',
-      'yellow': '#ffc82c',
-      'gray-dark': '#273444',
-      'gray': '#8492a6',
-      'gray-light': '#d3dce6',
-    },
-    fontFamily: {
-      sans: ['Graphik', 'sans-serif'],
-      serif: ['Merriweather', 'serif'],
-    },
-    borderRadius: {
-      '4xl': '2rem',
-    },
     extend: {
+      colors: {
+        'custom-blue': '#1fb6ff',
+        'custom-purple': '#7e5bef',
+        'custom-pink': '#ff49db',
+        'custom-orange': '#ff7849',
+        'custom-green': '#13ce66',
+        'custom-yellow': '#ffc82c',
+        'custom-gray-dark': '#273444',
+        'custom-gray': '#8492a6',
+        'custom-gray-light': '#d3dce6',
+      },
+      fontFamily: {
+        sans: ['Graphik', 'sans-serif'],
+        serif: ['Merriweather', 'serif'],
+      },
+      borderRadius: {
+        '4xl': '2rem',
+      },
       spacing: {
         '128': '32rem',
         '144': '36rem',
+      },
     },
   },
-  
   plugins: [require('flowbite/plugin')],
+  safelist: [
+    {
+      pattern: /^(?!.*\b(block|inline-block|inline)\b).*\bvertical-align-/,
+    }
+  ]
 }
 
+// postcss.config.js
+module.exports = {
+  plugins: [
+    require('tailwindcss'),
+    require('autoprefixer')({
+      // Add specific browser versions if needed
+      // browsers: ['last 2 versions', '> 5%']
+    }),
+  ]
 }

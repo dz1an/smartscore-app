@@ -19,6 +19,10 @@ from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from .forms import StudentBulkUploadForm
 import csv
+from django.core.files.storage import FileSystemStorage
+from datetime import datetime
+import os
+from django.conf import settings
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -422,6 +426,68 @@ def generate_test_paper_view(request, exam_id):
 
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
 
+@login_required
+def scan_page(request, class_id, exam_id):
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+
+    context = {
+        'current_class': current_class,
+        'current_exam': current_exam,
+        # Add any additional context variables you might need
+    }
+    
+    return render(request, 'scan_page.html', context)
+
+
+def scan_exam_view(request):
+    folder_path = None
+    csv_file = None
+    images = []
+    
+    if request.method == "POST":
+        class_name = request.POST.get('class_name', 'Unknown_Class')
+        
+        # Create folder in base directory with class name and timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = f"{class_name}_{timestamp}"
+        folder_path = os.path.join(settings.MEDIA_ROOT, folder_name)
+        os.makedirs(folder_path, exist_ok=True)
+        
+        # Save CSV file into folder
+        csv_file = request.FILES.get('exam_csv')
+        if csv_file:
+            fs = FileSystemStorage(location=folder_path)
+            csv_filename = fs.save(csv_file.name, csv_file)
+        
+        # Save images into the folder
+        images = request.FILES.getlist('images')
+        for img in images:
+            fs.save(img.name, img)
+
+        # Handle scan and return results
+        result_csv = process_scanned_images(folder_path, images)
+        
+        # Save the result CSV in the same folder
+        with open(os.path.join(folder_path, 'scan_results.csv'), 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerows(result_csv)
+
+        return redirect('scan_exam_view')
+    
+    return render(request, 'scan_exam.html', {
+        'folder_path': folder_path,
+        'csv_file': csv_file,
+        'images': images,
+    })
+
+def process_scanned_images(folder_path, images):
+    # Example function for processing images (replace with your actual logic)
+    # Dummy processing returning a result in CSV format
+    results = [['Student ID', 'Score']]
+    for img in images:
+        results.append([img.name, 80])  # Mock result
+    return results
 
 @login_required
 def process_scanned_papers_view(request):
@@ -534,6 +600,7 @@ def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     available_exams = Exam.objects.exclude(id=exam_id)  # Other exams to copy questions from
     questions = exam.questions.all()  # Questions already added to the current exam
+    current_class = exam.class_assigned
 
     if request.method == 'POST':
         # Get the selected exam ID to copy questions from
@@ -579,6 +646,7 @@ def exam_detail_view(request, exam_id):
 
     return render(request, 'exam_detail.html', {
         'exam': exam,
+        'current_class': current_class,
         'questions': questions,
         'available_exams': available_exams
     })

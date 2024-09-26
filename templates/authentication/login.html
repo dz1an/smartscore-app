@@ -28,12 +28,7 @@
             </div>
         </form>
         {% if messages %}
-            <div class="mb-4">
-                {% for message in messages %}
-                    <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
-                        {{ message }}
-                    </div>
-                {% endfor %}
+        {% include 'message_display.html' %}
             </div>
         {% endif %}
     </div>   

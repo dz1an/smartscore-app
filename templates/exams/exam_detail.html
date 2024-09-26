@@ -42,6 +42,10 @@
       Add Question
     </button>
     <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
+    <!-- Scan Page Button -->
+    <a href="{% url 'scan_page' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Scan Page</a>
+
+</div>
   </div>
 
   <!-- Table of Exam Questions -->
