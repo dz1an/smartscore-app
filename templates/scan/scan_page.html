@@ -29,18 +29,23 @@
     <form method="POST" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
         
-        <!-- Folder and CSV Upload -->
+        <!-- CSV File Indicator -->
         <div>
-            <label for="exam_csv" class="block text-sm font-medium text-gray-700">Exam CSV:</label>
-            <input type="file" id="exam_csv" name="exam_csv" accept=".csv" required 
-                   class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+            <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
+            <select id="csv_indicator" name="csv_indicator" required 
+                    class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <option value="" disabled selected>Select an Exam</option>
+                {% for exam in exams %}
+                    <option value="{{ exam.id }}">{{ exam.name }}</option>
+                {% endfor %}
+            </select>
         </div>
 
-        <!-- Image Upload -->
+        <!-- Image Upload Indicator -->
         <div>
-            <label for="images" class="block text-sm font-medium text-gray-700">Upload Images:</label>
-            <input type="file" id="images" name="images" multiple accept="image/*" 
-                   class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+            <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Image:</label>
+            <input type="file" id="image_upload" name="image_upload" accept="image/*" capture="environment" 
+                   class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
         </div>
 
         <!-- Uploaded Images Table -->
@@ -70,12 +75,16 @@
 
     <!-- JavaScript to handle adding images to the table dynamically -->
     <script>
-        document.getElementById('images').addEventListener('change', function(event) {
+        document.getElementById('image_upload').addEventListener('change', function(event) {
             const imageTable = document.getElementById('image-table');
             imageTable.innerHTML = '';  // Clear previous list
             Array.from(event.target.files).forEach((file, index) => {
+                const url = URL.createObjectURL(file); // Create a URL for the file
                 let row = `<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                              <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${file.name}</td>
+                              <td class="px-6 py-4">
+                                  <img src="${url}" alt="${file.name}" class="w-16 h-16 object-cover" />
+                                  <span class="ml-2">${file.name}</span>
+                              </td>
                               <td class="px-6 py-4">
                                   <button type="button" class="text-red-600 hover:underline" onclick="removeImage(${index})">Remove</button>
                               </td>

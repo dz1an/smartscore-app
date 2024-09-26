@@ -430,14 +430,18 @@ def generate_test_paper_view(request, exam_id):
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Fetch exams related to the current class
+    exams = current_class.exams.all()  # Get all exams associated with this class
 
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
-        # Add any additional context variables you might need
+        'exams': exams  # Pass the exams to the template
     }
     
     return render(request, 'scan_page.html', context)
+
 
 
 def scan_exam_view(request):
