@@ -74,7 +74,9 @@ urlpatterns = [
     #scan
     path('scan_exam/', scan_exam_view, name='scan_exam_view'),
     path('exams/<int:class_id>/<int:exam_id>/scan/', scan_page, name='scan_page'),
-    path('exam/generate-sets/<int:class_id>/<int:exam_id>/', views.generate_exam_sets, name='generate_sets'),
+    path('exam/generate-sets/<int:class_id>/<int:exam_id>/', generate_exam_sets, name='generate_exam_sets'),
+    path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_sets'),
+
 
     
 
