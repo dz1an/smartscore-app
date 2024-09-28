@@ -257,6 +257,8 @@ def add_question_view(request, exam_id):
 @login_required
 def create_exam_set(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    students = Student.objects.filter(assigned_class=exam.class_assigned)
+
     if request.method == 'POST':
         form = TestSetForm(request.POST)
         if form.is_valid():
@@ -268,8 +270,8 @@ def create_exam_set(request, exam_id):
     else:
         form = TestSetForm()
     
-    students = Student.objects.filter(assigned_class=exam.class_assigned)
     return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
+
 
 
 @login_required
@@ -492,6 +494,31 @@ def process_scanned_images(folder_path, images):
     for img in images:
         results.append([img.name, 80])  # Mock result
     return results
+
+def generate_exam_sets(request, class_id, exam_id):
+    # Fetch the exam and class based on the IDs
+    exam = get_object_or_404(Exam, id=exam_id)
+    current_class = get_object_or_404(Class, id=class_id)
+
+    # Example logic for generating exam sets or data (you can add your custom logic here)
+    students = current_class.students.all()  # Fetch students in the class
+    generated_sets = []
+
+    for student in students:
+        # Example: create test sets or process existing ones
+        if not TestSet.objects.filter(exam=exam, student=student).exists():
+            test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
+            generated_sets.append(test_set)
+
+    context = {
+        'exam': exam,
+        'current_class': current_class,
+        'generated_sets': generated_sets,  # Pass the generated sets to the template
+    }
+
+    # Render the generate_sets.html template
+    return render(request, 'exams/generate_sets.html', context)
+
 
 @login_required
 def process_scanned_papers_view(request):

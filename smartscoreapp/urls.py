@@ -8,7 +8,7 @@ from smartscoreapp.views import (
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
     select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
     generate_questionnaire_view, list_classes_view, class_exams_view, save_test_paper_view, student_test_papers_view,
-    view_test_set_view, grade_exam_view, bulk_upload_students_view, scan_exam_view, scan_page
+    view_test_set_view, grade_exam_view, bulk_upload_students_view, scan_exam_view, scan_page, generate_exam_sets 
 )
 from django.conf.urls.static import static
 from django.conf import settings
@@ -74,6 +74,10 @@ urlpatterns = [
     #scan
     path('scan_exam/', scan_exam_view, name='scan_exam_view'),
     path('exams/<int:class_id>/<int:exam_id>/scan/', scan_page, name='scan_page'),
+    path('exam/generate-sets/<int:class_id>/<int:exam_id>/', views.generate_exam_sets, name='generate_sets'),
+
+    
+
 
 
 

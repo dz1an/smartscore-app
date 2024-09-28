@@ -29,6 +29,8 @@
 
   {% include 'message_display.html' %}
 
+
+  
   <!-- Questions Section -->
   <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Exam Questions</h2>
 
@@ -45,7 +47,9 @@
     <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
     <!-- Scan Page Button -->
     <a href="{% url 'scan_page' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Scan Page</a>
+    <a href="{% url 'generate_sets' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Generate Sets</a>
 
+  
   </div>
   
 

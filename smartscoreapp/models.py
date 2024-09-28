@@ -16,11 +16,31 @@ class Class(models.Model):
     def __str__(self):
         return self.name
 
+class Question(models.Model):
+    ANSWER_CHOICES = [
+        ('A', 'Option A'),
+        ('B', 'Option B'),
+        ('C', 'Option C'),
+        ('D', 'Option D'),
+        ('E', 'Option E'),
+    ]
+
+    question_text = models.CharField(max_length=255)
+    option_a = models.CharField(max_length=255)
+    option_b = models.CharField(max_length=255)
+    option_c = models.CharField(max_length=255)
+    option_d = models.CharField(max_length=255)
+    option_e = models.CharField(max_length=255)
+    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
+
+    def __str__(self):
+        return self.question_text
+
 class Exam(models.Model):
     exam_id = models.CharField(max_length=3, unique=True, editable=False)  # Automatically generated
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
-    questions = models.ManyToManyField('Question', related_name='exams')
+    questions = models.ManyToManyField(Question, related_name='exams')
     set_id = models.CharField(max_length=9, unique=True, blank=True)  # Format: '012-54321'
 
     def __str__(self):
@@ -48,7 +68,6 @@ class Exam(models.Model):
         exam_id = str(random.randint(0, 99)).zfill(3)
         set_number = str(random.randint(0, 99999)).zfill(5)
         return f"{exam_id}-{set_number}"
-
 
 class Student(models.Model):
     first_name = models.CharField(max_length=50)
@@ -79,33 +98,13 @@ class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
     set_number = models.IntegerField()
     students = models.ManyToManyField(Student, related_name='exam_sets')
+    questions = models.ManyToManyField(Question, related_name='exam_sets', blank=True)  # New field for questions
 
     class Meta:
         unique_together = ('exam', 'set_number')
 
     def __str__(self):
         return f"{self.exam.name} - Set {self.set_number}"
-
-class Question(models.Model):
-    ANSWER_CHOICES = [
-        ('A', 'Option A'),
-        ('B', 'Option B'),
-        ('C', 'Option C'),
-        ('D', 'Option D'),
-        ('E', 'Option E'),
-    ]
-
-    question_text = models.CharField(max_length=255)
-    option_a = models.CharField(max_length=255)
-    option_b = models.CharField(max_length=255)
-    option_c = models.CharField(max_length=255)
-    option_d = models.CharField(max_length=255)
-    option_e = models.CharField(max_length=255)
-    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
-
-    def __str__(self):
-        return self.question_text
-
 
 class StudentQuestion(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='student_questions')
