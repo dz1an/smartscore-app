@@ -494,21 +494,35 @@ def process_scanned_images(folder_path, images):
     for img in images:
         results.append([img.name, 80])  # Mock result
     return results
-
+@login_required
 def generate_exam_sets(request, class_id, exam_id):
-    # Fetch the exam and class based on the IDs
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    # Example logic for generating exam sets or data (you can add your custom logic here)
-    students = current_class.students.all()  # Fetch students in the class
-    generated_sets = []
+    generated_sets = []  # Initialize the list for generated sets
 
-    for student in students:
-        # Example: create test sets or process existing ones
-        if not TestSet.objects.filter(exam=exam, student=student).exists():
-            test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
-            generated_sets.append(test_set)
+    if request.method == "POST":
+        students = current_class.students.all()
+        exam_questions = exam.questions.all()  # Fetch questions directly related to this exam
+
+        for student in students:
+            # Check if the student already has a test set for this exam
+            if not TestSet.objects.filter(exam=exam, student=student).exists():
+                # Create a TestSet for the student
+                test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
+
+                # Randomly select questions for this test set
+                randomized_questions = list(exam_questions)
+                random.shuffle(randomized_questions)
+
+                # Assuming you want to assign a specific number of questions
+                for question in randomized_questions[:10]:  # Adjust the number as needed
+                    test_set.questions.add(question)  # Associate questions to the test set
+
+                generated_sets.append(test_set)  # Store generated test sets
+                print(f"Generated TestSet: {test_set}")  # Debug: verify created test sets
+
+        messages.success(request, "Exam sets generated successfully.")
 
     context = {
         'exam': exam,
@@ -516,8 +530,8 @@ def generate_exam_sets(request, class_id, exam_id):
         'generated_sets': generated_sets,  # Pass the generated sets to the template
     }
 
-    # Render the generate_sets.html template
     return render(request, 'exams/generate_sets.html', context)
+
 
 
 @login_required
@@ -762,14 +776,13 @@ def bulk_upload_students_view(request, class_id):
             reader = csv.DictReader(decoded_file)
             
             for row in reader:
-                student_id = row.get('student_id')
-                first_name = row.get('first_name')
-                last_name = row.get('last_name')
-                middle_initial = row.get('middle_initial', '')
+                student_id = row.get('ID')  # Ensure this matches your CSV header
+                first_name = row.get('First Name')
+                last_name = row.get('Last Name')
+                middle_initial = row.get('Middle Initial', '')
                 
                 # Check if the student ID already exists
                 if Student.objects.filter(student_id=student_id).exists():
-                    # You can choose to update existing students instead of skipping them
                     messages.warning(request, f"Student with ID {student_id} already exists. Skipping.")
                     continue  # Skip this student and move to the next one
                 
@@ -782,8 +795,10 @@ def bulk_upload_students_view(request, class_id):
                         middle_initial=middle_initial,
                         assigned_class=class_instance
                     )
-                except IntegrityError:
-                    messages.error(request, f"Error creating student with ID {student_id}. Skipping.")
+                    messages.success(request, f"Student {first_name} {last_name} added successfully!")
+                except IntegrityError as e:
+                    messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+                    continue  # Skip to next row on error
             
             messages.success(request, 'Student bulk upload completed successfully!')
             return redirect('class_detail', class_id=class_id)
@@ -795,6 +810,7 @@ def bulk_upload_students_view(request, class_id):
         'form': form,
         'class_instance': class_instance,
     })
+
 
 @login_required
 @require_POST
