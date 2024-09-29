@@ -125,7 +125,7 @@ def class_detail_view(request, class_id):
     if class_instance.user != user_instance:
         raise PermissionDenied("You are not authorized to view this class.")
 
-    students = Student.objects.filter(assigned_class=class_instance)
+    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name', 'middle_initial')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -739,27 +739,40 @@ def grade_exam_view(request, exam_id, student_id):
 def students_view(request):
     students = Student.objects.all()
     return render(request, 'students.html', {'students': students})
-
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        form = StudentForm(request.POST, assigned_class=class_instance)
-        if form.is_valid():
-            student = form.save(commit=False)  # Don't save to the database yet
-            student.assigned_class = class_instance  # Assign the class
-            try:
-                student.save()  # Now save the student with the assigned class
-                messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
-                return redirect('class_detail', class_id=class_id)
-            except Exception as e:
-                messages.error(request, f"Error saving student: {e}")
-        else:
-            messages.error(request, 'Please correct the errors below.')
-    
-    form = StudentForm(assigned_class=class_instance)
-    return render(request, 'add_student.html', {'form': form, 'class': class_instance})
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        middle_initial = request.POST.get('middle_initial', '')
+        student_id = request.POST.get('student_id')
+
+        # Check if the student ID already exists
+        if Student.objects.filter(student_id=student_id).exists():
+            messages.warning(request, f"Student with ID {student_id} already exists.")
+            return redirect('class_detail', class_id=class_id)
+
+        try:
+            # Create the new student record with assigned_class
+            Student.objects.create(
+                student_id=student_id,
+                first_name=first_name,
+                last_name=last_name,
+                middle_initial=middle_initial,
+                assigned_class=class_instance  # Ensure the class is assigned here
+            )
+            messages.success(request, f"Student {first_name} {last_name} added successfully!")
+            return redirect('class_detail', class_id=class_id)
+        except IntegrityError as e:
+            messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+            return redirect('class_detail', class_id=class_id)
+
+    return render(request, 'add_student.html', {
+        'class_instance': class_instance,
+    })
+
 
 @login_required
 def bulk_upload_students_view(request, class_id):
