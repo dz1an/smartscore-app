@@ -37,11 +37,11 @@ class Question(models.Model):
         return self.question_text
 
 class Exam(models.Model):
-    exam_id = models.CharField(max_length=3, unique=True, editable=False)  # Automatically generated
+    exam_id = models.CharField(max_length=3, unique=True, editable=False)
     name = models.CharField(max_length=50)
-    class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
+    class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.SET_NULL, null=True)  # Set to NULL on class deletion
     questions = models.ManyToManyField(Question, related_name='exams')
-    set_id = models.CharField(max_length=9, unique=True, blank=True)  # Format: '012-54321'
+    set_id = models.CharField(max_length=9, unique=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -54,6 +54,7 @@ class Exam(models.Model):
             self.set_id = self.generate_set_id()
 
         super().save(*args, **kwargs)
+
 
     def generate_exam_id(self):
         # Get the last used exam_id and increment it

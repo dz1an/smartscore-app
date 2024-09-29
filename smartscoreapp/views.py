@@ -109,13 +109,35 @@ def classes_view(request):
 
 @login_required
 def delete_class_view(request, class_id):
-    class_instance = get_object_or_404(Class, id=class_id)
-    if class_instance.user == request.user:
+    try:
+        # Fetch the class to be deleted
+        class_instance = get_object_or_404(Class, id=class_id, user=request.user)
+
+        # Fetch or create the 'Unassigned Class'
+        unassigned_class, created = Class.objects.get_or_create(
+            name='Unassigned Class', 
+            defaults={'user': request.user}
+        )
+
+        # Move all associated exams to the 'Unassigned Class'
+        Exam.objects.filter(class_assigned=class_instance).update(class_assigned=unassigned_class)
+
+        # Delete the class after reassigning exams
         class_instance.delete()
-        messages.success(request, 'Class deleted successfully!')
-    else:
-        messages.error(request, 'You are not authorized to delete this class.')
-    return redirect('classes')
+
+        messages.success(request, 'Class deleted successfully, and exams have been moved to Unassigned Class.')
+        return redirect('classes')
+    
+    except IntegrityError as e:
+        messages.error(request, 'Error occurred while deleting the class: {}'.format(str(e)))
+        return redirect('classes')
+
+    except Class.DoesNotExist:
+        messages.error(request, 'Class not found.')
+        return redirect('classes')
+
+
+
 
 @login_required
 def class_detail_view(request, class_id):
@@ -368,8 +390,11 @@ def select_questions_view(request, exam_id):
     if request.method == 'POST' and 'questions' in request.POST:
         selected_question_ids = request.POST.getlist('questions')
         selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        count_added = selected_questions.count()  # Get the number of selected questions
         exam.questions.add(*selected_questions)  # Add selected questions to the current exam
-        messages.success(request, 'Questions added successfully!')
+
+        # Update the success message to include the count of added questions
+        messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
         return redirect('exam_detail', exam_id=exam_id)
 
     return render(request, 'select_questions.html', {
