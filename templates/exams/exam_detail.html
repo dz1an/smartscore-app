@@ -29,28 +29,18 @@
 
   {% include 'message_display.html' %}
 
-
-  
   <!-- Questions Section -->
   <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Exam Questions</h2>
-
-  <!-- Add Question Button with Icon -->
-  <div class="mb-4 flex items-center space-x-4">
-    <button 
-      class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none"
-      onclick="openAddQuestionModal()">
-      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-      </svg>
-      Add Question
-    </button>
-    <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
-    <!-- Scan Page Button -->
-    <a href="{% url 'scan_page' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Scan Page</a>
-    <a href="{% url 'generate_sets' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Generate Sets</a>
-
+   <!-- Add Question Button with Icon -->
+      
+   <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
   
-  </div>
+   <a href="{% url 'scan_page' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Scan Page</a>
+   <a href="{% url 'generate_sets' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Generate Sets</a>
+
+  <div class="mb-4 flex items-center space-x-4">
+    
+  
   
 
   <!-- Table of Exam Questions -->
@@ -94,10 +84,27 @@
       
     </table>
       <!-- Add a button to open the Answer Key Modal -->
-  <button type="button" onclick="openAnswerKeyModal()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+       
+       <!-- Add Question Button with Icon -->
+       <button 
+       class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200"
+       onclick="openAddQuestionModal()">
+       <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+       </svg>
+       Add Question
+     </button>
+     <!-- Button to open the Answer Key Modal -->
+    <button 
+    type="button" 
+    onclick="openAnswerKeyModal()" 
+    class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200">
     View Answer Key
   </button>
-  </div>
+      
+</div>
+</div>
+    
 
   <!-- Add Question Modal -->
   <div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">

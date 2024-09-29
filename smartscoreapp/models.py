@@ -140,24 +140,27 @@ class Answer(models.Model):
     def __str__(self):
         return f"Answer for: {self.question.question_text[:50]}..."
 
+
 class TestSet(models.Model):
-    exam = models.ForeignKey(Exam, related_name='test_sets', on_delete=models.CASCADE)
-    student = models.ForeignKey(Student, related_name='test_sets', on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     set_no = models.IntegerField()
-    set_id = models.CharField(max_length=8, unique=True, editable=False)
+    set_id = models.CharField(max_length=5, unique=True, blank=True)  # Add set_id as a CharField
+    questions = models.ManyToManyField('Question', related_name='test_sets', blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.set_id:
-            self.set_id = self.generate_set_id()
+        if not self.set_id:  # Check if set_id is not already set
+            self.set_id = self.generate_set_id()  # Generate set_id
         super().save(*args, **kwargs)
 
     def generate_set_id(self):
         exam_id = str(self.exam.id).zfill(3)[:3]
-        set_number = str(random.randint(0, 99)).zfill(2)  # Removed random_digits
+        set_number = str(random.randint(0, 99)).zfill(2)  # Ensure two-digit set number
         return f"{exam_id}{set_number}"
-    
+
     def __str__(self):
         return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no}, ID: {self.set_id})"
+
 
 # Specify unique related_name attributes for groups and user_permissions fields
 User._meta.get_field('groups').remote_field.related_name = 'custom_user_groups'

@@ -137,8 +137,6 @@ def delete_class_view(request, class_id):
         return redirect('classes')
 
 
-
-
 @login_required
 def class_detail_view(request, class_id):
     user_instance = request.user
@@ -147,7 +145,8 @@ def class_detail_view(request, class_id):
     if class_instance.user != user_instance:
         raise PermissionDenied("You are not authorized to view this class.")
 
-    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name', 'middle_initial')
+    # Order students alphabetically by last name and then first name
+    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -171,6 +170,7 @@ def class_detail_view(request, class_id):
         'form': form,
     }
     return render(request, 'class_detail.html', context)
+
 
 @login_required
 def update_class_name_view(request, class_id):
@@ -519,6 +519,7 @@ def process_scanned_images(folder_path, images):
     for img in images:
         results.append([img.name, 80])  # Mock result
     return results
+
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -530,6 +531,10 @@ def generate_exam_sets(request, class_id, exam_id):
         students = current_class.students.all()
         exam_questions = exam.questions.all()  # Fetch questions directly related to this exam
 
+        if not exam_questions.exists():
+            messages.warning(request, "No questions available for this exam.")
+            return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class})
+
         for student in students:
             # Check if the student already has a test set for this exam
             if not TestSet.objects.filter(exam=exam, student=student).exists():
@@ -540,9 +545,13 @@ def generate_exam_sets(request, class_id, exam_id):
                 randomized_questions = list(exam_questions)
                 random.shuffle(randomized_questions)
 
-                # Assuming you want to assign a specific number of questions
-                for question in randomized_questions[:10]:  # Adjust the number as needed
-                    test_set.questions.add(question)  # Associate questions to the test set
+                number_of_questions_to_select = 10  # Adjust as needed
+                if len(randomized_questions) < number_of_questions_to_select:
+                    number_of_questions_to_select = len(randomized_questions)
+
+                # Associate questions to the test set
+                for question in randomized_questions[:number_of_questions_to_select]:
+                    test_set.questions.add(question)
 
                 generated_sets.append(test_set)  # Store generated test sets
                 print(f"Generated TestSet: {test_set}")  # Debug: verify created test sets
@@ -556,6 +565,7 @@ def generate_exam_sets(request, class_id, exam_id):
     }
 
     return render(request, 'exams/generate_sets.html', context)
+
 
 
 
@@ -798,7 +808,6 @@ def add_student_view(request, class_id):
         'class_instance': class_instance,
     })
 
-
 @login_required
 def bulk_upload_students_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -812,6 +821,9 @@ def bulk_upload_students_view(request, class_id):
             # Read the uploaded CSV file
             decoded_file = csv_file.read().decode('utf-8').splitlines()
             reader = csv.DictReader(decoded_file)
+
+            # Initialize a counter for successfully added students
+            successful_additions = 0
             
             for row in reader:
                 student_id = row.get('ID')  # Ensure this matches your CSV header
@@ -833,12 +845,17 @@ def bulk_upload_students_view(request, class_id):
                         middle_initial=middle_initial,
                         assigned_class=class_instance
                     )
-                    messages.success(request, f"Student {first_name} {last_name} added successfully!")
+                    successful_additions += 1  # Increment the counter
                 except IntegrityError as e:
                     messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
                     continue  # Skip to next row on error
             
-            messages.success(request, 'Student bulk upload completed successfully!')
+            # Success message for total added students
+            if successful_additions > 0:
+                messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
+            else:
+                messages.info(request, 'No new students were added during the bulk upload.')
+
             return redirect('class_detail', class_id=class_id)
     
     else:
