@@ -55,7 +55,6 @@ class Exam(models.Model):
 
         super().save(*args, **kwargs)
 
-
     def generate_exam_id(self):
         # Get the last used exam_id and increment it
         last_exam = Exam.objects.order_by('-exam_id').first()

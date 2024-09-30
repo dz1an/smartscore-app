@@ -22,6 +22,7 @@ import csv
 from django.core.files.storage import FileSystemStorage
 from datetime import datetime
 import os
+import string
 from django.conf import settings
 
 User = get_user_model()
@@ -520,20 +521,29 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
+
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    generated_sets = []  # Initialize the list for generated sets
+    generated_sets = []
 
     if request.method == "POST":
         students = current_class.students.all()
-        exam_questions = exam.questions.all()  # Fetch questions directly related to this exam
+        exam_questions = exam.questions.all()
 
         if not exam_questions.exists():
             messages.warning(request, "No questions available for this exam.")
             return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class})
+
+        # Create the CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
+
+        # Initialize CSV writer
+        writer = csv.writer(response)
+        writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
 
         for student in students:
             # Check if the student already has a test set for this exam
@@ -549,24 +559,44 @@ def generate_exam_sets(request, class_id, exam_id):
                 if len(randomized_questions) < number_of_questions_to_select:
                     number_of_questions_to_select = len(randomized_questions)
 
-                # Associate questions to the test set
-                for question in randomized_questions[:number_of_questions_to_select]:
-                    test_set.questions.add(question)
+                selected_questions = randomized_questions[:number_of_questions_to_select]
 
-                generated_sets.append(test_set)  # Store generated test sets
-                print(f"Generated TestSet: {test_set}")  # Debug: verify created test sets
+                # Create answer key based on selected questions
+                answer_key = ''.join(str(['A', 'B', 'C', 'D', 'E'].index(question.answer)) for question in selected_questions)
+
+                # Format student ID by removing the first 4 characters
+                formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
+
+                # Generate a unique 5-character exam ID
+                exam_unique_id = str(random.randint(10000, 99999))  # Ensure it’s a 5-digit ID
+
+                # Get the student's middle initial
+                middle_initial = student.middle_initial if student.middle_initial else ''
+
+                # Write the data to the CSV
+                writer.writerow([
+                    student.last_name,
+                    student.first_name,
+                    middle_initial,
+                    formatted_id,
+                    exam_unique_id,
+                    answer_key
+                ])
+
+                generated_sets.append(test_set)
 
         messages.success(request, "Exam sets generated successfully.")
+
+        # Return the CSV file as a response
+        return response
 
     context = {
         'exam': exam,
         'current_class': current_class,
-        'generated_sets': generated_sets,  # Pass the generated sets to the template
+        'generated_sets': generated_sets,
     }
 
     return render(request, 'exams/generate_sets.html', context)
-
-
 
 
 @login_required
