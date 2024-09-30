@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
 <nav class="flex mb-4" aria-label="Breadcrumb">
   <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
     <li class="inline-flex items-center">
@@ -41,12 +42,17 @@
 
 <!-- Add Student and Bulk Upload Buttons -->
 <div class="mb-4 flex space-x-4">
-  <button class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none" onclick="openAddStudentModal()">
-    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-    </svg>
-    Add Student
-  </button>
+  <button 
+  data-modal-target="add-student-modal-{{ class.id }}" 
+  data-modal-toggle="add-student-modal-{{ class.id }}" 
+  class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none">
+  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+  </svg>
+  Add Student
+</button>
+
+  
 
   <button class="flex items-center text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg focus:outline-none" onclick="openBulkUploadModal()">
     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -87,15 +93,15 @@
 </div>
 
 <!-- Modals -->
-<!-- Add Student Modal -->
-<div id="add-student-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+<!-- Modal for adding a student to the class -->
+<div id="add-student-modal-{{ class.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
   <div class="relative p-4 w-full max-w-md max-h-full">
     <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
       <div class="modal-header flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
           Add Student to {{ class.name }}
         </h3>
-        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="add-student-modal">
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="add-student-modal-{{ class.id }}">
           <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
           </svg>
@@ -132,6 +138,7 @@
     </div>
   </div>
 </div>
+
 
 
 <!-- Bulk Upload Modal -->
@@ -209,6 +216,7 @@
     </div>
   </div>
 </div>
+</div>
 
 <!-- JavaScript Section -->
 <script>
@@ -221,15 +229,12 @@
   }
 
   function openAddStudentModal(classId) {
-  document.getElementById(`add-student-modal-${classId}`).classList.remove('hidden');
+    document.getElementById(`add-student-modal-${classId}`).classList.remove('hidden');
   }
 
   function closeAddStudentModal(classId) {
-  document.getElementById(`add-student-modal-${classId}`).classList.add('hidden');
+    document.getElementById(`add-student-modal-${classId}`).classList.add('hidden');
   }
-
-
-
 
   function openBulkUploadModal() {
     document.getElementById('bulkUploadModal').classList.remove('hidden');

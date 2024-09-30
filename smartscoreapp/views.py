@@ -19,6 +19,10 @@ from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from .forms import StudentBulkUploadForm
 import csv
+from django.core.files.storage import FileSystemStorage
+from datetime import datetime
+import os
+from django.conf import settings
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -105,13 +109,33 @@ def classes_view(request):
 
 @login_required
 def delete_class_view(request, class_id):
-    class_instance = get_object_or_404(Class, id=class_id)
-    if class_instance.user == request.user:
+    try:
+        # Fetch the class to be deleted
+        class_instance = get_object_or_404(Class, id=class_id, user=request.user)
+
+        # Fetch or create the 'Unassigned Class'
+        unassigned_class, created = Class.objects.get_or_create(
+            name='Unassigned Class', 
+            defaults={'user': request.user}
+        )
+
+        # Move all associated exams to the 'Unassigned Class'
+        Exam.objects.filter(class_assigned=class_instance).update(class_assigned=unassigned_class)
+
+        # Delete the class after reassigning exams
         class_instance.delete()
-        messages.success(request, 'Class deleted successfully!')
-    else:
-        messages.error(request, 'You are not authorized to delete this class.')
-    return redirect('classes')
+
+        messages.success(request, 'Class deleted successfully, and exams have been moved to Unassigned Class.')
+        return redirect('classes')
+    
+    except IntegrityError as e:
+        messages.error(request, 'Error occurred while deleting the class: {}'.format(str(e)))
+        return redirect('classes')
+
+    except Class.DoesNotExist:
+        messages.error(request, 'Class not found.')
+        return redirect('classes')
+
 
 @login_required
 def class_detail_view(request, class_id):
@@ -121,7 +145,8 @@ def class_detail_view(request, class_id):
     if class_instance.user != user_instance:
         raise PermissionDenied("You are not authorized to view this class.")
 
-    students = Student.objects.filter(assigned_class=class_instance)
+    # Order students alphabetically by last name and then first name
+    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -145,6 +170,7 @@ def class_detail_view(request, class_id):
         'form': form,
     }
     return render(request, 'class_detail.html', context)
+
 
 @login_required
 def update_class_name_view(request, class_id):
@@ -253,6 +279,8 @@ def add_question_view(request, exam_id):
 @login_required
 def create_exam_set(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
+    students = Student.objects.filter(assigned_class=exam.class_assigned)
+
     if request.method == 'POST':
         form = TestSetForm(request.POST)
         if form.is_valid():
@@ -264,8 +292,8 @@ def create_exam_set(request, exam_id):
     else:
         form = TestSetForm()
     
-    students = Student.objects.filter(assigned_class=exam.class_assigned)
     return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
+
 
 
 @login_required
@@ -337,12 +365,17 @@ def assign_questions_to_student(request, student_id, exam_id):
 def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = exam.class_assigned
+    
+    # Fetch classes assigned to the logged-in user
+    user_classes = Class.objects.filter(user=request.user)
+
+    # Get selected class and exam from POST data
     selected_class_id = request.POST.get('class_source_id', current_class.id)
     selected_exam_id = request.POST.get('exam_source_id', None)
 
     # If a different class is selected, fetch exams from that class
     if selected_class_id:
-        selected_class = get_object_or_404(Class, id=selected_class_id)
+        selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
         available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
     else:
         available_exams = None
@@ -357,19 +390,23 @@ def select_questions_view(request, exam_id):
     if request.method == 'POST' and 'questions' in request.POST:
         selected_question_ids = request.POST.getlist('questions')
         selected_questions = Question.objects.filter(id__in=selected_question_ids)
+        count_added = selected_questions.count()  # Get the number of selected questions
         exam.questions.add(*selected_questions)  # Add selected questions to the current exam
-        messages.success(request, 'Questions added successfully!')
+
+        # Update the success message to include the count of added questions
+        messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
         return redirect('exam_detail', exam_id=exam_id)
 
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
-        'available_classes': Class.objects.exclude(id=current_class.id),  # Exclude current class
+        'available_classes': user_classes,  # Only user-specific classes
         'available_exams': available_exams,
         'questions': questions,
         'selected_class_id': int(selected_class_id),
         'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
+
 
 
 
@@ -415,6 +452,121 @@ def generate_test_paper_view(request, exam_id):
     students = Student.objects.filter(assigned_class=exam.class_assigned)
 
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
+
+@login_required
+def scan_page(request, class_id, exam_id):
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Fetch exams related to the current class
+    exams = current_class.exams.all()  # Get all exams associated with this class
+
+    context = {
+        'current_class': current_class,
+        'current_exam': current_exam,
+        'exams': exams  # Pass the exams to the template
+    }
+    
+    return render(request, 'scan_page.html', context)
+
+
+
+def scan_exam_view(request):
+    folder_path = None
+    csv_file = None
+    images = []
+    
+    if request.method == "POST":
+        class_name = request.POST.get('class_name', 'Unknown_Class')
+        
+        # Create folder in base directory with class name and timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = f"{class_name}_{timestamp}"
+        folder_path = os.path.join(settings.MEDIA_ROOT, folder_name)
+        os.makedirs(folder_path, exist_ok=True)
+        
+        # Save CSV file into folder
+        csv_file = request.FILES.get('exam_csv')
+        if csv_file:
+            fs = FileSystemStorage(location=folder_path)
+            csv_filename = fs.save(csv_file.name, csv_file)
+        
+        # Save images into the folder
+        images = request.FILES.getlist('images')
+        for img in images:
+            fs.save(img.name, img)
+
+        # Handle scan and return results
+        result_csv = process_scanned_images(folder_path, images)
+        
+        # Save the result CSV in the same folder
+        with open(os.path.join(folder_path, 'scan_results.csv'), 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerows(result_csv)
+
+        return redirect('scan_exam_view')
+    
+    return render(request, 'scan_exam.html', {
+        'folder_path': folder_path,
+        'csv_file': csv_file,
+        'images': images,
+    })
+
+def process_scanned_images(folder_path, images):
+    # Example function for processing images (replace with your actual logic)
+    # Dummy processing returning a result in CSV format
+    results = [['Student ID', 'Score']]
+    for img in images:
+        results.append([img.name, 80])  # Mock result
+    return results
+
+@login_required
+def generate_exam_sets(request, class_id, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    current_class = get_object_or_404(Class, id=class_id)
+
+    generated_sets = []  # Initialize the list for generated sets
+
+    if request.method == "POST":
+        students = current_class.students.all()
+        exam_questions = exam.questions.all()  # Fetch questions directly related to this exam
+
+        if not exam_questions.exists():
+            messages.warning(request, "No questions available for this exam.")
+            return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class})
+
+        for student in students:
+            # Check if the student already has a test set for this exam
+            if not TestSet.objects.filter(exam=exam, student=student).exists():
+                # Create a TestSet for the student
+                test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
+
+                # Randomly select questions for this test set
+                randomized_questions = list(exam_questions)
+                random.shuffle(randomized_questions)
+
+                number_of_questions_to_select = 10  # Adjust as needed
+                if len(randomized_questions) < number_of_questions_to_select:
+                    number_of_questions_to_select = len(randomized_questions)
+
+                # Associate questions to the test set
+                for question in randomized_questions[:number_of_questions_to_select]:
+                    test_set.questions.add(question)
+
+                generated_sets.append(test_set)  # Store generated test sets
+                print(f"Generated TestSet: {test_set}")  # Debug: verify created test sets
+
+        messages.success(request, "Exam sets generated successfully.")
+
+    context = {
+        'exam': exam,
+        'current_class': current_class,
+        'generated_sets': generated_sets,  # Pass the generated sets to the template
+    }
+
+    return render(request, 'exams/generate_sets.html', context)
+
+
 
 
 @login_required
@@ -528,6 +680,7 @@ def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     available_exams = Exam.objects.exclude(id=exam_id)  # Other exams to copy questions from
     questions = exam.questions.all()  # Questions already added to the current exam
+    current_class = exam.class_assigned
 
     if request.method == 'POST':
         # Get the selected exam ID to copy questions from
@@ -573,6 +726,7 @@ def exam_detail_view(request, exam_id):
 
     return render(request, 'exam_detail.html', {
         'exam': exam,
+        'current_class': current_class,
         'questions': questions,
         'available_exams': available_exams
     })
@@ -620,62 +774,98 @@ def grade_exam_view(request, exam_id, student_id):
 def students_view(request):
     students = Student.objects.all()
     return render(request, 'students.html', {'students': students})
-
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        form = StudentForm(request.POST, assigned_class=class_instance)
-        if form.is_valid():
-            student = form.save(commit=False)  # Don't save to the database yet
-            student.assigned_class = class_instance  # Assign the class
-            try:
-                student.save()  # Now save the student with the assigned class
-                messages.success(request, f'Student added successfully! Student ID: {student.student_id}')
-                return redirect('class_detail', class_id=class_id)
-            except Exception as e:
-                messages.error(request, f"Error saving student: {e}")
-        else:
-            messages.error(request, 'Please correct the errors below.')
-    
-    form = StudentForm(assigned_class=class_instance)
-    return render(request, 'add_student.html', {'form': form, 'class': class_instance})
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        middle_initial = request.POST.get('middle_initial', '')
+        student_id = request.POST.get('student_id')
+
+        # Check if the student ID already exists
+        if Student.objects.filter(student_id=student_id).exists():
+            messages.warning(request, f"Student with ID {student_id} already exists.")
+            return redirect('class_detail', class_id=class_id)
+
+        try:
+            # Create the new student record with assigned_class
+            Student.objects.create(
+                student_id=student_id,
+                first_name=first_name,
+                last_name=last_name,
+                middle_initial=middle_initial,
+                assigned_class=class_instance  # Ensure the class is assigned here
+            )
+            messages.success(request, f"Student {first_name} {last_name} added successfully!")
+            return redirect('class_detail', class_id=class_id)
+        except IntegrityError as e:
+            messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+            return redirect('class_detail', class_id=class_id)
+
+    return render(request, 'add_student.html', {
+        'class_instance': class_instance,
+    })
 
 @login_required
 def bulk_upload_students_view(request, class_id):
-    class_instance = Class.objects.get(id=class_id)
+    class_instance = get_object_or_404(Class, id=class_id)
 
     if request.method == 'POST':
-        csv_file = request.FILES['csv_file']
-        decoded_file = csv_file.read().decode('utf-8').splitlines()
-        reader = csv.reader(decoded_file)
+        form = StudentBulkUploadForm(request.POST, request.FILES)
+        
+        if form.is_valid():
+            csv_file = request.FILES['csv_file']
+            
+            # Read the uploaded CSV file
+            decoded_file = csv_file.read().decode('utf-8').splitlines()
+            reader = csv.DictReader(decoded_file)
 
-        # Skip the header row if necessary
-        header = next(reader)
-
-        try:
+            # Initialize a counter for successfully added students
+            successful_additions = 0
+            
             for row in reader:
-                if len(row) < 4:
-                    raise ValueError("Not enough columns in the CSV file")
-                # Adjust the number of variables based on the actual number of columns in your CSV
-                first_name, last_name, middle_initial, student_id = row[:4]  # Only take the first 4 columns
+                student_id = row.get('ID')  # Ensure this matches your CSV header
+                first_name = row.get('First Name')
+                last_name = row.get('Last Name')
+                middle_initial = row.get('Middle Initial', '')
+                
+                # Check if the student ID already exists
+                if Student.objects.filter(student_id=student_id).exists():
+                    messages.warning(request, f"Student with ID {student_id} already exists. Skipping.")
+                    continue  # Skip this student and move to the next one
+                
+                # Create the new student record
+                try:
+                    Student.objects.create(
+                        student_id=student_id,
+                        first_name=first_name,
+                        last_name=last_name,
+                        middle_initial=middle_initial,
+                        assigned_class=class_instance
+                    )
+                    successful_additions += 1  # Increment the counter
+                except IntegrityError as e:
+                    messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+                    continue  # Skip to next row on error
+            
+            # Success message for total added students
+            if successful_additions > 0:
+                messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
+            else:
+                messages.info(request, 'No new students were added during the bulk upload.')
 
-                Student.objects.create(
-                    first_name=first_name,
-                    last_name=last_name,
-                    middle_initial=middle_initial,
-                    student_id=student_id,
-                    assigned_class=class_instance
-                )
-
-            messages.success(request, "Students added successfully!")
             return redirect('class_detail', class_id=class_id)
+    
+    else:
+        form = StudentBulkUploadForm()
 
-        except ValueError as e:
-            messages.error(request, f"Error processing file: {e}")
+    return render(request, 'bulk_upload_students.html', {
+        'form': form,
+        'class_instance': class_instance,
+    })
 
-    return render(request, 'bulk_upload.html', {'class': class_instance})
 
 @login_required
 @require_POST

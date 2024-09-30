@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
+    <h2 class="text-xl font-semibold mb-4 text-center">Class: {{ current_class.name }}</h2>
+
+    <!-- Breadcrumb -->
+    <nav class="flex mb-4" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+            <li class="inline-flex items-center">
+                <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                    <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+                    </svg>
+                    Home
+                </a>
+            </li>
+            <li class="flex items-center">
+                <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+                </svg>
+                <a href="{% url 'exams' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exams</a>
+            </li>
+        </ol>
+    </nav>
+
+    <h2 class="text-xl font-semibold mb-4 text-center">Check Exam and Scan Images</h2>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- CSV File Indicator -->
+        <div>
+            <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
+            <select id="csv_indicator" name="csv_indicator" required 
+                    class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <option value="" disabled selected>Select an Exam</option>
+                {% for exam in exams %}
+                    <option value="{{ exam.id }}">{{ exam.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Image Upload Indicator -->
+        <div>
+            <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Image:</label>
+            <input type="file" id="image_upload" name="image_upload" accept="image/*" capture="environment" 
+                   class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
+        </div>
+
+        <!-- Uploaded Images Table -->
+        <h3 class="text-lg font-medium mt-4">Uploaded Images</h3>
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Image</th>
+                        <th scope="col" class="px-6 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    <!-- Dynamically added rows for each uploaded image -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Scan Button -->
+        <div>
+            <button type="submit" 
+                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                Scan
+            </button>
+        </div>
+    </form>
+
+    <!-- JavaScript to handle adding images to the table dynamically -->
+    <script>
+        document.getElementById('image_upload').addEventListener('change', function(event) {
+            const imageTable = document.getElementById('image-table');
+            imageTable.innerHTML = '';  // Clear previous list
+            Array.from(event.target.files).forEach((file, index) => {
+                const url = URL.createObjectURL(file); // Create a URL for the file
+                let row = `<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                              <td class="px-6 py-4">
+                                  <img src="${url}" alt="${file.name}" class="w-16 h-16 object-cover" />
+                                  <span class="ml-2">${file.name}</span>
+                              </td>
+                              <td class="px-6 py-4">
+                                  <button type="button" class="text-red-600 hover:underline" onclick="removeImage(${index})">Remove</button>
+                              </td>
+                           </tr>`;
+                imageTable.insertAdjacentHTML('beforeend', row);
+            });
+        });
+
+        function removeImage(index) {
+            // Logic to remove images (customize based on your needs)
+            document.getElementById('image-table').deleteRow(index);
+        }
+    </script>
+
+    {% if folder_path %}
+        <h3 class="text-lg font-medium mt-6">Folder Created: {{ folder_path }}</h3>
+        <p class="text-sm">CSV File Saved: {{ csv_file.name }}</p>
+        <ul class="list-disc list-inside">
+            {% for image in images %}
+            <li>{{ image.name }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}
