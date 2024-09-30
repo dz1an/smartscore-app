@@ -461,11 +461,21 @@ def scan_page(request, class_id, exam_id):
     
     # Fetch exams related to the current class
     exams = current_class.exams.all()  # Get all exams associated with this class
-
+    
+    if request.method == 'POST':
+        # Handle the uploaded images
+        uploaded_images = request.FILES.getlist('image_upload')
+        
+        # Add a message indicating how many images were uploaded
+        if uploaded_images:
+            messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
+        else:
+            messages.warning(request, "No images were uploaded.")
+    
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
-        'exams': exams  # Pass the exams to the template
+        'exams': exams
     }
     
     return render(request, 'scan_page.html', context)
