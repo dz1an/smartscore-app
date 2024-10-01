@@ -532,13 +532,12 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
-
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    generated_sets = []
+    generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
 
     if request.method == "POST":
         students = current_class.students.all()
@@ -546,9 +545,9 @@ def generate_exam_sets(request, class_id, exam_id):
 
         if not exam_questions.exists():
             messages.warning(request, "No questions available for this exam.")
-            return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class})
+            return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class, 'generated_sets': generated_sets})
 
-        # Create the CSV response
+        # Create the CSV response for new students
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
 
@@ -556,11 +555,19 @@ def generate_exam_sets(request, class_id, exam_id):
         writer = csv.writer(response)
         writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
 
+        # Track if new sets are generated
+        new_sets_generated = False
+
         for student in students:
             # Check if the student already has a test set for this exam
             if not TestSet.objects.filter(exam=exam, student=student).exists():
+                # Find a unique set number
+                set_no = random.randint(1, 100)
+                while TestSet.objects.filter(exam=exam, set_no=set_no).exists():
+                    set_no = random.randint(1, 100)  # Ensure the set number is unique within the same exam
+
                 # Create a TestSet for the student
-                test_set = TestSet.objects.create(exam=exam, student=student, set_no=random.randint(1, 100))
+                test_set = TestSet.objects.create(exam=exam, student=student, set_no=set_no)
 
                 # Randomly select questions for this test set
                 randomized_questions = list(exam_questions)
@@ -594,11 +601,21 @@ def generate_exam_sets(request, class_id, exam_id):
                     answer_key
                 ])
 
+                generated_sets = list(generated_sets)  # Convert to list to append
                 generated_sets.append(test_set)
+                new_sets_generated = True  # Mark that new sets were generated
 
-        messages.success(request, "Exam sets generated successfully.")
+        # Check if any new sets were generated
+        if not new_sets_generated:
+            messages.info(request, "No new sets were generated, as all students already have sets.")
+            return render(request, 'exams/generate_sets.html', {
+                'exam': exam,
+                'current_class': current_class,
+                'generated_sets': generated_sets,
+            })
 
         # Return the CSV file as a response
+        messages.success(request, "New exam sets generated successfully.")
         return response
 
     context = {
