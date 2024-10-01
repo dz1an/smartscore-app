@@ -143,11 +143,12 @@ def class_detail_view(request, class_id):
     user_instance = request.user
     class_instance = get_object_or_404(Class, id=class_id)
 
+    # Check if the logged-in user owns the class
     if class_instance.user != user_instance:
         raise PermissionDenied("You are not authorized to view this class.")
 
-    # Order students alphabetically by last name and then first name
-    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name')
+    # Order students by last name, first name, and middle initial
+    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name', 'middle_initial')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -814,6 +815,7 @@ def grade_exam_view(request, exam_id, student_id):
 def students_view(request):
     students = Student.objects.all()
     return render(request, 'students.html', {'students': students})
+
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)

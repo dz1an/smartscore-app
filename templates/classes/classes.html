@@ -25,12 +25,13 @@
 
 {% include 'message_display.html' %}
 
-<!-- Table for listing classes -->
-<div class="relative overflow-x-auto mb-6">
-  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+<!-- Class Table -->
+<div class="relative overflow-x-auto max-h-80 mb-6">
+  <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
       <tr>
-        <th scope="col" class="px-6 py-3">Class Name</th>
+        <!-- Sticky column for Class Name -->
+        <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10">Class Name</th>
         <th scope="col" class="px-6 py-3">Description</th>
         <th scope="col" class="px-6 py-3 text-center">Actions</th>
       </tr>
@@ -38,7 +39,10 @@
     <tbody>
       {% for class in classes %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ class.name }}</td>
+          <!-- Sticky Class Name Column -->
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800">
+            {{ class.name }}
+          </td>
           <td class="px-6 py-4">{{ class.description }}</td>
           <td class="px-6 py-4">
             <div class="flex justify-center space-x-4">
@@ -56,6 +60,7 @@
     </tbody>
   </table>
 </div>
+
 
 <!-- Add Class Button -->
 <div class="add-class-section mt-8">
