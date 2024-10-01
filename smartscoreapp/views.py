@@ -866,16 +866,18 @@ def bulk_upload_students_view(request, class_id):
 
             # Initialize a counter for successfully added students
             successful_additions = 0
+            existing_student_ids = []  # To keep track of existing student IDs
             
             for row in reader:
                 student_id = row.get('ID')  # Ensure this matches your CSV header
                 first_name = row.get('First Name')
                 last_name = row.get('Last Name')
                 middle_initial = row.get('Middle Initial', '')
-                
-                # Check if the student ID already exists
-                if Student.objects.filter(student_id=student_id).exists():
-                    messages.warning(request, f"Student with ID {student_id} already exists. Skipping.")
+
+                # Check if the student already exists in the same class
+                if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                    existing_student_ids.append(student_id)
+                    messages.warning(request, f"Student with ID {student_id} already exists in this class. Skipping.")
                     continue  # Skip this student and move to the next one
                 
                 # Create the new student record
@@ -897,7 +899,12 @@ def bulk_upload_students_view(request, class_id):
                 messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
             else:
                 messages.info(request, 'No new students were added during the bulk upload.')
-
+            
+            # Info alert with the list of skipped students (if any)
+            if existing_student_ids:
+                skipped_ids = ', '.join(existing_student_ids)
+                messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {skipped_ids}')
+                
             return redirect('class_detail', class_id=class_id)
     
     else:
