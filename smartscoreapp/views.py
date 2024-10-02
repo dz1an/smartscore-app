@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import PasswordChangeForm, UserChangeForm
 import random
 import logging
 from django.views.decorators.http import require_POST
@@ -1015,20 +1015,38 @@ def add_class_view(request):
 @login_required
 def settings_view(request):
     if request.method == 'POST':
-        form = PasswordChangeForm(request.user, request.POST)
-        if form.is_valid():
-            form.save()
-            update_session_auth_hash(request, form.user)
-            messages.success(request, 'Your password was successfully updated!')
+        password_form = PasswordChangeForm(request.user, request.POST)
+        user_form = UserChangeForm(request.POST, instance=request.user)
+
+        if password_form.is_valid() and user_form.is_valid():
+            # Update user information
+            user_form.save()
+
+            # Update password
+            user = password_form.save()
+            update_session_auth_hash(request, user)  # Important!
+            messages.success(request, 'Your settings were successfully updated!')
             return redirect('settings')
         else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f'{field.capitalize()}: {error}')
-            return redirect('settings')
+            # Capture and display error messages
+            if not password_form.is_valid():
+                for field, errors in password_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field.capitalize()}: {error}')
+            if not user_form.is_valid():
+                for field, errors in user_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field.capitalize()}: {error}')
     else:
-        form = PasswordChangeForm(request.user)
-    return render(request, 'settings.html', {'form': form})
+        password_form = PasswordChangeForm(request.user)
+        user_form = UserChangeForm(instance=request.user)
+
+    context = {
+        'password_form': password_form,
+        'user_form': user_form,
+    }
+    return render(request, 'settings.html', context)
+
 
 @login_required
 @require_http_methods(['POST'])
