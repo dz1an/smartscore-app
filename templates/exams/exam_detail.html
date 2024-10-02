@@ -30,8 +30,9 @@
   {% include 'message_display.html' %}
 
   <!-- Questions Section -->
-  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Exam Questions</h2>
-   <!-- Add Question Button with Icon -->
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    {{ exam.questions.count }} Exam Questions
+  </h2>   <!-- Add Question Button with Icon -->
       
    <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
   

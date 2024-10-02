@@ -2,87 +2,101 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
-<!-- Breadcrumb Navigation -->
-<nav class="flex mb-4" aria-label="Breadcrumb">
-  <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
-    <li class="inline-flex items-center">
-      <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
-        <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-          <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+  <!-- Breadcrumb Navigation -->
+  <nav class="flex mb-4" aria-label="Breadcrumb">
+    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+      <li class="inline-flex items-center">
+        <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+          <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+          </svg>
+          Home
+        </a>
+      </li>
+      <li class="flex items-center">
+        <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
         </svg>
-        Home
-      </a>
-    </li>
-    <li class="flex items-center">
-      <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-      </svg>
-      <a href="{% url 'exams' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exams</a>
-    </li>
-  </ol>
-</nav>
+        <a href="{% url 'exams' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exams</a>
+      </li>
+    </ol>
+  </nav>
 
-<h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Select Questions for {{ exam.name }}</h1>
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Select Questions for {{ exam.name }}</h1>
 
-<form method="post" action="{% url 'select_questions' exam.id %}">
-  {% csrf_token %}
+  <form method="post" action="{% url 'select_questions' exam.id %}">
+    {% csrf_token %}
 
-  <!-- Select a Class to Copy Questions From -->
-  <div class="mb-4">
-    <label for="class_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Class to Copy Questions From</label>
-    <select name="class_source_id" id="class_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
-      <!-- Current class first -->
-      <option value="{{ current_class.id }}" {% if current_class.id == selected_class_id %}selected{% endif %}>{{ current_class.name }} (Current Class)</option>
-      <!-- Other available classes -->
-      {% for other_class in available_classes %}
-        <option value="{{ other_class.id }}" {% if other_class.id == selected_class_id %}selected{% endif %}>{{ other_class.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- Select an Exam to Copy Questions From (if a class is selected) -->
-  {% if available_exams %}
+    <!-- Select a Class to Copy Questions From -->
     <div class="mb-4">
-      <label for="exam_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Exam to Copy Questions From</label>
-      <select name="exam_source_id" id="exam_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
-        <option value="">-- Select an Exam --</option>
-        {% for other_exam in available_exams %}
-          <option value="{{ other_exam.id }}" {% if other_exam.id == selected_exam_id %}selected{% endif %}>{{ other_exam.name }}</option>
+      <label for="class_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Class to Copy Questions From</label>
+      <select name="class_source_id" id="class_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
+        <!-- Current class first -->
+        <option value="{{ current_class.id }}" {% if current_class.id == selected_class_id %}selected{% endif %}>{{ current_class.name }} (Current Class)</option>
+        <!-- Other available classes -->
+        {% for other_class in available_classes %}
+          <option value="{{ other_class.id }}" {% if other_class.id == selected_class_id %}selected{% endif %}>{{ other_class.name }}</option>
         {% endfor %}
       </select>
     </div>
-  {% endif %}
 
-  <!-- Display the Questions from the Selected Exam -->
-  {% if questions %}
-    <div class="relative overflow-x-auto mb-6">
-      <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-          <tr>
-            <th scope="col" class="px-6 py-3">Select</th>
-            <th scope="col" class="px-6 py-3">Question</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for question in questions %}
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-              <td class="px-6 py-4">
-                <input type="checkbox" name="questions" value="{{ question.id }}" class="mr-4">
-              </td>
-              <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
-            </tr>
+    <!-- Select an Exam to Copy Questions From (if a class is selected) -->
+    {% if available_exams %}
+      <div class="mb-4">
+        <label for="exam_source_id" class="block text-sm font-medium text-gray-900 dark:text-white">Select Exam to Copy Questions From</label>
+        <select name="exam_source_id" id="exam_source_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" onchange="this.form.submit()">
+          <option value="">-- Select an Exam --</option>
+          {% for other_exam in available_exams %}
+            <option value="{{ other_exam.id }}" {% if other_exam.id == selected_exam_id %}selected{% endif %}>{{ other_exam.name }}</option>
           {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p class="text-center text-gray-500 dark:text-gray-400">No questions available from the selected class or exam.</p>
-  {% endif %}
+        </select>
+      </div>
+    {% endif %}
 
-  <!-- Submit and Save Selected Questions -->
-  <div class="flex items-center justify-end space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600">
-    <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save Questions</button>
-  </div>
-</form>
+    <!-- Display the Questions from the Selected Exam -->
+    {% if questions %}
+      <div class="relative overflow-x-auto mb-6">
+        <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th scope="col" class="px-6 py-3">
+                <input type="checkbox" id="select_all" class="mr-2" onchange="toggleAll(this)">
+                <label for="select_all" class="text-sm font-medium text-gray-900 dark:text-white">Select All</label>
+              </th>
+              <th scope="col" class="px-6 py-3">Question</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for question in questions %}
+              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                <td class="px-6 py-4">
+                  <input type="checkbox" name="questions" value="{{ question.id }}" class="mr-4">
+                </td>
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-center text-gray-500 dark:text-gray-400">No questions available from the selected class or exam.</p>
+    {% endif %}
+
+    <!-- Submit and Save Selected Questions -->
+    <div class="flex items-center justify-end space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600">
+      <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 transition">
+        Save Questions
+      </button>
+    </div>
+  </form>
 </div>
+
+<script>
+  function toggleAll(source) {
+    const checkboxes = document.querySelectorAll('input[name="questions"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = source.checked;
+    });
+  }
+</script>
 {% endblock %}

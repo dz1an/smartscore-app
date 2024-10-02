@@ -24,6 +24,7 @@ from datetime import datetime
 import os
 import string
 from django.conf import settings
+from django.http import HttpResponseForbidden
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -85,10 +86,15 @@ def registered_users_view(request):
     users = User.objects.all()
     return render(request, 'registered_users.html', {'users': users})
 
+from django.db.models import Count
+
+from django.db.models import Count
+
 @login_required
 def classes_view(request):
     user_instance = request.user
     
+    # Handle form submission for adding a new class
     if request.method == 'POST':
         form = ClassForm(request.POST)
         if form.is_valid():
@@ -98,42 +104,56 @@ def classes_view(request):
             return redirect('classes')
     else:
         form = ClassForm()
-    
-    classes = Class.objects.filter(user=user_instance)
-    
+
+    # Get sorting criteria from request, default is by name
+    sort_by = request.GET.get('sort', 'name')
+
+    # Fetch classes and annotate them with the number of students
+    classes = Class.objects.filter(user=user_instance).annotate(num_students=Count('students'))
+
+    # Sort classes based on the sorting criteria
+    if sort_by == 'name':
+        classes = classes.order_by('name')
+    elif sort_by == 'description':
+        classes = classes.order_by('description')
+    elif sort_by == 'num_students':
+        classes = classes.order_by('-num_students')
+
     context = {
         'classes': classes,
         'form': form,
-        'student_form': StudentForm()  # Add this line
+        'student_form': StudentForm(),  # Add this line
+        'sort_by': sort_by  # Pass sorting criteria to the template
     }
     return render(request, 'classes.html', context)
+
 
 @login_required
 def delete_class_view(request, class_id):
     try:
-        # Fetch the class to be deleted
+        # Fetch the class to be deleted and ensure it belongs to the current user
         class_instance = get_object_or_404(Class, id=class_id, user=request.user)
 
-        # Fetch or create the 'Unassigned Class'
-        unassigned_class, created = Class.objects.get_or_create(
-            name='Unassigned Class', 
-            defaults={'user': request.user}
-        )
+        # Fetch exams associated with the class
+        exams = Exam.objects.filter(class_assigned=class_instance)
 
-        # Move all associated exams to the 'Unassigned Class'
-        Exam.objects.filter(class_assigned=class_instance).update(class_assigned=unassigned_class)
+        # Optionally delete all associated exams before deleting the class
+        exams.delete()  # Remove this line if you want to keep exams
 
-        # Delete the class after reassigning exams
+        # Now delete the class
         class_instance.delete()
 
-        messages.success(request, 'Class deleted successfully, and exams have been moved to Unassigned Class.')
+        # Success message after deletion
+        messages.success(request, 'Class deleted successfully, and associated exams have been removed.')
         return redirect('classes')
     
     except IntegrityError as e:
-        messages.error(request, 'Error occurred while deleting the class: {}'.format(str(e)))
+        # Handle errors that could occur during deletion, such as related objects
+        messages.error(request, f'Error occurred while deleting the class: {str(e)}')
         return redirect('classes')
 
     except Class.DoesNotExist:
+        # Handle the case where the class does not exist
         messages.error(request, 'Class not found.')
         return redirect('classes')
 
@@ -199,13 +219,17 @@ def update_class_name_view(request, class_id):
 def exams_view(request):
     user_instance = request.user
     
+    # Handle POST request (when adding a new exam)
     if request.method == 'POST':
         form = ExamForm(request.POST, user=user_instance)
         if form.is_valid():
             exam = form.save(commit=False)
             exam.save()
-            for i in range(3):  # Creating 3 sets for each exam
+
+            # Creating 3 sets for each exam
+            for i in range(3):
                 ExamSet.objects.create(exam=exam, set_number=i + 1)
+                
             messages.success(request, 'Exam and sets added successfully!')
             return redirect('exams')
         else:
@@ -213,7 +237,8 @@ def exams_view(request):
     else:
         form = ExamForm(user=user_instance)
 
-    exams = Exam.objects.filter(class_assigned__user=user_instance)
+    # Fetch exams and annotate with the number of questions
+    exams = Exam.objects.filter(class_assigned__user=user_instance).annotate(num_questions=Count('questions'))
     classes = Class.objects.filter(user=user_instance)
 
     context = {
@@ -222,7 +247,6 @@ def exams_view(request):
         'classes': classes,
     }
     return render(request, 'exams.html', context)
-
 @login_required
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -537,61 +561,45 @@ def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
-
     if request.method == "POST":
         students = current_class.students.all()
         exam_questions = exam.questions.all()
 
         if not exam_questions.exists():
             messages.warning(request, "No questions available for this exam.")
-            return render(request, 'exams/generate_sets.html', {'exam': exam, 'current_class': current_class, 'generated_sets': generated_sets})
+            return render(request, 'exams/generate_sets.html', {
+                'exam': exam,
+                'current_class': current_class,
+                'generated_sets': [],
+            })
 
-        # Create the CSV response for new students
+        # Initialize CSV writer for download
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
-
-        # Initialize CSV writer
         writer = csv.writer(response)
         writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
 
-        # Track if new sets are generated
         new_sets_generated = False
+        generated_sets = []  # Create a local variable to store generated sets
 
         for student in students:
-            # Check if the student already has a test set for this exam
             if not TestSet.objects.filter(exam=exam, student=student).exists():
-                # Find a unique set number
                 set_no = random.randint(1, 100)
                 while TestSet.objects.filter(exam=exam, set_no=set_no).exists():
-                    set_no = random.randint(1, 100)  # Ensure the set number is unique within the same exam
+                    set_no = random.randint(1, 100)
 
-                # Create a TestSet for the student
                 test_set = TestSet.objects.create(exam=exam, student=student, set_no=set_no)
-
-                # Randomly select questions for this test set
                 randomized_questions = list(exam_questions)
                 random.shuffle(randomized_questions)
 
-                number_of_questions_to_select = 10  # Adjust as needed
-                if len(randomized_questions) < number_of_questions_to_select:
-                    number_of_questions_to_select = len(randomized_questions)
-
+                number_of_questions_to_select = min(len(randomized_questions), 10)  # Adjust as needed
                 selected_questions = randomized_questions[:number_of_questions_to_select]
-
-                # Create answer key based on selected questions
                 answer_key = ''.join(str(['A', 'B', 'C', 'D', 'E'].index(question.answer)) for question in selected_questions)
 
-                # Format student ID by removing the first 4 characters
                 formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
-
-                # Generate a unique 5-character exam ID
                 exam_unique_id = str(random.randint(10000, 99999))  # Ensure it’s a 5-digit ID
-
-                # Get the student's middle initial
                 middle_initial = student.middle_initial if student.middle_initial else ''
 
-                # Write the data to the CSV
                 writer.writerow([
                     student.last_name,
                     student.first_name,
@@ -601,23 +609,23 @@ def generate_exam_sets(request, class_id, exam_id):
                     answer_key
                 ])
 
-                generated_sets = list(generated_sets)  # Convert to list to append
-                generated_sets.append(test_set)
-                new_sets_generated = True  # Mark that new sets were generated
+                generated_sets.append(test_set)  # Append to the local list
+                new_sets_generated = True
 
-        # Check if any new sets were generated
         if not new_sets_generated:
             messages.info(request, "No new sets were generated, as all students already have sets.")
-            return render(request, 'exams/generate_sets.html', {
-                'exam': exam,
-                'current_class': current_class,
-                'generated_sets': generated_sets,
-            })
+        else:
+            messages.success(request, "New exam sets generated successfully.")
 
-        # Return the CSV file as a response
-        messages.success(request, "New exam sets generated successfully.")
-        return response
+        # Return the updated context to render the template with new sets
+        return render(request, 'exams/generate_sets.html', {
+            'exam': exam,
+            'current_class': current_class,
+            'generated_sets': generated_sets,  # Pass the generated sets
+        })
 
+    # Handle GET request and initial loading of generated sets
+    generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
     context = {
         'exam': exam,
         'current_class': current_class,
@@ -843,9 +851,10 @@ def add_student_view(request, class_id):
         middle_initial = request.POST.get('middle_initial', '')
         student_id = request.POST.get('student_id')
 
-        # Check if the student ID already exists
-        if Student.objects.filter(student_id=student_id).exists():
-            messages.warning(request, f"Student with ID {student_id} already exists.")
+        # Allow adding the same student ID to different classes
+        # Check if the student ID already exists in the same class
+        if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+            messages.warning(request, f"Student with ID {student_id} already exists in this class.")
             return redirect('class_detail', class_id=class_id)
 
         try:
@@ -866,6 +875,7 @@ def add_student_view(request, class_id):
     return render(request, 'add_student.html', {
         'class_instance': class_instance,
     })
+
 
 @login_required
 def bulk_upload_students_view(request, class_id):
@@ -948,13 +958,41 @@ def edit_student(request, student_id):
 
 
 @login_required
-@require_POST
-def delete_student(request, student_id):
-    student = get_object_or_404(Student, student_id=student_id)
-    assigned_class_id = student.assigned_class.id
-    student.delete()
-    messages.success(request, 'Student deleted successfully.')
-    return redirect('class_detail', class_id=assigned_class_id)
+def delete_student_view(request, class_id, student_id):
+    # Retrieve the class instance
+    class_instance = get_object_or_404(Class, id=class_id)
+
+    # Retrieve the student instance
+    student = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)
+
+    if request.method == 'POST':
+        # Attempt to delete the student
+        student.delete()
+        messages.success(request, f"Student {student.first_name} {student.last_name} has been deleted successfully.")
+        return redirect('class_detail', class_id=class_id)
+
+    return render(request, 'delete_student.html', {
+        'student': student,
+        'class_instance': class_instance,
+    })
+
+
+def delete_student(request, student_id, class_id):
+    # Fetch the class and ensure the student belongs to that class
+    class_instance = get_object_or_404(Class, id=class_id, user=request.user)
+    student_instance = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)
+
+    if request.method == 'POST':
+        # Delete the student
+        student_instance.delete()
+        messages.success(request, f'Student {student_instance.first_name} {student_instance.last_name} deleted successfully.')
+        return redirect('class_detail', class_id=class_id)
+    
+    # If not POST, show a confirmation page (optional)
+    return render(request, 'delete_student_confirm.html', {'student': student_instance, 'class': class_instance})
+
+
+
 
 
 @login_required
