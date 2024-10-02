@@ -24,6 +24,7 @@ from datetime import datetime
 import os
 import string
 from django.conf import settings
+from django.http import HttpResponseForbidden
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -107,35 +108,39 @@ def classes_view(request):
         'student_form': StudentForm()  # Add this line
     }
     return render(request, 'classes.html', context)
-
 @login_required
 def delete_class_view(request, class_id):
     try:
-        # Fetch the class to be deleted
+        # Fetch the class to be deleted and ensure it belongs to the current user
         class_instance = get_object_or_404(Class, id=class_id, user=request.user)
 
-        # Fetch or create the 'Unassigned Class'
+        # Fetch or create the 'Unassigned Class' for the current user
         unassigned_class, created = Class.objects.get_or_create(
             name='Unassigned Class', 
-            defaults={'user': request.user}
+            user=request.user,  # Ensure it's tied to the same user
+            defaults={'description': 'This class is used to store reassigned exams.'}  # Optional description
         )
 
-        # Move all associated exams to the 'Unassigned Class'
+        # Reassign all exams from the class being deleted to the 'Unassigned Class'
         Exam.objects.filter(class_assigned=class_instance).update(class_assigned=unassigned_class)
 
-        # Delete the class after reassigning exams
+        # Now delete the class
         class_instance.delete()
 
-        messages.success(request, 'Class deleted successfully, and exams have been moved to Unassigned Class.')
+        # Success message after deletion
+        messages.success(request, 'Class deleted successfully, and exams have been moved to the "Unassigned Class".')
         return redirect('classes')
     
     except IntegrityError as e:
-        messages.error(request, 'Error occurred while deleting the class: {}'.format(str(e)))
+        # Handle errors that could occur during deletion, such as related objects
+        messages.error(request, f'Error occurred while deleting the class: {str(e)}')
         return redirect('classes')
 
     except Class.DoesNotExist:
+        # Handle the case where the class does not exist
         messages.error(request, 'Class not found.')
         return redirect('classes')
+
 
 
 @login_required
@@ -843,9 +848,10 @@ def add_student_view(request, class_id):
         middle_initial = request.POST.get('middle_initial', '')
         student_id = request.POST.get('student_id')
 
-        # Check if the student ID already exists
-        if Student.objects.filter(student_id=student_id).exists():
-            messages.warning(request, f"Student with ID {student_id} already exists.")
+        # Allow adding the same student ID to different classes
+        # Check if the student ID already exists in the same class
+        if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+            messages.warning(request, f"Student with ID {student_id} already exists in this class.")
             return redirect('class_detail', class_id=class_id)
 
         try:
@@ -866,6 +872,7 @@ def add_student_view(request, class_id):
     return render(request, 'add_student.html', {
         'class_instance': class_instance,
     })
+
 
 @login_required
 def bulk_upload_students_view(request, class_id):
@@ -948,13 +955,41 @@ def edit_student(request, student_id):
 
 
 @login_required
-@require_POST
-def delete_student(request, student_id):
-    student = get_object_or_404(Student, student_id=student_id)
-    assigned_class_id = student.assigned_class.id
-    student.delete()
-    messages.success(request, 'Student deleted successfully.')
-    return redirect('class_detail', class_id=assigned_class_id)
+def delete_student_view(request, class_id, student_id):
+    # Retrieve the class instance
+    class_instance = get_object_or_404(Class, id=class_id)
+
+    # Retrieve the student instance
+    student = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)
+
+    if request.method == 'POST':
+        # Attempt to delete the student
+        student.delete()
+        messages.success(request, f"Student {student.first_name} {student.last_name} has been deleted successfully.")
+        return redirect('class_detail', class_id=class_id)
+
+    return render(request, 'delete_student.html', {
+        'student': student,
+        'class_instance': class_instance,
+    })
+
+
+def delete_student(request, student_id, class_id):
+    # Fetch the class and ensure the student belongs to that class
+    class_instance = get_object_or_404(Class, id=class_id, user=request.user)
+    student_instance = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)
+
+    if request.method == 'POST':
+        # Delete the student
+        student_instance.delete()
+        messages.success(request, f'Student {student_instance.first_name} {student_instance.last_name} deleted successfully.')
+        return redirect('class_detail', class_id=class_id)
+    
+    # If not POST, show a confirmation page (optional)
+    return render(request, 'delete_student_confirm.html', {'student': student_instance, 'class': class_instance})
+
+
+
 
 
 @login_required

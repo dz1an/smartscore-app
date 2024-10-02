@@ -4,7 +4,7 @@ from smartscoreapp.views import (
     index, login_view, register_view, registered_users_view,
     classes_view, class_detail_view, exams_view, exam_detail_view,
     logout_view, add_class_view, add_student_view, add_exam_view,
-    add_student_to_exam_view, settings_view, edit_student,
+    add_student_to_exam_view, settings_view, edit_student, delete_student_view,
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
     select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
     generate_questionnaire_view, list_classes_view, class_exams_view, save_test_paper_view, student_test_papers_view,
@@ -43,11 +43,18 @@ urlpatterns = [
 
     # Students
     path('students/', students_view, name='students'),
-    path('students/<str:student_id>/edit/', views.edit_student, name='edit_student'),  # Changed to str
-    path('students/<str:student_id>/delete/', views.delete_student, name='delete_student'),  # Changed to str
+    path('students/<str:student_id>/edit/', views.edit_student, name='edit_student'),
     path('students/<int:student_id>/test_papers/', student_test_papers_view, name='student_test_papers'),
     path('test_set/<int:test_set_id>/', view_test_set_view, name='view_test_set'),
     path('classes/<int:class_id>/bulk_upload/', bulk_upload_students_view, name='bulk_upload_students'),
+# Only keeping the delete path under class context
+    path('classes/<int:class_id>/students/<str:student_id>/delete/', views.delete_student_view, name='delete_student'),
+    path('classes/<int:class_id>/students/<int:student_id>/delete/', delete_student_view, name='delete_student'),
+    
+
+    
+
+
     
     # Exams
     path('exams/', exams_view, name='exams'),
