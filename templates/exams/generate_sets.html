@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
 <div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
   <nav class="flex mb-4" aria-label="Breadcrumb">
     <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
@@ -20,22 +21,26 @@
       </li>
     </ol>
   </nav>
-
+  {% if messages %}
+  {% include 'message_display.html' %}
+      
+  {% endif %}
   <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Generate Exam Sets for {{ current_class.name }}</h1>
 
   <p class="text-sm font-medium text-gray-700 mb-4">Exam: {{ exam.title }}</p>
 
   <div class="mt-4">
     {% if generated_sets %}
-      <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
-      <ul class="list-disc pl-5">
-          {% for test_set in generated_sets %}
-             <li class="mb-1">Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - Set Number: {{ test_set.set_no }} - Set ID: {{ test_set.set_id }}</li>
-          {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-gray-500">No sets generated yet.</p>
-    {% endif %}
+  <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
+  <ul class="list-disc pl-5">
+      {% for test_set in generated_sets %}
+         <li class="mb-1">Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - Set Number: {{ test_set.set_no }} - Set ID: {{ test_set.set_id }}</li>
+      {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-gray-500">No sets generated yet.</p>
+{% endif %}
+
   </div>
   
   
