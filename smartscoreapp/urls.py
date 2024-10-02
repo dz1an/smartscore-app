@@ -51,10 +51,6 @@ urlpatterns = [
     path('classes/<int:class_id>/students/<str:student_id>/delete/', views.delete_student_view, name='delete_student'),
     path('classes/<int:class_id>/students/<int:student_id>/delete/', delete_student_view, name='delete_student'),
     
-
-    
-
-
     
     # Exams
     path('exams/', exams_view, name='exams'),
@@ -69,6 +65,9 @@ urlpatterns = [
     path('exams/<int:exam_id>/generate-test-paper/', generate_test_paper_view, name='generate_test_paper'),
     path('exams/<int:exam_id>/print-test-paper/', print_test_paper_view, name='print_test_paper'),
     path('process-scanned-papers/', process_scanned_papers_view, name='process_scanned_papers'),
+
+
+
 
     path('generate_questionnaire/<int:exam_id>/<int:student_id>/', generate_questionnaire_view, name='generate_questionnaire'),
     path('list_classes/', list_classes_view, name='list_classes'),

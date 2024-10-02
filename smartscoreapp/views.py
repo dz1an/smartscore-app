@@ -556,6 +556,7 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
+
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -566,11 +567,9 @@ def generate_exam_sets(request, class_id, exam_id):
         exam_questions = exam.questions.all()
 
         if not exam_questions.exists():
-            messages.warning(request, "No questions available for this exam.")
-            return render(request, 'exams/generate_sets.html', {
-                'exam': exam,
-                'current_class': current_class,
-                'generated_sets': [],
+            return JsonResponse({
+                'success': False,
+                'message': "No questions available for this exam."
             })
 
         # Initialize CSV writer for download
@@ -609,19 +608,23 @@ def generate_exam_sets(request, class_id, exam_id):
                     answer_key
                 ])
 
-                generated_sets.append(test_set)  # Append to the local list
+                generated_sets.append({
+                    'student_name': f"{student.first_name} {student.last_name}",
+                    'set_no': set_no,
+                    'set_id': test_set.id
+                })  # Append to the local list
                 new_sets_generated = True
 
         if not new_sets_generated:
-            messages.info(request, "No new sets were generated, as all students already have sets.")
-        else:
-            messages.success(request, "New exam sets generated successfully.")
+            return JsonResponse({
+                'success': False,
+                'message': "No new sets were generated, as all students already have sets."
+            })
 
-        # Return the updated context to render the template with new sets
-        return render(request, 'exams/generate_sets.html', {
-            'exam': exam,
-            'current_class': current_class,
-            'generated_sets': generated_sets,  # Pass the generated sets
+        # Return the generated sets as JSON
+        return JsonResponse({
+            'success': True,
+            'generated_sets': generated_sets
         })
 
     # Handle GET request and initial loading of generated sets
