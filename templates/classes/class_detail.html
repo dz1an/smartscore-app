@@ -38,8 +38,9 @@
 {% include 'message_display.html' %}
 
 <!-- Enrolled Students Section -->
-<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Enrolled Students</h2>
-
+<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+  {{ students.count }} Enrolled Students
+</h2>
 <!-- Add Student and Bulk Upload Buttons -->
 <div class="mb-4 flex space-x-4">
   <button 

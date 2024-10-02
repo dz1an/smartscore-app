@@ -24,15 +24,21 @@
 <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Classes</h1>
 
 {% include 'message_display.html' %}
-
 <!-- Class Table -->
 <div class="relative overflow-x-auto max-h-80 mb-6">
   <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
       <tr>
         <!-- Sticky column for Class Name -->
-        <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10">Class Name</th>
-        <th scope="col" class="px-6 py-3">Description</th>
+        <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10">
+          <a href="?sort=name" class="hover:underline">Class Name</a>
+        </th>
+        <th scope="col" class="px-6 py-3">
+          <a href="?sort=description" class="hover:underline">Description</a>
+        </th>
+        <th scope="col" class="px-6 py-3 text-center">
+          <a href="?sort=num_students" class="hover:underline">Number of Students</a>
+        </th> <!-- New Column -->
         <th scope="col" class="px-6 py-3 text-center">Actions</th>
       </tr>
     </thead>
@@ -43,6 +49,7 @@
             {{ class.name }}
           </td>
           <td class="px-6 py-4">{{ class.description }}</td>
+          <td class="px-6 py-4 text-center">{{ class.num_students }}</td> <!-- Display the number of students -->
           <td class="px-6 py-4">
             <div class="flex justify-center space-x-4">
               <!-- Button to open the modal -->
@@ -60,6 +67,7 @@
     </tbody>
   </table>
 </div>
+
 
 
 <!-- Add Class Button -->

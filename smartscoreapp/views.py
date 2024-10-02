@@ -86,10 +86,15 @@ def registered_users_view(request):
     users = User.objects.all()
     return render(request, 'registered_users.html', {'users': users})
 
+from django.db.models import Count
+
+from django.db.models import Count
+
 @login_required
 def classes_view(request):
     user_instance = request.user
     
+    # Handle form submission for adding a new class
     if request.method == 'POST':
         form = ClassForm(request.POST)
         if form.is_valid():
@@ -99,15 +104,29 @@ def classes_view(request):
             return redirect('classes')
     else:
         form = ClassForm()
-    
-    classes = Class.objects.filter(user=user_instance)
-    
+
+    # Get sorting criteria from request, default is by name
+    sort_by = request.GET.get('sort', 'name')
+
+    # Fetch classes and annotate them with the number of students
+    classes = Class.objects.filter(user=user_instance).annotate(num_students=Count('students'))
+
+    # Sort classes based on the sorting criteria
+    if sort_by == 'name':
+        classes = classes.order_by('name')
+    elif sort_by == 'description':
+        classes = classes.order_by('description')
+    elif sort_by == 'num_students':
+        classes = classes.order_by('-num_students')
+
     context = {
         'classes': classes,
         'form': form,
-        'student_form': StudentForm()  # Add this line
+        'student_form': StudentForm(),  # Add this line
+        'sort_by': sort_by  # Pass sorting criteria to the template
     }
     return render(request, 'classes.html', context)
+
 
 @login_required
 def delete_class_view(request, class_id):
@@ -200,13 +219,17 @@ def update_class_name_view(request, class_id):
 def exams_view(request):
     user_instance = request.user
     
+    # Handle POST request (when adding a new exam)
     if request.method == 'POST':
         form = ExamForm(request.POST, user=user_instance)
         if form.is_valid():
             exam = form.save(commit=False)
             exam.save()
-            for i in range(3):  # Creating 3 sets for each exam
+
+            # Creating 3 sets for each exam
+            for i in range(3):
                 ExamSet.objects.create(exam=exam, set_number=i + 1)
+                
             messages.success(request, 'Exam and sets added successfully!')
             return redirect('exams')
         else:
@@ -214,7 +237,8 @@ def exams_view(request):
     else:
         form = ExamForm(user=user_instance)
 
-    exams = Exam.objects.filter(class_assigned__user=user_instance)
+    # Fetch exams and annotate with the number of questions
+    exams = Exam.objects.filter(class_assigned__user=user_instance).annotate(num_questions=Count('questions'))
     classes = Class.objects.filter(user=user_instance)
 
     context = {
@@ -223,7 +247,6 @@ def exams_view(request):
         'classes': classes,
     }
     return render(request, 'exams.html', context)
-
 @login_required
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)

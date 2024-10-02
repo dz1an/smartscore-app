@@ -33,6 +33,7 @@
           Exam Name
         </th>
         <th scope="col" class="px-6 py-3">Class</th>
+        <th scope="col" class="px-6 py-3">Number of Questions</th>  <!-- New Column -->
         <th scope="col" class="px-6 py-3">Actions</th>
       </tr>
     </thead>
@@ -44,6 +45,7 @@
             {{ exam.name }}
           </td>
           <td class="px-6 py-4">{{ exam.class_assigned.name }}</td>
+          <td class="px-6 py-4">{{ exam.num_questions }}</td>  <!-- Display Number of Questions -->
           <td class="px-6 py-4">
             <a href="{% url 'exam_detail' exam.id %}" class="text-green-600 hover:underline">View</a>
             <a href="{% url 'delete_exam' exam.id %}" class="text-red-600 hover:underline ml-4" onclick="return confirm('Are you sure you want to delete this exam?');">Delete</a>
@@ -51,12 +53,13 @@
         </tr>
       {% empty %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No exams available.</td>
+          <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No exams available.</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 
 <div class="add-exam-section mt-8">
   <button data-modal-target="add-exam-modal" data-modal-toggle="add-exam-modal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
