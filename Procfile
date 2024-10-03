@@ -1,1 +1,1 @@
-web: gunicorn smartscore-app:app
+web: pip install gunicorn && gunicorn smartscore-app:app
