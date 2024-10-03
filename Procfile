@@ -1,1 +1,1 @@
-web: gunicorn smartscore-app:app
+web: gunicorn smartscoreapp:app
