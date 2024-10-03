@@ -16,12 +16,32 @@ class Class(models.Model):
     def __str__(self):
         return self.name
 
+class Question(models.Model):
+    ANSWER_CHOICES = [
+        ('A', 'Option A'),
+        ('B', 'Option B'),
+        ('C', 'Option C'),
+        ('D', 'Option D'),
+        ('E', 'Option E'),
+    ]
+
+    question_text = models.CharField(max_length=255)
+    option_a = models.CharField(max_length=255)
+    option_b = models.CharField(max_length=255)
+    option_c = models.CharField(max_length=255)
+    option_d = models.CharField(max_length=255)
+    option_e = models.CharField(max_length=255)
+    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
+
+    def __str__(self):
+        return self.question_text
+
 class Exam(models.Model):
-    exam_id = models.CharField(max_length=3, unique=True, editable=False)  # Automatically generated
+    exam_id = models.CharField(max_length=3, unique=True, editable=False)
     name = models.CharField(max_length=50)
-    class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.CASCADE)
-    questions = models.ManyToManyField('Question', related_name='exams')
-    set_id = models.CharField(max_length=9, unique=True, blank=True)  # Format: '012-54321'
+    class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.SET_NULL, null=True)  # Set to NULL on class deletion
+    questions = models.ManyToManyField(Question, related_name='exams')
+    set_id = models.CharField(max_length=9, unique=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -49,22 +69,27 @@ class Exam(models.Model):
         set_number = str(random.randint(0, 99999)).zfill(5)
         return f"{exam_id}-{set_number}"
 
-
 class Student(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     middle_initial = models.CharField(max_length=1, blank=True)
-    student_id = models.CharField(max_length=12, unique=True)
+    student_id = models.CharField(max_length=12, blank=True)  # Not unique
     assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
-    short_id = models.CharField(max_length=8, unique=True, editable=False, null=True, blank=True)
+    short_id = models.CharField(max_length=8, editable=False, null=True, blank=True)
+
 
     class Meta:
-        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class', 'student_id')
+        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class', 'short_id')
+
 
     def save(self, *args, **kwargs):
         if not self.student_id:
             self.student_id = self.generate_student_id()
-        self.short_id = self.student_id[-7:]
+        # Ensure `student_id` is long enough to extract last 7 characters
+        if len(self.student_id) >= 7:
+            self.short_id = self.student_id[-7:]
+        else:
+            self.short_id = self.student_id  # If shorter, use the full student_id
         super(Student, self).save(*args, **kwargs)
 
     def generate_student_id(self):
@@ -75,37 +100,18 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.short_id})"
 
+
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
     set_number = models.IntegerField()
     students = models.ManyToManyField(Student, related_name='exam_sets')
+    questions = models.ManyToManyField(Question, related_name='exam_sets', blank=True)  # New field for questions
 
     class Meta:
         unique_together = ('exam', 'set_number')
 
     def __str__(self):
         return f"{self.exam.name} - Set {self.set_number}"
-
-class Question(models.Model):
-    ANSWER_CHOICES = [
-        ('A', 'Option A'),
-        ('B', 'Option B'),
-        ('C', 'Option C'),
-        ('D', 'Option D'),
-        ('E', 'Option E'),
-    ]
-
-    question_text = models.CharField(max_length=255)
-    option_a = models.CharField(max_length=255)
-    option_b = models.CharField(max_length=255)
-    option_c = models.CharField(max_length=255)
-    option_d = models.CharField(max_length=255)
-    option_e = models.CharField(max_length=255)
-    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
-
-    def __str__(self):
-        return self.question_text
-
 
 class StudentQuestion(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='student_questions')
@@ -140,24 +146,27 @@ class Answer(models.Model):
     def __str__(self):
         return f"Answer for: {self.question.question_text[:50]}..."
 
+
 class TestSet(models.Model):
-    exam = models.ForeignKey(Exam, related_name='test_sets', on_delete=models.CASCADE)
-    student = models.ForeignKey(Student, related_name='test_sets', on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     set_no = models.IntegerField()
-    set_id = models.CharField(max_length=8, unique=True, editable=False)
+    set_id = models.CharField(max_length=5, unique=True, blank=True)  # Add set_id as a CharField
+    questions = models.ManyToManyField('Question', related_name='test_sets', blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.set_id:
-            self.set_id = self.generate_set_id()
+        if not self.set_id:  # Check if set_id is not already set
+            self.set_id = self.generate_set_id()  # Generate set_id
         super().save(*args, **kwargs)
 
     def generate_set_id(self):
         exam_id = str(self.exam.id).zfill(3)[:3]
-        set_number = str(random.randint(0, 99)).zfill(2)  # Removed random_digits
+        set_number = str(random.randint(0, 99)).zfill(2)  # Ensure two-digit set number
         return f"{exam_id}{set_number}"
-    
+
     def __str__(self):
         return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no}, ID: {self.set_id})"
+
 
 # Specify unique related_name attributes for groups and user_permissions fields
 User._meta.get_field('groups').remote_field.related_name = 'custom_user_groups'

@@ -31,6 +31,8 @@ class StudentForm(forms.ModelForm):
 
     
 class ExamForm(forms.ModelForm):
+    class_assigned = forms.ModelChoiceField(queryset=Class.objects.all(), required=False)
+
     class Meta:
         model = Exam
         fields = ['name', 'class_assigned']  # Removed 'exam_id'

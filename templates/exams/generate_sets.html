@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
+  <nav class="flex mb-4" aria-label="Breadcrumb">
+    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+      <li class="inline-flex items-center">
+        <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+          <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+          </svg>
+          Home
+        </a>
+      </li>
+      <li class="flex items-center">
+        <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
+        </svg>
+        <a href="{% url 'exam_detail' exam.id %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Exam Detail</a>
+      </li>
+    </ol>
+  </nav>
+  
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Generate Exam Sets for {{ current_class.name }}</h1>
+  <p class="text-sm font-medium text-gray-700 mb-4">Exam: {{ exam.title }}</p>
+
+  <div id="message-div" class="mt-4"></div> <!-- Message display -->
+
+  <div class="mt-4">
+    {% if generated_sets %}
+      <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
+      <ul id="generated-sets-list" class="list-disc pl-5">
+          {% for test_set in generated_sets %}
+             <li class="mb-1">Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - Set Number: {{ test_set.set_no }} - Set ID: {{ test_set.id }}</li>
+          {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-gray-500">No sets generated yet.</p>
+    {% endif %}
+  </div>
+
+  <form id="generate-sets-form" action="{% url 'generate_exam_sets' current_class.id exam.id %}" method="POST">
+    {% csrf_token %}
+    <button type="submit" class="mt-6 block text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+        Generate Sets for Each Student
+    </button>
+  </form>
+
+  <a href="{% url 'exam_detail' exam.id %}" class="mt-6 block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+    Back to Exam
+  </a>
+</div>
+
+<script>
+document.getElementById("generate-sets-form").onsubmit = function(event) {
+    event.preventDefault(); // Prevent the default form submission
+
+    const formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        const messageDiv = document.getElementById("message-div");
+        messageDiv.innerHTML = ''; // Clear previous messages
+
+        if (data.success) {
+            // Clear the current list
+            const list = document.getElementById("generated-sets-list");
+            list.innerHTML = '';
+
+            // Append the new generated sets
+            data.generated_sets.forEach(set => {
+                const listItem = document.createElement("li");
+                listItem.classList.add("mb-1");
+                listItem.innerText = `Student: ${set.student_name} - Set Number: ${set.set_no} - Set ID: ${set.set_id}`;
+                list.appendChild(listItem);
+            });
+        } else {
+            // Display error message
+            messageDiv.innerHTML = `<p class="text-red-500">${data.message}</p>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const messageDiv = document.getElementById("message-div");
+        messageDiv.innerHTML = `<p class="text-red-500">An error occurred while generating sets.</p>`;
+    });
+};
+</script>
+
+{% endblock %}

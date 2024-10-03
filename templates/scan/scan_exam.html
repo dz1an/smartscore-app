@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Check Exam and Scan Images</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <!-- Folder and CSV Upload -->
+    <label for="class_name">Class Name:</label>
+    <input type="text" id="class_name" name="class_name" required>
+    
+    <label for="exam_csv">Exam CSV:</label>
+    <input type="file" id="exam_csv" name="exam_csv" accept=".csv" required>
+
+    <!-- Image Upload Table -->
+    <label for="images">Upload Images:</label>
+    <input type="file" id="images" name="images" multiple accept="image/*">
+    
+    <h3>Uploaded Images</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="image-table">
+            <!-- Dynamically added rows for each uploaded image -->
+        </tbody>
+    </table>
+    
+    <!-- Scan Button -->
+    <button type="submit">Scan</button>
+</form>
+
+<script>
+// JavaScript to handle adding images to the table dynamically
+document.getElementById('images').addEventListener('change', function(event) {
+    const imageTable = document.getElementById('image-table');
+    imageTable.innerHTML = '';  // Clear previous list
+    Array.from(event.target.files).forEach((file, index) => {
+        let row = `<tr>
+                      <td>${file.name}</td>
+                      <td><button type="button" onclick="removeImage(${index})">Remove</button></td>
+                   </tr>`;
+        imageTable.insertAdjacentHTML('beforeend', row);
+    });
+});
+
+function removeImage(index) {
+    // Logic to remove images (customize based on your needs)
+    document.getElementById('image-table').deleteRow(index);
+}
+</script>
+
+{% if folder_path %}
+    <h3>Folder Created: {{ folder_path }}</h3>
+    <p>CSV File Saved: {{ csv_file.name }}</p>
+    <ul>
+        {% for image in images %}
+        <li>{{ image.name }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+{% endblock %}

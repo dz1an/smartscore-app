@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
 <nav class="flex mb-4" aria-label="Breadcrumb">
   <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
     <li class="inline-flex items-center">
@@ -23,41 +24,49 @@
 <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Exams</h1>
 
 {% include 'message_display.html' %}
-
+<!-- Table -->
 <div class="relative overflow-x-auto mb-6">
-  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+  <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
     <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
       <tr>
-        <th scope="col" class="px-6 py-3">Exam Name</th>
+        <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10">
+          Exam Name
+        </th>
         <th scope="col" class="px-6 py-3">Class</th>
+        <th scope="col" class="px-6 py-3">Number of Questions</th>  <!-- New Column -->
         <th scope="col" class="px-6 py-3">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for exam in exams %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ exam.name }}</td>
+          <!-- Sticky Exam Name Column -->
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800 z-10">
+            {{ exam.name }}
+          </td>
           <td class="px-6 py-4">{{ exam.class_assigned.name }}</td>
+          <td class="px-6 py-4">{{ exam.num_questions }}</td>  <!-- Display Number of Questions -->
           <td class="px-6 py-4">
-            <button data-modal-target="add-student-modal-{{ exam.id }}" data-modal-toggle="add-student-modal-{{ exam.id }}" class="text-green-600 hover:underline ml-4"></button>
-            <a href="{% url 'exam_detail' exam.id %}" class="text-green-600 hover:underline"></a>
-            <a href="{% url 'exam_detail' exam.id %}" class="text-blue-600 hover:underline">View</a>
+            <a href="{% url 'exam_detail' exam.id %}" class="text-green-600 hover:underline">View</a>
             <a href="{% url 'delete_exam' exam.id %}" class="text-red-600 hover:underline ml-4" onclick="return confirm('Are you sure you want to delete this exam?');">Delete</a>
           </td>
         </tr>
       {% empty %}
         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No exams available.</td>
+          <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No exams available.</td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 
 <div class="add-exam-section mt-8">
   <button data-modal-target="add-exam-modal" data-modal-toggle="add-exam-modal" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" type="button">
     Add Exam
   </button>
 </div>
+
 
 <!-- Modal for adding a new exam -->
 <div id="add-exam-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
@@ -99,5 +108,5 @@
     </div>
   </div>
 </div>
-
+</div>
 {% endblock %}

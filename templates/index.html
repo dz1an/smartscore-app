@@ -6,25 +6,68 @@
 {% block content %}
 <div class="flex items-center justify-center min-h-screen bg-gray-100">
     <div class="w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
-        <h1 class="text-4xl font-bold mb-6 text-center">Welcome to SmartScore</h1>
-        <p class="text-lg text-gray-700 mb-8 text-center">
-            SmartScore is a comprehensive tool designed to help educators manage their classes and students efficiently. 
-            With SmartScore, you can easily add and manage classes, enroll students, and schedule exams. 
-            The platform aims to simplify administrative tasks, allowing you to focus more on teaching and less on paperwork.
-        </p>
+
+        <!-- Message Display with auto-dismiss functionality -->
+        {% if messages %}
+            <div id="message-container">
+                {% include 'message_display.html' %}
+            </div>
+        {% endif %}
         
+        <h1 class="text-4xl font-bold mb-6 text-center">
+            Welcome to SmartScore
+        </h1>
+
+        <p class="text-lg text-gray-700 mb-8 text-center">
+            SmartScore is a comprehensive tool designed to help educators manage their classes and students efficiently.
+            {% if user.is_authenticated %}
+                You are logged in. Manage your classes, students, and exams with ease.
+            {% else %}
+                With SmartScore, you can easily add and manage classes, enroll students, and schedule exams.
+            {% endif %}
+        </p>
+
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div class="p-6 border rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300">
-                <h2 class="text-2xl font-semibold mb-4">Explore Classes</h2>
-                <p class="text-gray-700">Discover and manage your classes with ease.</p>
-                <a href="{% url 'classes' %}" class="block mt-4 text-center text-blue-600 hover:underline">Go to Classes</a>
-            </div>
-            <div class="p-6 border rounded-lg bg-green-100 hover:bg-green-200 transition duration-300">
-                <h2 class="text-2xl font-semibold mb-4">Manage Exams</h2>
-                <p class="text-gray-700">Add, edit, and remove exams from your classes.</p>
-                <a href="{% url 'exams' %}" class="block mt-4 text-center text-green-600 hover:underline">Go to Exams</a>
-            </div>
+            {% if user.is_authenticated %}
+                <!-- Show this section if the user is logged in -->
+                <div class="p-6 border rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300">
+                    <h2 class="text-2xl font-semibold mb-4">Explore Classes</h2>
+                    <p class="text-gray-700">Discover and manage your classes with ease.</p>
+                    <a href="{% url 'classes' %}" class="block mt-4 text-center text-blue-600 hover:underline">Go to Classes</a>
+                </div>
+                <div class="p-6 border rounded-lg bg-green-100 hover:bg-green-200 transition duration-300">
+                    <h2 class="text-2xl font-semibold mb-4">Manage Exams</h2>
+                    <p class="text-gray-700">Add, edit, and remove exams from your classes.</p>
+                    <a href="{% url 'exams' %}" class="block mt-4 text-center text-green-600 hover:underline">Go to Exams</a>
+                </div>
+            {% else %}
+                <!-- Show this section if the user is not logged in -->
+                <div class="p-6 border rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300">
+                    <h2 class="text-2xl font-semibold mb-4">Learn More About SmartScore</h2>
+                    <p class="text-gray-700">Sign up or log in to start managing your classes and exams today!</p>
+                    <a href="{% url 'login' %}" class="block mt-4 text-center text-blue-600 hover:underline">Login</a>
+                </div>
+                <div class="p-6 border rounded-lg bg-green-100 hover:bg-green-200 transition duration-300">
+                    <h2 class="text-2xl font-semibold mb-4">Create an Account</h2>
+                    <p class="text-gray-700">Join SmartScore and simplify class and exam management.</p>
+                    <a href="{% url 'register' %}" class="block mt-4 text-center text-green-600 hover:underline">Register</a>
+                </div>
+            {% endif %}
         </div>
+
     </div>
 </div>
+
+
+{% block extra_js %}
+<script>
+// Auto-dismiss messages after 5 seconds
+setTimeout(function() {
+    var messageContainer = document.getElementById('message-container');
+    if (messageContainer) {
+        messageContainer.style.display = 'none'; 
+    }
+}, 5000); 
+</script>
+{% endblock %}
 {% endblock %}
