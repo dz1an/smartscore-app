@@ -30,59 +30,63 @@
   {% include 'message_display.html' %}
 
   <!-- Questions Section -->
-  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Exam Questions</h2>
-   <!-- Add Question Button with Icon -->
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    {{ exam.questions.count }} Exam Questions
+  </h2>   <!-- Add Question Button with Icon -->
       
    <a href="{% url 'select_questions' exam.id %}" class="ml-auto text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg">Select Questions</a>
   
    <a href="{% url 'scan_page' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Scan Page</a>
    <a href="{% url 'generate_sets' current_class.id exam.id %}" class="ml-auto text-sm text-white bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded-lg">Generate Sets</a>
 
-  <div class="mb-4 flex items-center space-x-4">
-    
-  
-  
 
-  <!-- Table of Exam Questions -->
-  <div class="relative overflow-x-auto mb-6">
-    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" class="px-6 py-3">Question</th>
-          <th scope="col" class="px-6 py-3">Options</th>
-          <th scope="col" class="px-6 py-3">Answer</th>
-          <th scope="col" class="px-6 py-3">Actions</th>
+<!-- Table -->
+<div class="relative overflow-x-auto max-h-80 mb-6">
+  <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <tr>
+        <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10"> <!-- Fixed Question column -->
+          Question
+        </th>
+        <th scope="col" class="px-6 py-3">Options</th>
+        <th scope="col" class="px-6 py-3">Answer</th>
+        <th scope="col" class="px-6 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for question in exam.questions.all %}
+        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <!-- Sticky Question Column -->
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800">
+            {{ question.question_text }}
+          </td>
+          <td class="px-6 py-4">
+            <ul>
+              <li>A: {{ question.option_a }}</li>
+              <li>B: {{ question.option_b }}</li>
+              <li>C: {{ question.option_c }}</li>
+              <li>D: {{ question.option_d }}</li>
+              <li>E: {{ question.option_e }}</li>
+            </ul>
+          </td>
+          <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.get_answer_display }}</td>
+          <td class="px-6 py-4">
+            <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
+              onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}','{{ question.option_e }}')">Edit</button>
+            <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
+              onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        {% for question in exam.questions.all %}
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
-            <td class="px-6 py-4">
-              <ul>
-                <li>A: {{ question.option_a }}</li>
-                <li>B: {{ question.option_b }}</li>
-                <li>C: {{ question.option_c }}</li>
-                <li>D: {{ question.option_d }}</li>
-                <li>E: {{ question.option_e }}</li>
-              </ul>
-            </td>
-            <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.get_answer_display }}</td>
-            <td class="px-6 py-4">
-              <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 mr-2"
-                onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}','{{ question.option_e }}')">Edit</button>
-              <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
-                onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
-            </td>
-          </tr>
-        {% empty %}
-          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-            <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-      
-    </table>
+      {% empty %}
+        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+          <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+    
       <!-- Add a button to open the Answer Key Modal -->
        
        <!-- Add Question Button with Icon -->

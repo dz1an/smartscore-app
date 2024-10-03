@@ -23,6 +23,10 @@
             </li>
         </ol>
     </nav>
+    {% if messages %}
+        {% include 'message_display.html' %}
+           
+        {% endif %}
 
     <h2 class="text-xl font-semibold mb-4 text-center">Check Exam and Scan Images</h2>
 

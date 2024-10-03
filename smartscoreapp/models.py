@@ -55,7 +55,6 @@ class Exam(models.Model):
 
         super().save(*args, **kwargs)
 
-
     def generate_exam_id(self):
         # Get the last used exam_id and increment it
         last_exam = Exam.objects.order_by('-exam_id').first()
@@ -74,17 +73,23 @@ class Student(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     middle_initial = models.CharField(max_length=1, blank=True)
-    student_id = models.CharField(max_length=12, unique=True)
+    student_id = models.CharField(max_length=12, blank=True)  # Not unique
     assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
-    short_id = models.CharField(max_length=8, unique=True, editable=False, null=True, blank=True)
+    short_id = models.CharField(max_length=8, editable=False, null=True, blank=True)
+
 
     class Meta:
-        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class', 'student_id')
+        unique_together = ('first_name', 'last_name', 'middle_initial', 'assigned_class', 'short_id')
+
 
     def save(self, *args, **kwargs):
         if not self.student_id:
             self.student_id = self.generate_student_id()
-        self.short_id = self.student_id[-7:]
+        # Ensure `student_id` is long enough to extract last 7 characters
+        if len(self.student_id) >= 7:
+            self.short_id = self.student_id[-7:]
+        else:
+            self.short_id = self.student_id  # If shorter, use the full student_id
         super(Student, self).save(*args, **kwargs)
 
     def generate_student_id(self):
@@ -94,6 +99,7 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.short_id})"
+
 
 class ExamSet(models.Model):
     exam = models.ForeignKey(Exam, related_name='exam_sets', on_delete=models.CASCADE)
