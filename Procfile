@@ -1,1 +1,0 @@
-web: gunicorn smartscoreapp.wsgi --log-file--
