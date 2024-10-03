@@ -25,6 +25,7 @@ import os
 import string
 from django.conf import settings
 from django.http import HttpResponseForbidden
+from django.db.models import Count
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -66,13 +67,9 @@ def register_view(request):
     if request.method == 'POST':
         form = UserCreationWithEmailForm(request.POST)
         if form.is_valid():
-            form.save()
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            user = authenticate(username=username, password=password)
-            login(request, user)
-            messages.success(request, 'User registered successfully!')
-            return redirect('login')
+            form.save()  # Save the user without logging them in
+            messages.success(request, 'User registered successfully! Please log in.')
+            return redirect('login')  # Redirect to the login page
         else:
             for field, errors in form.errors.items():
                 for error in errors:
@@ -82,13 +79,12 @@ def register_view(request):
     
     return render(request, 'register.html', {'form': form})
 
+
 def registered_users_view(request):
     users = User.objects.all()
     return render(request, 'registered_users.html', {'users': users})
 
-from django.db.models import Count
 
-from django.db.models import Count
 
 @login_required
 def classes_view(request):
