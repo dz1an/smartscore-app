@@ -123,24 +123,27 @@ def classes_view(request):
     }
     return render(request, 'classes.html', context)
 
-
 @login_required
 def delete_class_view(request, class_id):
     try:
         # Fetch the class to be deleted and ensure it belongs to the current user
         class_instance = get_object_or_404(Class, id=class_id, user=request.user)
 
-        # Fetch exams associated with the class
-        exams = Exam.objects.filter(class_assigned=class_instance)
+        # Fetch or create the 'Unassigned Class' for the current user
+        unassigned_class, created = Class.objects.get_or_create(
+            name='Unassigned Class', 
+            user=request.user,  # Ensure it's tied to the same user
+            defaults={'description': 'This class is used to store reassigned exams.'}  # Optional description
+        )
 
-        # Optionally delete all associated exams before deleting the class
-        exams.delete()  # Remove this line if you want to keep exams
+        # Reassign all exams from the class being deleted to the 'Unassigned Class'
+        Exam.objects.filter(class_assigned=class_instance).update(class_assigned=unassigned_class)
 
         # Now delete the class
         class_instance.delete()
 
         # Success message after deletion
-        messages.success(request, 'Class deleted successfully, and associated exams have been removed.')
+        messages.success(request, 'Class deleted successfully, and exams have been moved to the "Unassigned Class".')
         return redirect('classes')
     
     except IntegrityError as e:
@@ -152,7 +155,6 @@ def delete_class_view(request, class_id):
         # Handle the case where the class does not exist
         messages.error(request, 'Class not found.')
         return redirect('classes')
-
 
 @login_required
 def class_detail_view(request, class_id):
@@ -243,6 +245,7 @@ def exams_view(request):
         'classes': classes,
     }
     return render(request, 'exams.html', context)
+
 @login_required
 def delete_exam(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -552,7 +555,6 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
-
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -568,18 +570,14 @@ def generate_exam_sets(request, class_id, exam_id):
                 'message': "No questions available for this exam."
             })
 
-        # Initialize CSV writer for download
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
-        writer = csv.writer(response)
-        writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
-
         new_sets_generated = False
-        generated_sets = []  # Create a local variable to store generated sets
+        generated_sets = []  # To store generated sets information
 
         for student in students:
+            # Check if the student already has a set for this exam
             if not TestSet.objects.filter(exam=exam, student=student).exists():
                 set_no = random.randint(1, 100)
+                # Ensure unique set number for each student
                 while TestSet.objects.filter(exam=exam, set_no=set_no).exists():
                     set_no = random.randint(1, 100)
 
@@ -587,28 +585,26 @@ def generate_exam_sets(request, class_id, exam_id):
                 randomized_questions = list(exam_questions)
                 random.shuffle(randomized_questions)
 
-                number_of_questions_to_select = min(len(randomized_questions), 10)  # Adjust as needed
+                # Adjust the number of questions to 10 or less if there aren't enough
+                number_of_questions_to_select = min(len(randomized_questions), 10)
                 selected_questions = randomized_questions[:number_of_questions_to_select]
+
+                # Generate the answer key
                 answer_key = ''.join(str(['A', 'B', 'C', 'D', 'E'].index(question.answer)) for question in selected_questions)
 
+                # Formatting for student ID and exam unique ID
                 formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
-                exam_unique_id = str(random.randint(10000, 99999))  # Ensure it’s a 5-digit ID
+                exam_unique_id = str(random.randint(10000, 99999))  # Random 5-digit ID
                 middle_initial = student.middle_initial if student.middle_initial else ''
 
-                writer.writerow([
-                    student.last_name,
-                    student.first_name,
-                    middle_initial,
-                    formatted_id,
-                    exam_unique_id,
-                    answer_key
-                ])
-
+                # Append data to the generated sets list
                 generated_sets.append({
                     'student_name': f"{student.first_name} {student.last_name}",
                     'set_no': set_no,
-                    'set_id': test_set.id
-                })  # Append to the local list
+                    'set_id': test_set.id,
+                    'answer_key': answer_key
+                })
+
                 new_sets_generated = True
 
         if not new_sets_generated:
@@ -632,6 +628,38 @@ def generate_exam_sets(request, class_id, exam_id):
     }
 
     return render(request, 'exams/generate_sets.html', context)
+
+
+
+@login_required
+def download_exam_sets_csv(request, class_id, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    current_class = get_object_or_404(Class, id=class_id)
+    students = current_class.students.all()
+
+    # Initialize CSV writer for download
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
+
+    for student in students:
+        test_set = TestSet.objects.filter(exam=exam, student=student).first()
+        if test_set:
+            formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
+            exam_unique_id = str(random.randint(10000, 99999))  # Random 5-digit ID
+            middle_initial = student.middle_initial if student.middle_initial else ''
+
+            writer.writerow([
+                student.last_name,
+                student.first_name,
+                middle_initial,
+                formatted_id,
+                exam_unique_id,
+                test_set.answer_key  # Assuming you have stored answer key in TestSet model
+            ])
+
+    return response
 
 
 @login_required
