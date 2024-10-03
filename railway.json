@@ -13,8 +13,8 @@
       "buildCommand": "npm ci"
     },
     "deploy": {
-      "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn smartscoreapp.wsgi",
+      "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn smartscore-app.wsgi",
       "restartPolicyType": "ON_FAILURE",
       "restartPolicyMaxRetries": 10
     }
-  }
+}
