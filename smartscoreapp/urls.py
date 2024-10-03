@@ -3,7 +3,7 @@ from django.urls import path
 from smartscoreapp.views import (
     index, login_view, register_view, registered_users_view,
     classes_view, class_detail_view, exams_view, exam_detail_view,
-    logout_view, add_class_view, add_student_view, add_exam_view,
+    logout_view, add_class_view, add_student_view, add_exam_view, delete_account_view,
     add_student_to_exam_view, settings_view, edit_student, delete_student_view,
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
     select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
@@ -29,6 +29,7 @@ urlpatterns = [
 
     # Users
     path('registered-users/', registered_users_view, name='registered_users'),
+    path('delete_account/', delete_account_view, name='delete_account'),
 
     # Classes
     path('classes/', classes_view, name='classes'),

@@ -1092,3 +1092,12 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'first_name', 'last_name', 'student_id', 'short_id')
     data = list(students)
     return JsonResponse(data, safe=False)
+
+
+@login_required
+def delete_account_view(request):
+    if request.method == 'POST':
+        user = request.user
+        user.delete()
+        messages.success(request, "Your account has been deleted.")
+        return redirect('index')
