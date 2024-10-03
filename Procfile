@@ -1,1 +1,1 @@
-web: gunicorn smartscoreapp.wsgi --log-file -
+web: gunicorn smartscore-app.wsgi --log-file -
