@@ -3,12 +3,14 @@
     "build": {
       "builder": "NIXPACKS",
       "nixpacksPlan": {
-        "phases": {
-          "setup": {
-            "nixPkgs": ["...", "nodejs"]
+          "providers": ["python"],
+          "phases": {
+              "setup": {
+                  "nixPkgs": ["...", "nodejs"]
+              }
           }
-        }
-      }
+      },
+      "buildCommand": "npm ci"
     },
     "deploy": {
       "startCommand": "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn smartscoreapp.wsgi",
