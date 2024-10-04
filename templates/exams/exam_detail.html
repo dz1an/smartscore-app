@@ -153,7 +153,7 @@
           <input type="text" name="option_d" id="optionD" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
-          <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E:</label>
+          <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
           <input type="text" name="option_e" id="optionE" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
 
@@ -179,14 +179,14 @@
   </div>
 </div>
 
-  <!-- Edit Question Modal -->
+<!-- Edit Question Modal -->
 <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
     <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
       <form id="editQuestionForm" method="post">
         {% csrf_token %}
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
-        
+
         <!-- Question Text -->
         <div class="mb-4">
           <label for="editQuestionText" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Question Text:</label>
@@ -221,7 +221,7 @@
           <input type="text" id="editOptionD" name="option_d" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_d }}">
         </div>
         <div class="mb-4">
-          <label for="editOptionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E:</label>
+          <label for="editOptionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
           <input type="text" id="editOptionE" name="option_e" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_e }}">
         </div>
 
@@ -247,7 +247,7 @@
   </div>
 </div>
 
-
+  
   <!-- Delete Question Modal -->
   <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen">

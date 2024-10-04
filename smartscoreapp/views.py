@@ -313,7 +313,7 @@ def add_question_view(request, exam_id):
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
-
+    
     if request.method == 'POST':
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
@@ -321,25 +321,28 @@ def edit_question_view(request, question_id):
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
         option_e = request.POST.get('option_e')
-        correct_answer = request.POST.get('answer')
+        selected_answer = request.POST.get('correct_answer')  # This should match with what is expected in the question model
+        difficulty = request.POST.get('difficulty')  # Fetch the selected difficulty
 
-        if question_text and option_a and option_b and correct_answer:
-            # Update question
+        if question_text and option_a and option_b and selected_answer:
+            # Update question attributes
             question.question_text = question_text
             question.option_a = option_a
             question.option_b = option_b
             question.option_c = option_c
             question.option_d = option_d
             question.option_e = option_e
-            question.answer = correct_answer
+            question.difficulty = difficulty  # Update difficulty level
+            question.answer = selected_answer  # Update the correct answer
             question.save()
 
-            messages.success(request, 'Question and answer updated successfully!')
-            return redirect('exam_detail', exam_id=question.exams.first().id)  # Get the first exam this question belongs to
+            messages.success(request, 'Question updated successfully!')
+            return redirect('exam_detail', exam_id=question.exams.first().id)  # Redirect to the related exam detail
+        
         else:
-            messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
+            messages.error(request, 'All fields are required.')
     
-    return render(request, 'exam_detail.html', {'question': question})
+    return render(request, 'edit_question.html', {'question': question})
 
 
 @login_required

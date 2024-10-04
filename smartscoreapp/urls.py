@@ -67,7 +67,8 @@ urlpatterns = [
     path('exams/<int:exam_id>/print-test-paper/', print_test_paper_view, name='print_test_paper'),
     path('process-scanned-papers/', process_scanned_papers_view, name='process_scanned_papers'),
     path('edit_question/<int:question_id>/', views.edit_question_view, name='edit_question'),
-    
+
+
 
 
     path('generate_questionnaire/<int:exam_id>/<int:student_id>/', generate_questionnaire_view, name='generate_questionnaire'),
