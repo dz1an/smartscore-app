@@ -60,14 +60,14 @@ urlpatterns = [
     path('exams/<int:exam_id>/add_student/', add_student_to_exam_view, name='add_student_to_exam'),
     path('exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
     path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
-    path('edit_question/<int:question_id>/', edit_question_view, name='edit_question'),
+    
     path('delete_question/<int:question_id>/', delete_question_view, name='delete_question'),
     path('exams/<int:exam_id>/select_questions/', select_questions_view, name='select_questions'),
     path('exams/<int:exam_id>/generate-test-paper/', generate_test_paper_view, name='generate_test_paper'),
     path('exams/<int:exam_id>/print-test-paper/', print_test_paper_view, name='print_test_paper'),
     path('process-scanned-papers/', process_scanned_papers_view, name='process_scanned_papers'),
-
-
+    path('edit_question/<int:question_id>/', views.edit_question_view, name='edit_question'),
+    
 
 
     path('generate_questionnaire/<int:exam_id>/<int:student_id>/', generate_questionnaire_view, name='generate_questionnaire'),
@@ -83,7 +83,7 @@ urlpatterns = [
     path('exams/<int:class_id>/<int:exam_id>/scan/', scan_page, name='scan_page'),
     path('exam/generate-sets/<int:class_id>/<int:exam_id>/', generate_exam_sets, name='generate_exam_sets'),
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_sets'),
-     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_exam_sets'),
+    path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_exam_sets'),
     path('exams/<int:class_id>/<int:exam_id>/download_csv/', download_csv, name='download_csv'),  # Add this line
 
     

@@ -25,16 +25,24 @@ class Question(models.Model):
         ('E', 'Option E'),
     ]
 
+    DIFFICULTY_CHOICES = [
+        ('Easy', 'Easy'),
+        ('Medium', 'Medium'),
+        ('Hard', 'Hard'),
+    ]
+
     question_text = models.CharField(max_length=255)
     option_a = models.CharField(max_length=255)
     option_b = models.CharField(max_length=255)
     option_c = models.CharField(max_length=255)
     option_d = models.CharField(max_length=255)
-    option_e = models.CharField(max_length=255)
-    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Added default value
+    option_e = models.CharField(max_length=255, blank=True, null=True)  # Option E optional
+    answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Default answer A
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)  # Difficulty level
 
     def __str__(self):
         return self.question_text
+
 
 class Exam(models.Model):
     exam_id = models.CharField(max_length=3, unique=True, editable=False)

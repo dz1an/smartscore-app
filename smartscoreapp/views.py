@@ -268,12 +268,14 @@ def add_question_view(request, exam_id):
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
         option_e = request.POST.get('option_e')
-        answer = request.POST.get('answer')
+        selected_answer = request.POST.get('correct_answer')  # This is the selected answer (e.g., 'A', 'B', etc.)
+        difficulty = request.POST.get('difficulty')  # Fetch the selected difficulty
         
-        selected_question_ids = request.POST.getlist('selected_questions')  # Fetch selected questions
+        selected_question_ids = request.POST.getlist('selected_questions')  # Fetch selected questions from other exams
 
         # Add manually entered question
-        if question_text and option_a and option_b and answer:
+        if question_text and option_a and option_b and selected_answer:
+            # Create the Question instance first
             question = Question.objects.create(
                 question_text=question_text,
                 option_a=option_a,
@@ -281,9 +283,17 @@ def add_question_view(request, exam_id):
                 option_c=option_c,
                 option_d=option_d,
                 option_e=option_e,
-                answer=answer
+                difficulty=difficulty
             )
-            exam.questions.add(question)  # Add the newly created question to the current exam
+            
+            # Create the Answer instance and associate it with the Question
+            answer = Answer.objects.create(
+                question=question,
+                answer=selected_answer
+            )
+            
+            # Add the question to the exam
+            exam.questions.add(question)
             messages.success(request, 'New question added successfully!')
 
         # Add selected questions from other exams
@@ -297,29 +307,8 @@ def add_question_view(request, exam_id):
     return render(request, 'add_question.html', {
         'exam': exam,
         'available_exams': available_exams,
-        'questions': []  # Initially no questions shown from other exams
+        'questions': [],  # Initially no questions shown from other exams
     })
-
-
-@login_required
-def create_exam_set(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id)
-    students = Student.objects.filter(assigned_class=exam.class_assigned)
-
-    if request.method == 'POST':
-        form = TestSetForm(request.POST)
-        if form.is_valid():
-            test_set = form.save(commit=False)
-            test_set.exam = exam
-            test_set.save()
-            messages.success(request, f'Exam Set {test_set.set_no} created for {test_set.student}.')
-            return redirect('exam_detail', exam_id=exam.id)
-    else:
-        form = TestSetForm()
-    
-    return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
-
-
 
 @login_required
 def edit_question_view(request, question_id):
@@ -350,7 +339,7 @@ def edit_question_view(request, question_id):
         else:
             messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required.')
     
-    return render(request, 'edit_question.html', {'question': question})
+    return render(request, 'exam_detail.html', {'question': question})
 
 
 @login_required
@@ -372,6 +361,25 @@ def delete_question_view(request, question_id):
         return redirect('exam_detail', exam_id=exam_id)
 
     return redirect('exam_detail', exam_id=exam_id)
+
+
+@login_required
+def create_exam_set(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    students = Student.objects.filter(assigned_class=exam.class_assigned)
+
+    if request.method == 'POST':
+        form = TestSetForm(request.POST)
+        if form.is_valid():
+            test_set = form.save(commit=False)
+            test_set.exam = exam
+            test_set.save()
+            messages.success(request, f'Exam Set {test_set.set_no} created for {test_set.student}.')
+            return redirect('exam_detail', exam_id=exam.id)
+    else:
+        form = TestSetForm()
+    
+    return render(request, 'create_exam_set.html', {'exam': exam, 'students': students, 'form': form})
 
 
 @login_required
@@ -568,7 +576,23 @@ def generate_exam_sets(request, class_id, exam_id):
         exam_questions = list(exam.questions.all())
 
         if not exam_questions:
-            return JsonResponse({'message': "No questions available for this exam.", 'generated_sets': []})
+            messages.error(request, "No questions available for this exam.")
+            return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
+
+        # Validate that each question has at least 2 choices
+        valid_questions = []
+        for question in exam_questions:
+            available_choices = [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]
+            available_choices = [choice for choice in available_choices if choice]  # Filter out empty choices
+
+            if len(available_choices) >= 2:
+                valid_questions.append(question)
+            else:
+                messages.warning(request, f"Question '{question.question_text}' does not have enough choices (minimum of 2 required).")
+
+        if not valid_questions:
+            messages.error(request, "Not enough valid questions to generate sets. Please ensure each question has at least two options.")
+            return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
         generated_sets = []  # Create a local variable to store generated sets
 
@@ -576,8 +600,8 @@ def generate_exam_sets(request, class_id, exam_id):
         for idx, student in enumerate(students):
             set_no = (idx % num_sets) + 1  # Cycle through the sets
 
-            # Shuffle questions for each set
-            randomized_questions = exam_questions[:]
+            # Shuffle valid questions for each set
+            randomized_questions = valid_questions[:]
             random.shuffle(randomized_questions)
 
             # Select a subset of questions for the current set
@@ -1030,8 +1054,6 @@ def delete_student(request, student_id, class_id):
     
     # If not POST, show a confirmation page (optional)
     return render(request, 'delete_student_confirm.html', {'student': student_instance, 'class': class_instance})
-
-
 
 
 

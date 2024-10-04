@@ -89,7 +89,6 @@
   </table>
 </div>
 
-    
       <!-- Add a button to open the Answer Key Modal -->
        
        <!-- Add Question Button with Icon -->
@@ -112,56 +111,73 @@
 </div>
 </div>
     
+<!-- Add Question Modal -->
+<div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form method="post" action="{% url 'add_question' exam.id %}">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Question to {{ exam.name }}</h2>
+        
+        <!-- Question Text -->
+        <div class="mb-4">
+          <label for="questionText" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Question Text:</label>
+          <textarea name="question_text" id="questionText" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+        </div>
 
-  <!-- Add Question Modal -->
-  <div id="addQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form method="post" action="{% url 'add_question' exam.id %}">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Question to {{ exam.name }}</h2>
-          <div class="mb-4">
-            <label for="questionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
-            <textarea id="questionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white"></textarea>
-          </div>
-          <div class="grid grid-cols-4 gap-4 mb-4">
-            <div>
-              <label for="optionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
-              <input type="text" id="optionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
-              <input type="text" id="optionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
-              <input type="text" id="optionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
-              <input type="text" id="optionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-            <div>
-              <label for="optionE" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option E</label>
-              <input type="text" id="optionE" name="option_e" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-            </div>
-          </div>
-          <div class="mb-4">
-            <label for="Answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Answer</label>
-            <select id="Answer" name="answer" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-              <option value="A">Option A</option>
-              <option value="B">Option B</option>
-              <option value="C">Option C</option>
-              <option value="D">Option D</option>
-              <option value="E">Option E</option>
-            </select>
-          </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Add Question</button>
-          <button type="button" onclick="closeAddQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+       <!-- Difficulty -->
+        <div class="mb-4">
+          <label for="difficulty" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Difficulty:</label>
+          <select name="difficulty" id="difficulty" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+  
+        <!-- Options -->
+        <div class="mb-4">
+          <label for="optionA" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option A:</label>
+          <input type="text" name="option_a" id="optionA" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="optionB" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option B:</label>
+          <input type="text" name="option_b" id="optionB" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="optionC" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option C:</label>
+          <input type="text" name="option_c" id="optionC" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="optionD" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option D:</label>
+          <input type="text" name="option_d" id="optionD" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div class="mb-4">
+          <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
+          <input type="text" name="option_e" id="optionE" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+
+        <!-- Correct Answer -->
+        <div class="mb-4">
+          <label for="correctAnswer" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Correct Answer:</label>
+          <select name="correct_answer" id="correctAnswer" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="A">Option A</option>
+            <option value="B">Option B</option>
+            <option value="C">Option C</option>
+            <option value="D">Option D</option>
+            <option value="E">Option E</option>
+          </select>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-end">
+          <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg mr-2" onclick="closeAddQuestionModal()">Cancel</button>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Save</button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
 
   <!-- Edit Question Modal -->
   <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
@@ -325,4 +341,6 @@
       document.getElementById('deleteQuestionModal').classList.add('hidden');
     }
   </script>
+
+  
 {% endblock %}
