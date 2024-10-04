@@ -310,6 +310,7 @@ def add_question_view(request, exam_id):
         'questions': [],  # Initially no questions shown from other exams
     })
 
+
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
@@ -409,6 +410,7 @@ def select_questions_view(request, exam_id):
     selected_class_id = current_class.id
     selected_exam_id = None
     available_exams = []
+    questions = []
 
     # Get selected class and exam from POST data
     if request.method == 'POST':
@@ -424,23 +426,20 @@ def select_questions_view(request, exam_id):
         if selected_exam_id:
             selected_exam = get_object_or_404(Exam, id=selected_exam_id)
             questions = selected_exam.questions.all()
-        else:
-            questions = []
-
+        
         # Handle adding questions to the current exam
         if 'questions' in request.POST:
             selected_question_ids = request.POST.getlist('questions')
             selected_questions = Question.objects.filter(id__in=selected_question_ids)
             count_added = selected_questions.count()  # Get the number of selected questions
-            exam.questions.add(*selected_questions)  # Add selected questions to the current exam
-
-            # Update the success message to include the count of added questions
-            messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
+            
+            if count_added > 0:
+                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
+            else:
+                messages.warning(request, 'No questions selected to add.')
             return redirect('exam_detail', exam_id=exam_id)
-    else:
-        # Default questions to fetch from current class's exam
-        questions = []
-
+    
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
@@ -450,8 +449,6 @@ def select_questions_view(request, exam_id):
         'selected_class_id': int(selected_class_id),
         'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
-
-
 
 
 @login_required
