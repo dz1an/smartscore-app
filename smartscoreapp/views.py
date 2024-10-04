@@ -561,37 +561,39 @@ def generate_exam_sets(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
 
     if request.method == "POST":
-        students = current_class.students.all()
-        exam_questions = exam.questions.all()
+        # Get the number of sets to generate from the form
+        num_sets = int(request.POST.get('num_sets', 1))  # Default to 1 if not specified
 
-        if not exam_questions.exists():
+        students = list(current_class.students.all())
+        exam_questions = list(exam.questions.all())
+
+        if not exam_questions:
             return JsonResponse({'message': "No questions available for this exam.", 'generated_sets': []})
 
         generated_sets = []  # Create a local variable to store generated sets
 
-        for student in students:
-            if not TestSet.objects.filter(exam=exam, student=student).exists():
-                set_no = random.randint(1, 100)
-                while TestSet.objects.filter(exam=exam, set_no=set_no).exists():
-                    set_no = random.randint(1, 100)
+        # Generate sets and distribute to students
+        for idx, student in enumerate(students):
+            set_no = (idx % num_sets) + 1  # Cycle through the sets
 
+            # Shuffle questions for each set
+            randomized_questions = exam_questions[:]
+            random.shuffle(randomized_questions)
+
+            # Select a subset of questions for the current set
+            number_of_questions_to_select = min(len(randomized_questions), 10)  
+            selected_questions = randomized_questions[:number_of_questions_to_select]
+
+            # Create answer key
+            answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
+
+            # Create and save the test set
+            if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
                 test_set = TestSet(exam=exam, student=student, set_no=set_no)
-                randomized_questions = list(exam_questions)
-                random.shuffle(randomized_questions)
-
-                number_of_questions_to_select = min(len(randomized_questions), 10)  # Adjust as needed
-                selected_questions = randomized_questions[:number_of_questions_to_select]
-
-                # Create answer key based on question answers
-                answer_key = ''
-                for question in selected_questions:
-                    answer_key += question.answer  # Assuming question.answer is correct
-
-                # Save test set and assign questions
                 test_set.save()
-                test_set.questions.add(*selected_questions)  # Associate selected questions
-                test_set.answer_key = answer_key  # Store the generated answer key
-                test_set.save()  # Save the test_set with the answer_key
+                test_set.questions.add(*selected_questions)
+                test_set.answer_key = answer_key
+                test_set.save()
 
                 generated_sets.append({
                     'student_id': student.student_id,
@@ -601,18 +603,15 @@ def generate_exam_sets(request, class_id, exam_id):
                     'answer_key': answer_key,
                 })
 
-        # Redirect after successful generation
         messages.success(request, "New exam sets generated successfully.")
-        return redirect('exam_detail', exam_id=exam.id)  # Replace with your desired redirect
+        return redirect('exam_detail', exam_id=exam.id)
 
-    # Handle GET request and initial loading of generated sets
     generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
     context = {
         'exam': exam,
         'current_class': current_class,
         'generated_sets': generated_sets,
     }
-
     return render(request, 'exams/generate_sets.html', context)
 
 

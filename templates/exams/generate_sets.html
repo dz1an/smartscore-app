@@ -49,21 +49,31 @@
       <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
       <ul id="generated-sets-list" class="list-disc pl-5">
           {% for test_set in generated_sets %}
-             <li class="mb-1">Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - Set Number: {{ test_set.set_no }} - Set ID: {{ test_set.id }}</li>
+             <li class="mb-1">
+               Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - 
+               Set Number: {{ test_set.set_no }} - 
+               Set ID: {{ test_set.id }} 
+               {% if test_set.answer_key %}
+                 - Answer Key: {{ test_set.answer_key }}
+               {% endif %}
+             </li>
           {% endfor %}
       </ul>
     {% else %}
-      <p class="text-gray-500">No sets generated yet.</p>
+      <p class="text-gray-500">No sets generated yet. Please ensure you have enough questions and sets specified.</p>
     {% endif %}
   </div>
-
-  <a href="{% url 'download_csv' current_class.id exam.id %}" class="mt-6 block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-    Download CSV
-  </a>
   
-  <a href="{% url 'exam_detail' exam.id %}" class="mt-6 block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-    Back to Exam
-  </a>
+
+  <div class="mt-6">
+    <a href="{% url 'download_csv' current_class.id exam.id %}" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+      Download CSV
+    </a>
+    
+    <a href="{% url 'exam_detail' exam.id %}" class="mt-4 block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+      Back to Exam
+    </a>
+  </div>
 </div>
 
 {% endblock %}
