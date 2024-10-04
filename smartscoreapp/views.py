@@ -555,7 +555,6 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
-
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -576,13 +575,23 @@ def generate_exam_sets(request, class_id, exam_id):
                 while TestSet.objects.filter(exam=exam, set_no=set_no).exists():
                     set_no = random.randint(1, 100)
 
-                test_set = TestSet.objects.create(exam=exam, student=student, set_no=set_no)
+                test_set = TestSet(exam=exam, student=student, set_no=set_no)
                 randomized_questions = list(exam_questions)
                 random.shuffle(randomized_questions)
 
                 number_of_questions_to_select = min(len(randomized_questions), 10)  # Adjust as needed
                 selected_questions = randomized_questions[:number_of_questions_to_select]
-                answer_key = ''.join(str(['A', 'B', 'C', 'D', 'E'].index(question.answer)) for question in selected_questions)
+
+                # Create answer key based on question answers
+                answer_key = ''
+                for question in selected_questions:
+                    answer_key += question.answer  # Assuming question.answer is correct
+
+                # Save test set and assign questions
+                test_set.save()
+                test_set.questions.add(*selected_questions)  # Associate selected questions
+                test_set.answer_key = answer_key  # Store the generated answer key
+                test_set.save()  # Save the test_set with the answer_key
 
                 generated_sets.append({
                     'student_id': student.student_id,
@@ -592,7 +601,9 @@ def generate_exam_sets(request, class_id, exam_id):
                     'answer_key': answer_key,
                 })
 
-        return JsonResponse({'message': "New exam sets generated successfully.", 'generated_sets': generated_sets})
+        # Redirect after successful generation
+        messages.success(request, "New exam sets generated successfully.")
+        return redirect('exam_detail', exam_id=exam.id)  # Replace with your desired redirect
 
     # Handle GET request and initial loading of generated sets
     generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
@@ -604,34 +615,35 @@ def generate_exam_sets(request, class_id, exam_id):
 
     return render(request, 'exams/generate_sets.html', context)
 
+
 @login_required
 def download_csv(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    # Initialize CSV writer for download
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
     writer = csv.writer(response)
     writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
 
-    # Get generated sets
+    # Fetch the test sets for the specific exam and class
     test_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
 
     for test_set in test_sets:
         student = test_set.student
         formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
+        
+        # Ensure that the answer key is fetched
         writer.writerow([
             student.last_name,
             student.first_name,
             student.middle_initial or '',
             formatted_id,
-            str(random.randint(10000, 99999)),  # Use a unique exam ID
-            ''  # Placeholder for answer key; update this based on your logic
+            test_set.id,  # Unique exam ID from the test_set
+            test_set.answer_key  # Include the answer key
         ])
 
     return response
-
 
 @login_required
 def download_exam_sets_csv(request, class_id, exam_id):

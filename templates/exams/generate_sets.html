@@ -26,6 +26,10 @@
   <p class="text-sm font-medium text-gray-700 mb-4">Exam: {{ exam.title }}</p>
 
   <div id="message-div" class="mt-4"></div> <!-- Message display -->
+  {% if messages %}
+        {% include 'message_display.html' %}
+            </div>
+        {% endif %}
 
   <div class="mt-4">
     {% if generated_sets %}
@@ -57,47 +61,5 @@
     Back to Exam
   </a>
 </div>
-
-<script>
-document.getElementById("generate-sets-form").onsubmit = function(event) {
-    event.preventDefault(); // Prevent the default form submission
-
-    const formData = new FormData(this);
-    fetch(this.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        const messageDiv = document.getElementById("message-div");
-        messageDiv.innerHTML = ''; // Clear previous messages
-
-        if (data.success) {
-            // Clear the current list
-            const list = document.getElementById("generated-sets-list");
-            list.innerHTML = '';
-
-            // Append the new generated sets
-            data.generated_sets.forEach(set => {
-                const listItem = document.createElement("li");
-                listItem.classList.add("mb-1");
-                listItem.innerText = `Student: ${set.student_name} - Set Number: ${set.set_no} - Set ID: ${set.set_id}`;
-                list.appendChild(listItem);
-            });
-        } else {
-            // Display error message
-            messageDiv.innerHTML = `<p class="text-red-500">${data.message}</p>`;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        const messageDiv = document.getElementById("message-div");
-        messageDiv.innerHTML = `<p class="text-red-500">An error occurred while generating sets.</p>`;
-    });
-};
-</script>
 
 {% endblock %}
