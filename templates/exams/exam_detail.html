@@ -153,7 +153,7 @@
           <input type="text" name="option_d" id="optionD" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
-          <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
+          <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E:</label>
           <input type="text" name="option_e" id="optionE" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
 
@@ -180,54 +180,73 @@
 </div>
 
   <!-- Edit Question Modal -->
-  <div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen">
-      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
-        <form id="editQuestionForm" method="post">
-          {% csrf_token %}
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
-          <div class="mb-4">
-            <label for="editQuestionText" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Question Text</label>
-            <textarea id="editQuestionText" name="question_text" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">{{ question.question_text }}</textarea>
-          </div>
-          <div class="grid grid-cols-4 gap-4 mb-4">
-            <div>
-              <label for="editOptionA" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option A</label>
-              <input type="text" id="editOptionA" name="option_a" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_a }}">
-            </div>
-            <div>
-              <label for="editOptionB" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option B</label>
-              <input type="text" id="editOptionB" name="option_b" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_b }}">
-            </div>
-            <div>
-              <label for="editOptionC" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option C</label>
-              <input type="text" id="editOptionC" name="option_c" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_c }}">
-            </div>
-            <div>
-              <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option D</label>
-              <input type="text" id="editOptionD" name="option_d" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_d }}">
-            </div>
-            <div>
-              <label for="editOptionD" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Option E</label>
-              <input type="text" id="editOptionD" name="option_e" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" value="{{ question.option_e }}">
-            </div>
-          </div>
-          <div class="mb-4">
-            <label for="editCorrectAnswer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Answer</label>
-            <select id="editCorrectAnswer" name="answer" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
-              <option value="A" {% if question.answer == 'A' %} selected {% endif %}>Option A</option>
-              <option value="B" {% if question.answer == 'B' %} selected {% endif %}>Option B</option>
-              <option value="C" {% if question.answer == 'C' %} selected {% endif %}>Option C</option>
-              <option value="D" {% if question.answer == 'D' %} selected {% endif %}>Option D</option>
-              <option value="E" {% if question.answer == 'E' %} selected {% endif %}>Option E</option>
-            </select>
-          </div>
-          <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Save Changes</button>
-          <button type="button" onclick="closeEditQuestionModal()" class="ml-2 text-gray-700 dark:text-gray-300">Cancel</button>
-        </form>
-      </div>
+<div id="editQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form id="editQuestionForm" method="post">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Question</h2>
+        
+        <!-- Question Text -->
+        <div class="mb-4">
+          <label for="editQuestionText" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Question Text:</label>
+          <textarea id="editQuestionText" name="question_text" rows="4" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">{{ question.question_text }}</textarea>
+        </div>
+
+        <!-- Difficulty -->
+        <div class="mb-4">
+          <label for="editDifficulty" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Difficulty:</label>
+          <select name="difficulty" id="editDifficulty" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="Easy" {% if question.difficulty == 'Easy' %} selected {% endif %}>Easy</option>
+            <option value="Medium" {% if question.difficulty == 'Medium' %} selected {% endif %}>Medium</option>
+            <option value="Hard" {% if question.difficulty == 'Hard' %} selected {% endif %}>Hard</option>
+          </select>
+        </div>
+
+        <!-- Options -->
+        <div class="mb-4">
+          <label for="editOptionA" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option A:</label>
+          <input type="text" id="editOptionA" name="option_a" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_a }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionB" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option B:</label>
+          <input type="text" id="editOptionB" name="option_b" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_b }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionC" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option C:</label>
+          <input type="text" id="editOptionC" name="option_c" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_c }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionD" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option D:</label>
+          <input type="text" id="editOptionD" name="option_d" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_d }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E:</label>
+          <input type="text" id="editOptionE" name="option_e" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_e }}">
+        </div>
+
+        <!-- Correct Answer -->
+        <div class="mb-4">
+          <label for="editCorrectAnswer" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Correct Answer:</label>
+          <select id="editCorrectAnswer" name="correct_answer" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="A" {% if question.correct_answer == 'A' %} selected {% endif %}>Option A</option>
+            <option value="B" {% if question.correct_answer == 'B' %} selected {% endif %}>Option B</option>
+            <option value="C" {% if question.correct_answer == 'C' %} selected {% endif %}>Option C</option>
+            <option value="D" {% if question.correct_answer == 'D' %} selected {% endif %}>Option D</option>
+            <option value="E" {% if question.correct_answer == 'E' %} selected {% endif %}>Option E</option>
+          </select>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-end">
+          <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg mr-2" onclick="closeEditQuestionModal()">Cancel</button>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Save Changes</button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
+
 
   <!-- Delete Question Modal -->
   <div id="deleteQuestionModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
