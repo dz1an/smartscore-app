@@ -575,47 +575,57 @@ def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
+    # Correct difficulty filtering (capitalize 'Easy', 'Medium', 'Hard')
+    easy_questions = list(exam.questions.filter(difficulty='Easy'))
+    medium_questions = list(exam.questions.filter(difficulty='Medium'))
+    hard_questions = list(exam.questions.filter(difficulty='Hard'))
+
+    # Count available questions by difficulty
+    easy_count = len(easy_questions)
+    medium_count = len(medium_questions)
+    hard_count = len(hard_questions)
+
     if request.method == "POST":
-        # Get the number of sets to generate from the form
-        num_sets = int(request.POST.get('num_sets', 1))  # Default to 1 if not specified
+        num_sets = int(request.POST.get('num_sets', 1))
+        easy_q_requested = int(request.POST.get('easy_questions', 0))
+        medium_q_requested = int(request.POST.get('medium_questions', 0))
+        hard_q_requested = int(request.POST.get('hard_questions', 0))
 
         students = list(current_class.students.all())
-        exam_questions = list(exam.questions.all())
 
-        if not exam_questions:
-            messages.error(request, "No questions available for this exam.")
+        # Validation: Ensure there are enough questions for each category
+        if easy_q_requested > easy_count:
+            messages.error(request, f"Not enough easy questions. Only {easy_count} available.")
             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
-        # Validate that each question has at least 2 choices
-        valid_questions = []
-        for question in exam_questions:
-            available_choices = [question.option_a, question.option_b, question.option_c, question.option_d, question.option_e]
-            available_choices = [choice for choice in available_choices if choice]  # Filter out empty choices
-
-            if len(available_choices) >= 2:
-                valid_questions.append(question)
-            else:
-                messages.warning(request, f"Question '{question.question_text}' does not have enough choices (minimum of 2 required).")
-
-        if not valid_questions:
-            messages.error(request, "Not enough valid questions to generate sets. Please ensure each question has at least two options.")
+        if medium_q_requested > medium_count:
+            messages.error(request, f"Not enough medium questions. Only {medium_count} available.")
             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
-        generated_sets = []  # Create a local variable to store generated sets
+        if hard_q_requested > hard_count:
+            messages.error(request, f"Not enough hard questions. Only {hard_count} available.")
+            return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
-        # Generate sets and distribute to students
+        generated_sets = []
+
+        # Generate sets for each student
         for idx, student in enumerate(students):
-            set_no = (idx % num_sets) + 1  # Cycle through the sets
+            set_no = (idx % num_sets) + 1
 
-            # Shuffle valid questions for each set
-            randomized_questions = valid_questions[:]
-            random.shuffle(randomized_questions)
+            # Shuffle questions within each difficulty
+            random.shuffle(easy_questions)
+            random.shuffle(medium_questions)
+            random.shuffle(hard_questions)
 
-            # Select a subset of questions for the current set
-            number_of_questions_to_select = min(len(randomized_questions), 10)  
-            selected_questions = randomized_questions[:number_of_questions_to_select]
+            # Select the requested number of questions from each category
+            selected_easy = easy_questions[:easy_q_requested]
+            selected_medium = medium_questions[:medium_q_requested]
+            selected_hard = hard_questions[:hard_q_requested]
 
-            # Create answer key
+            selected_questions = selected_easy + selected_medium + selected_hard
+            random.shuffle(selected_questions)
+
+            # Create the answer key (convert answer choices to 0-4 for A-E)
             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
 
             # Create and save the test set
@@ -638,10 +648,14 @@ def generate_exam_sets(request, class_id, exam_id):
         return redirect('exam_detail', exam_id=exam.id)
 
     generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
+
     context = {
         'exam': exam,
         'current_class': current_class,
         'generated_sets': generated_sets,
+        'easy_count': easy_count,
+        'medium_count': medium_count,
+        'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
 

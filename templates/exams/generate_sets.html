@@ -33,16 +33,43 @@
   <form id="generate-sets-form" action="{% url 'generate_exam_sets' current_class.id exam.id %}" method="POST" class="mt-6">
     {% csrf_token %}
     
-    <!-- Input for number of sets -->
+    <!-- Show available questions in each category -->
+    <div class="mb-4">
+      <p class="text-sm font-medium text-gray-700">Available Questions:</p>
+      <ul class="list-disc pl-5">
+        <li>Easy: {{ easy_count }}</li>
+        <li>Medium: {{ medium_count }}</li>
+        <li>Hard: {{ hard_count }}</li>
+      </ul>
+    </div>
+
+    <!-- Inputs for number of sets -->
     <div class="mb-4">
       <label for="num_sets" class="block mb-2 text-sm font-medium text-gray-700">Number of Sets:</label>
-      <input type="number" id="num_sets" name="num_sets" min="1" value="1" required class="block w-full p-2 border border-gray-300 rounded-lg focus:ring focus:ring-green-300 focus:border-green-500" placeholder="Enter the number of sets to generate">
+      <input type="number" id="num_sets" name="num_sets" min="1" value="1" required class="block w-full p-2 border border-gray-300 rounded-lg">
+    </div>
+
+    <!-- Inputs for easy, medium, and hard questions -->
+    <div class="mb-4">
+      <label for="easy_questions" class="block mb-2 text-sm font-medium text-gray-700">Easy Questions:</label>
+      <input type="number" id="easy_questions" name="easy_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
+    </div>
+
+    <div class="mb-4">
+      <label for="medium_questions" class="block mb-2 text-sm font-medium text-gray-700">Medium Questions:</label>
+      <input type="number" id="medium_questions" name="medium_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
+    </div>
+
+    <div class="mb-4">
+      <label for="hard_questions" class="block mb-2 text-sm font-medium text-gray-700">Hard Questions:</label>
+      <input type="number" id="hard_questions" name="hard_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
     </div>
 
     <button type="submit" class="block w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
         Generate Sets for Each Student
     </button>
-  </form>
+</form>
+
   
   <div class="mt-4">
     {% if generated_sets %}

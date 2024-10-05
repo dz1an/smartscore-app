@@ -34,15 +34,17 @@ class Question(models.Model):
     question_text = models.CharField(max_length=255)
     option_a = models.CharField(max_length=255)
     option_b = models.CharField(max_length=255)
-    option_c = models.CharField(max_length=255)
-    option_d = models.CharField(max_length=255)
-    option_e = models.CharField(max_length=255, blank=True, null=True)  # Option E optional
+    option_c = models.CharField(max_length=255, blank=True, null=True)  # Optional
+    option_d = models.CharField(max_length=255, blank=True, null=True)  # Optional
+    option_e = models.CharField(max_length=255, blank=True, null=True)  # Optional
     answer = models.CharField(max_length=1, choices=ANSWER_CHOICES, default='A')  # Default answer A
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)  # Difficulty level
+    difficulty = models.CharField(max_length=6, choices=DIFFICULTY_CHOICES)  # Difficulty level
 
     def __str__(self):
         return self.question_text
 
+    class Meta:
+        ordering = ['difficulty']
 
 class Exam(models.Model):
     exam_id = models.CharField(max_length=3, unique=True, editable=False)
