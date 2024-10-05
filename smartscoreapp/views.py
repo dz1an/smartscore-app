@@ -26,6 +26,7 @@ import string
 from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.db.models import Count
+from omr2 import omr
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -493,33 +494,57 @@ def generate_test_paper_view(request, exam_id):
 
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
 
+
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
     # Fetch exams related to the current class
-    exams = current_class.exams.all()  # Get all exams associated with this class
+    exams = current_class.exams.all()
+    
+    uploaded_images = []
+    folder_path = ''
+    result_csv = ''
     
     if request.method == 'POST':
-        # Handle the uploaded images
+        # Handle CSV file selection
+        csv_exam_id = request.POST.get('csv_indicator')
+        selected_exam = get_object_or_404(Exam, id=csv_exam_id)
+
+        # Handle image upload
         uploaded_images = request.FILES.getlist('image_upload')
-        
-        # Add a message indicating how many images were uploaded
         if uploaded_images:
+            folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'exam_{selected_exam.id}')
+            os.makedirs(folder_path, exist_ok=True)
+
+            for image in uploaded_images:
+                fs = FileSystemStorage(location=folder_path)
+                fs.save(image.name, image)
+
             messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
-        else:
-            messages.warning(request, "No images were uploaded.")
-    
+        
+        # Perform OMR scanning if both CSV and images are provided
+        if csv_exam_id and uploaded_images:
+            csv_file = os.path.join(settings.MEDIA_ROOT, f'csv/exam_{selected_exam.id}.csv')  # Adjust path as needed
+            
+            try:
+                # Pass CSV file and folder of images to OMR function
+                result_csv = omr(csv_file, folder_path)
+                messages.success(request, "Scanning completed. Results saved.")
+            except Exception as e:
+                messages.error(request, f"Scanning failed: {str(e)}")
+
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
-        'exams': exams
+        'exams': exams,
+        'folder_path': folder_path,
+        'uploaded_images': uploaded_images,
+        'result_csv': result_csv
     }
-    
+
     return render(request, 'scan_page.html', context)
-
-
 
 def scan_exam_view(request):
     folder_path = None
