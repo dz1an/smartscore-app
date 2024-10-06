@@ -26,6 +26,11 @@
         </ol>
     </nav>
 
+    <!-- Display messages -->
+    {% if messages %}
+        {% include 'message_display.html' %}
+    {% endif %}
+
     <form method="POST" class="space-y-6" id="settings-form">
         {% csrf_token %}
         <div>
@@ -47,7 +52,7 @@
         <div>
             <label for="password" class="block text-sm font-medium text-gray-700">New Password (leave blank to keep current password)</label>
             <div class="relative">
-                <input type="password" name="password1" id="password1" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300" required>
+                <input type="password" name="password1" id="password1" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300">
                 <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3" onclick="togglePasswordVisibility('password1')">
                     <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 3C5.5 3 1.6 6 0 10c1.6 4 5.5 7 10 7s8.4-3 10-7c-1.6-4-5.5-7-10-7zM10 13c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
@@ -63,7 +68,7 @@
         <div>
             <label for="password2" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
             <div class="relative">
-                <input type="password" name="password2" id="password2" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300" required>
+                <input type="password" name="password2" id="password2" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300">
                 <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3" onclick="togglePasswordVisibility('password2')">
                     <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 3C5.5 3 1.6 6 0 10c1.6 4 5.5 7 10 7s8.4-3 10-7c-1.6-4-5.5-7-10-7zM10 13c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
@@ -71,6 +76,9 @@
                     </svg>
                 </button>
             </div>
+            {% for error in form.password2.errors %}
+                <p class="text-red-500 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
         </div>
 
         <button type="submit" class="w-full px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800">Save Settings</button>
@@ -79,22 +87,47 @@
     <!-- Delete Account Section -->
     <div class="mt-8 border-t pt-6">
         <h2 class="text-xl font-semibold text-red-600 mb-4">Delete Account</h2>
-        <form method="POST" action="{% url 'delete_account' %}">
-            {% csrf_token %}
-            <p class="text-sm text-gray-600 mb-4">Warning: Deleting your account is permanent and cannot be undone.</p>
-            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete My Account</button>
-        </form>
+        <button onclick="openModal()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete My Account</button>
     </div>
 
-    {% if messages %}
-        {% include 'message_display.html' %}
-    {% endif %}
+    <!-- Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">Confirm Account Deletion</h3>
+            <p class="text-sm mb-4">Type "delete" to confirm account deletion.</p>
+            <input type="text" id="confirmDelete" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300" placeholder="Type 'delete' here" required>
+            <div class="mt-4 flex justify-end">
+                <button onclick="closeModal()" class="mr-2 px-4 py-2 bg-gray-300 rounded-md">Cancel</button>
+                <button onclick="submitDeleteForm()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    function togglePasswordVisibility(inputId) {
-        const input = document.getElementById(inputId);
-        input.type = input.type === 'password' ? 'text' : 'password';
+function togglePasswordVisibility(passwordFieldId) {
+    const passwordField = document.getElementById(passwordFieldId);
+    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordField.setAttribute('type', type);
+}
+
+function openModal() {
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+function submitDeleteForm() {
+    const confirmationText = document.getElementById('confirmDelete').value;
+    if (confirmationText === 'delete') {
+        // Here, you would typically handle the delete action via a POST request
+        document.getElementById('settings-form').action = "{% url 'delete_account' %}"; // Set the form action to delete account URL
+        document.getElementById('settings-form').submit(); // Submit the form
+    } else {
+        alert("Please type 'delete' to confirm.");
     }
+}
 </script>
 {% endblock %}
