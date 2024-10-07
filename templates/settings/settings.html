@@ -5,7 +5,7 @@
 {% block content %}
 <div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
     <h1 class="text-3xl font-bold mb-6 text-center">Settings</h1>
-
+    
     <!-- Breadcrumb -->
     <nav class="flex mb-4" aria-label="Breadcrumb">
         <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
@@ -91,43 +91,49 @@
     </div>
 
     <!-- Modal -->
-    <div id="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
+    <div id="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center {% if is_modal_open %} flex {% else %} hidden {% endif %} bg-black bg-opacity-50">
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold mb-4">Confirm Account Deletion</h3>
             <p class="text-sm mb-4">Type "delete" to confirm account deletion.</p>
+
+            <!-- Display messages in the modal -->
+            {% if messages %}
+                {% include 'message_display.html' %}
+            {% endif %}
+
             <input type="text" id="confirmDelete" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md focus:ring focus:ring-blue-300" placeholder="Type 'delete' here" required>
-            <div class="mt-4 flex justify-end">
-                <button onclick="closeModal()" class="mr-2 px-4 py-2 bg-gray-300 rounded-md">Cancel</button>
-                <button onclick="submitDeleteForm()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+            <div class="mt-4 flex justify-between">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400">Cancel</button>
+                <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function togglePasswordVisibility(passwordFieldId) {
-    const passwordField = document.getElementById(passwordFieldId);
-    const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-    passwordField.setAttribute('type', type);
-}
-
-function openModal() {
-    document.getElementById('deleteModal').classList.remove('hidden');
-}
-
-function closeModal() {
-    document.getElementById('deleteModal').classList.add('hidden');
-}
-
-function submitDeleteForm() {
-    const confirmationText = document.getElementById('confirmDelete').value;
-    if (confirmationText === 'delete') {
-        // Here, you would typically handle the delete action via a POST request
-        document.getElementById('settings-form').action = "{% url 'delete_account' %}"; // Set the form action to delete account URL
-        document.getElementById('settings-form').submit(); // Submit the form
-    } else {
-        alert("Please type 'delete' to confirm.");
+    function togglePasswordVisibility(id) {
+        const passwordInput = document.getElementById(id);
+        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
     }
-}
+
+    function openModal() {
+        document.getElementById('deleteModal').classList.remove('hidden');
+        document.getElementById('deleteModal').classList.add('flex');
+    }
+
+    function closeModal() {
+        document.getElementById('deleteModal').classList.add('hidden');
+        document.getElementById('deleteModal').classList.remove('flex');
+    }
+
+    function confirmDelete() {
+        const confirmInput = document.getElementById('confirmDelete').value;
+        if (confirmInput.toLowerCase() === 'delete') {
+            // Implement the delete account functionality here
+            alert('Account deletion confirmed.');
+        } else {
+            alert('Please type "delete" to confirm.');
+        }
+    }
 </script>
 {% endblock %}

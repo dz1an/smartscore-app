@@ -65,12 +65,16 @@
       <input type="number" id="hard_questions" name="hard_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
     </div>
 
+    <!-- Dynamic total questions -->
+    <div class="mb-4">
+      <p class="text-sm font-medium text-gray-700">Total Questions Selected: <span id="total-questions">0</span></p>
+    </div>
+
     <button type="submit" class="block w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
         Generate Sets for Each Student
     </button>
-</form>
+  </form>
 
-  
   <div class="mt-4">
     {% if generated_sets %}
       <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
@@ -90,7 +94,6 @@
       <p class="text-gray-500">No sets generated yet. Please ensure you have enough questions and sets specified.</p>
     {% endif %}
   </div>
-  
 
   <div class="mt-6">
     <a href="{% url 'download_csv' current_class.id exam.id %}" class="block text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
@@ -102,5 +105,26 @@
     </a>
   </div>
 </div>
+
+<script>
+  const easyInput = document.getElementById('easy_questions');
+  const mediumInput = document.getElementById('medium_questions');
+  const hardInput = document.getElementById('hard_questions');
+  const totalQuestions = document.getElementById('total-questions');
+
+  function updateTotal() {
+    const easy = parseInt(easyInput.value) || 0;
+    const medium = parseInt(mediumInput.value) || 0;
+    const hard = parseInt(hardInput.value) || 0;
+    totalQuestions.textContent = easy + medium + hard;
+  }
+
+  easyInput.addEventListener('input', updateTotal);
+  mediumInput.addEventListener('input', updateTotal);
+  hardInput.addEventListener('input', updateTotal);
+
+  // Initial total update
+  updateTotal();
+</script>
 
 {% endblock %}

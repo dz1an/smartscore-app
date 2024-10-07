@@ -1210,3 +1210,4 @@ def delete_account_view(request):
         user.delete()
         messages.success(request, "Your account has been deleted.")
         return redirect('index')
+    return redirect('settings')  # Redirect to settings if not a POST request
