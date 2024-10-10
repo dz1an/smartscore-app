@@ -260,23 +260,22 @@ def delete_exam(request, exam_id):
 @login_required
 def add_question_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
-    available_exams = Exam.objects.exclude(id=exam_id)  # List of other exams
-    
+    available_exams = Exam.objects.exclude(id=exam_id)
+
     if request.method == 'POST':
+        # Get form data
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
         option_b = request.POST.get('option_b')
         option_c = request.POST.get('option_c')
         option_d = request.POST.get('option_d')
-        option_e = request.POST.get('option_e')
-        selected_answer = request.POST.get('correct_answer')  # This is the selected answer (e.g., 'A', 'B', etc.)
-        difficulty = request.POST.get('difficulty')  # Fetch the selected difficulty
-        
-        selected_question_ids = request.POST.getlist('selected_questions')  # Fetch selected questions from other exams
+        option_e = request.POST.get('option_e', '')
+        correct_answer = request.POST.get('correct_answer')
+        difficulty = request.POST.get('difficulty')
+        selected_question_ids = request.POST.getlist('selected_questions')
 
-        # Add manually entered question
-        if question_text and option_a and option_b and selected_answer:
-            # Create the Question instance first
+        if question_text and option_a and option_b and correct_answer and difficulty:
+            # Create a new question
             question = Question.objects.create(
                 question_text=question_text,
                 option_a=option_a,
@@ -284,16 +283,9 @@ def add_question_view(request, exam_id):
                 option_c=option_c,
                 option_d=option_d,
                 option_e=option_e,
+                answer=correct_answer,  # Use 'answer' instead of 'correct_answer'
                 difficulty=difficulty
             )
-            
-            # Create the Answer instance and associate it with the Question
-            answer = Answer.objects.create(
-                question=question,
-                answer=selected_answer
-            )
-            
-            # Add the question to the exam
             exam.questions.add(question)
             messages.success(request, 'New question added successfully!')
 
