@@ -495,12 +495,13 @@ def generate_test_paper_view(request, exam_id):
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
 
 
+
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
-    
-    # Fetch exams related to the current class
+
+    # Fetch exams related to the current class (if necessary for the template)
     exams = current_class.exams.all()
     
     uploaded_images = []
