@@ -502,26 +502,32 @@ def grade(myIndex, answer, questions):
         else: grading.append(0)
     return grading
 
-def score(results, questions):
+def score(results, points_per_diff, questions):
     """
-    Calculates the total score based on individual question grades.
-
-    This function computes the total score by summing the individual grades and normalizing
-    the result to the total number of questions. The score is calculated as the sum of grades
-    divided by the number of questions, then multiplied by the number of questions to get the
-    final score.
+    Calculates the total score by multiplying the results with points per question difficulty.
 
     Args:
-        results (list): A list of grades, where each grade is 1 for a correct answer and 0
-            for an incorrect answer.
+        results (list): A list of grades, where each grade is 1 for a correct answer and 0 for an incorrect answer.
+        points_per_diff (list): A list of points assigned to each question based on difficulty.
         questions (int): The total number of questions.
 
     Returns:
-        float: The total score, which represents the number of correct answers out of the total
-            number of questions.
+        float: The total score, calculated by summing the products of results and points_per_diff.
     """
-    score = (sum(results)/questions)*questions
-    return score 
+    # Ensure the length of results and points_per_diff matches the number of questions
+    if len(results) != questions or len(points_per_diff) != questions:
+        raise ValueError("Length of results and points_per_diff must match the number of questions.")
+    
+    # Multiply the results and points_per_diff element-wise
+    multiplication_result = [results[i] * points_per_diff[i] for i in range(questions)]
+    
+    # Print the multiplication result
+    print("Multiplication result:", multiplication_result)
+    
+    # Sum the multiplication results to get the total score
+    total_score = sum(multiplication_result)
+    
+    return total_score
 
 class InvalidStudentIDError(Exception):
     """Custom exception for invalid student ID"""

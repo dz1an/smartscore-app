@@ -357,12 +357,15 @@ def answer_scan(cropAns):
     shutil.rmtree(temp_dir) # Clean up the directory after processing
 
     os.makedirs(temp_dir, exist_ok=True)
+
+    print(ans_mark)
     
     return ans_mark
 
-def ans_check(answer_marks,answer_key):
+def ans_check(answer_marks,answer_key, points_per_diff):
     questions = len(answer_key)
     answersKey = utilis.string_to_int_list(answer_key)
+    diff_points = utilis.string_to_int_list(points_per_diff)
     # CHECKING OF IMAGES (ans sheet)
     ansMark = utilis.mark_list_reshape(answer_marks) #removes unwanted boxes
     ansMarkReshaped = utilis.extract_and_reshape(ansMark)
@@ -378,9 +381,9 @@ def ans_check(answer_marks,answer_key):
 
     # GRADING
     grading = utilis.grade(ansResult, answersKey, questions)
-    # print(len(grading))
+    print(grading)
 
     # EVALUATE SCORE
-    score = utilis.score(grading, questions)
+    score = utilis.score(grading, diff_points, questions)
 
     return score, invAns, incAns
