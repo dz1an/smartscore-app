@@ -694,25 +694,30 @@ def download_csv(request, class_id, exam_id):
         student = test_set.student
         formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
         
-        # Ensure that the answer key is fetched
-        answer_key = test_set.answer_key
+        # Fetch the answer key from the test_set
+        answer_key = test_set.answer_key or ''  # Fallback to an empty string if no answer key is available
         difficulty_point = ''
 
-        # Loop through questions in the test set and fetch their difficulty levels
+        # Loop through the questions in the test set and fetch their difficulty levels
         for question in test_set.questions.all():
             difficulty_point += str(difficulty_map.get(question.difficulty, 0))  # Append each difficulty as a single string
+
+        # Format the test set ID to 5 digits with leading zeros
+        formatted_exam_id = str(test_set.id).zfill(5)
 
         writer.writerow([
             student.last_name,
             student.first_name,
             student.middle_initial or '',
             formatted_id,
-            test_set.id,  # Unique exam ID from the test_set
-            answer_key,   # Include the answer key
-            difficulty_point   # Include the point difficulty as a continuous string (no commas)
+            formatted_exam_id,  # Exam ID formatted as 5 digits
+            answer_key,         # Include the answer key
+            difficulty_point    # Include the point difficulty as a continuous string (no commas)
         ])
 
     return response
+
+
 
 @login_required
 def download_exam_sets_csv(request, class_id, exam_id):
