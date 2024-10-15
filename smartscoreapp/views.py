@@ -263,7 +263,6 @@ def add_question_view(request, exam_id):
     available_exams = Exam.objects.exclude(id=exam_id)
 
     if request.method == 'POST':
-        # Get form data
         question_text = request.POST.get('question_text')
         option_a = request.POST.get('option_a')
         option_b = request.POST.get('option_b')
@@ -271,11 +270,11 @@ def add_question_view(request, exam_id):
         option_d = request.POST.get('option_d')
         option_e = request.POST.get('option_e', '')
         correct_answer = request.POST.get('correct_answer')
-        difficulty = request.POST.get('difficulty')
+        difficulty = request.POST.get('difficulty')  # Ensure difficulty is captured
         selected_question_ids = request.POST.getlist('selected_questions')
 
         if question_text and option_a and option_b and correct_answer and difficulty:
-            # Create a new question
+            # Create new question
             question = Question.objects.create(
                 question_text=question_text,
                 option_a=option_a,
@@ -283,8 +282,8 @@ def add_question_view(request, exam_id):
                 option_c=option_c,
                 option_d=option_d,
                 option_e=option_e,
-                answer=correct_answer,  # Use 'answer' instead of 'correct_answer'
-                difficulty=difficulty
+                answer=correct_answer,
+                difficulty=difficulty  # Save difficulty level
             )
             exam.questions.add(question)
             messages.success(request, 'New question added successfully!')
@@ -292,7 +291,7 @@ def add_question_view(request, exam_id):
         # Add selected questions from other exams
         if selected_question_ids:
             selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            exam.questions.add(*selected_questions)  # Add selected questions from other exams
+            exam.questions.add(*selected_questions)
             messages.success(request, 'Selected questions added successfully!')
 
         return redirect('exam_detail', exam_id=exam.id)
@@ -300,7 +299,7 @@ def add_question_view(request, exam_id):
     return render(request, 'add_question.html', {
         'exam': exam,
         'available_exams': available_exams,
-        'questions': [],  # Initially no questions shown from other exams
+        'questions': [],
     })
 
 
@@ -488,12 +487,14 @@ def generate_test_paper_view(request, exam_id):
 
 
 
+
+
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
 
-    # Fetch exams related to the current class (if necessary for the template)
+    # Fetch exams related to the current class
     exams = current_class.exams.all()
     
     uploaded_images = []
@@ -516,11 +517,15 @@ def scan_page(request, class_id, exam_id):
                 fs.save(image.name, image)
 
             messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
-        
+
         # Perform OMR scanning if both CSV and images are provided
         if csv_exam_id and uploaded_images:
-            csv_file = os.path.join(settings.MEDIA_ROOT, f'csv/exam_{selected_exam.id}.csv')  # Adjust path as needed
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'exam_{selected_exam.id}.csv')  # Adjusted path
             
+            if not os.path.exists(csv_file):
+                messages.error(request, "The specified CSV file was not found.")
+                return redirect('some_view')  # Redirect to an appropriate view if CSV not found
+
             try:
                 # Pass CSV file and folder of images to OMR function
                 result_csv = omr(csv_file, folder_path)
@@ -547,38 +552,40 @@ def scan_exam_view(request):
     if request.method == "POST":
         class_name = request.POST.get('class_name', 'Unknown_Class')
         
-        # Create folder in base directory with class name and timestamp
+        # Create folder in the media directory with class name and timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         folder_name = f"{class_name}_{timestamp}"
         folder_path = os.path.join(settings.MEDIA_ROOT, folder_name)
         os.makedirs(folder_path, exist_ok=True)
-        
-        # Save CSV file into folder
+
+        # Handle CSV file upload
         csv_file = request.FILES.get('exam_csv')
         if csv_file:
             fs = FileSystemStorage(location=folder_path)
-            csv_filename = fs.save(csv_file.name, csv_file)
-        
-        # Save images into the folder
+            csv_filename = fs.save(csv_file.name, csv_file)  # This saves the CSV file in the new folder
+
+        # Handle image uploads
         images = request.FILES.getlist('images')
         for img in images:
-            fs.save(img.name, img)
+            fs.save(img.name, img)  # Save each image
 
-        # Handle scan and return results
+        # Process images and create result CSV
         result_csv = process_scanned_images(folder_path, images)
         
         # Save the result CSV in the same folder
-        with open(os.path.join(folder_path, 'scan_results.csv'), 'w', newline='') as csvfile:
+        result_csv_path = os.path.join(folder_path, 'scan_results.csv')
+        with open(result_csv_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerows(result_csv)
 
-        return redirect('scan_exam_view')
+        return redirect('scan_exam_view')  # Redirect to the same view or another page
     
     return render(request, 'scan_exam.html', {
         'folder_path': folder_path,
         'csv_file': csv_file,
         'images': images,
     })
+
 
 def process_scanned_images(folder_path, images):
     # Example function for processing images (replace with your actual logic)
@@ -593,12 +600,11 @@ def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    # Correct difficulty filtering (capitalize 'Easy', 'Medium', 'Hard')
+    # Correct difficulty filtering
     easy_questions = list(exam.questions.filter(difficulty='Easy'))
     medium_questions = list(exam.questions.filter(difficulty='Medium'))
     hard_questions = list(exam.questions.filter(difficulty='Hard'))
 
-    # Count available questions by difficulty
     easy_count = len(easy_questions)
     medium_count = len(medium_questions)
     hard_count = len(hard_questions)
@@ -611,31 +617,19 @@ def generate_exam_sets(request, class_id, exam_id):
 
         students = list(current_class.students.all())
 
-        # Validation: Ensure there are enough questions for each category
-        if easy_q_requested > easy_count:
-            messages.error(request, f"Not enough easy questions. Only {easy_count} available.")
-            return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
-
-        if medium_q_requested > medium_count:
-            messages.error(request, f"Not enough medium questions. Only {medium_count} available.")
-            return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
-
-        if hard_q_requested > hard_count:
-            messages.error(request, f"Not enough hard questions. Only {hard_count} available.")
+        if easy_q_requested > easy_count or medium_q_requested > medium_count or hard_q_requested > hard_count:
+            messages.error(request, "Not enough questions available for the selected difficulty.")
             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
         generated_sets = []
 
-        # Generate sets for each student
         for idx, student in enumerate(students):
             set_no = (idx % num_sets) + 1
 
-            # Shuffle questions within each difficulty
             random.shuffle(easy_questions)
             random.shuffle(medium_questions)
             random.shuffle(hard_questions)
 
-            # Select the requested number of questions from each category
             selected_easy = easy_questions[:easy_q_requested]
             selected_medium = medium_questions[:medium_q_requested]
             selected_hard = hard_questions[:hard_q_requested]
@@ -643,10 +637,8 @@ def generate_exam_sets(request, class_id, exam_id):
             selected_questions = selected_easy + selected_medium + selected_hard
             random.shuffle(selected_questions)
 
-            # Create the answer key (convert answer choices to 0-4 for A-E)
             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
 
-            # Create and save the test set
             if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
                 test_set = TestSet(exam=exam, student=student, set_no=set_no)
                 test_set.save()
@@ -665,12 +657,10 @@ def generate_exam_sets(request, class_id, exam_id):
         messages.success(request, "New exam sets generated successfully.")
         return redirect('exam_detail', exam_id=exam.id)
 
-    generated_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
-
     context = {
         'exam': exam,
         'current_class': current_class,
-        'generated_sets': generated_sets,
+        'generated_sets': TestSet.objects.filter(exam=exam, student__in=current_class.students.all()),
         'easy_count': easy_count,
         'medium_count': medium_count,
         'hard_count': hard_count,
@@ -685,24 +675,41 @@ def download_csv(request, class_id, exam_id):
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
+
     writer = csv.writer(response)
-    writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key'])
+    # Add a new column for "Point Difficulty"
+    writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key', 'Difficulty Points'])
 
     # Fetch the test sets for the specific exam and class
     test_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
+
+    # Map difficulty levels to their corresponding numeric value
+    difficulty_map = {
+        'Easy': 1,
+        'Medium': 2,
+        'Hard': 3,
+    }
 
     for test_set in test_sets:
         student = test_set.student
         formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
         
         # Ensure that the answer key is fetched
+        answer_key = test_set.answer_key
+        difficulty_point = ''
+
+        # Loop through questions in the test set and fetch their difficulty levels
+        for question in test_set.questions.all():
+            difficulty_point += str(difficulty_map.get(question.difficulty, 0))  # Append each difficulty as a single string
+
         writer.writerow([
             student.last_name,
             student.first_name,
             student.middle_initial or '',
             formatted_id,
             test_set.id,  # Unique exam ID from the test_set
-            test_set.answer_key  # Include the answer key
+            answer_key,   # Include the answer key
+            difficulty_point   # Include the point difficulty as a continuous string (no commas)
         ])
 
     return response
