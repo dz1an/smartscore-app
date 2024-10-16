@@ -75,9 +75,10 @@ class Exam(models.Model):
         return str(next_id).zfill(3)  # Zero-fill to ensure 3 digits (e.g., 001, 002)
 
     def generate_set_id(self):
-        exam_id = str(random.randint(0, 99)).zfill(3)
-        set_number = str(random.randint(0, 99999)).zfill(5)
+        exam_id = str(random.randint(0, 99)).zfill(2)  # Two-digit random number
+        set_number = str(random.randint(0, 99999)).zfill(5)  # Five-digit random number
         return f"{exam_id}-{set_number}"
+
 
 class Student(models.Model):
     first_name = models.CharField(max_length=50)

@@ -2,17 +2,18 @@ from django.contrib import admin
 from django.urls import path
 from smartscoreapp.views import (
     index, login_view, register_view, registered_users_view, download_exam_sets_csv,
-    classes_view, class_detail_view, exams_view, exam_detail_view, download_csv,
+    classes_view, class_detail_view, exams_view, exam_detail_view, 
     logout_view, add_class_view, add_student_view, add_exam_view, delete_account_view,
     add_student_to_exam_view, settings_view, edit_student, delete_student_view,
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
     select_questions_view, generate_test_paper_view, print_test_paper_view, process_scanned_papers_view,
     generate_questionnaire_view, list_classes_view, class_exams_view, save_test_paper_view, student_test_papers_view,
-    view_test_set_view, grade_exam_view, bulk_upload_students_view, scan_exam_view, scan_page, generate_exam_sets 
+    view_test_set_view, grade_exam_view, bulk_upload_students_view, scan_exam_view, scan_page, generate_exam_sets, download_test_paper
 )
 from django.conf.urls.static import static
 from django.conf import settings
 from . import views
+
 
 
 urlpatterns = [
@@ -85,7 +86,9 @@ urlpatterns = [
     path('exam/generate-sets/<int:class_id>/<int:exam_id>/', generate_exam_sets, name='generate_exam_sets'),
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_sets'),
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_exam_sets'),
-    path('exams/<int:class_id>/<int:exam_id>/download_csv/', download_csv, name='download_csv'),  # Add this line
+    path('exams/<int:class_id>/<int:exam_id>/download_test_paper/', download_test_paper, name='download_test_paper'),
+    
+
 
     
 

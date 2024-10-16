@@ -27,6 +27,11 @@ from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.db.models import Count
 from omr2 import omr
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.units import inch
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -595,6 +600,8 @@ def process_scanned_images(folder_path, images):
         results.append([img.name, 80])  # Mock result
     return results
 
+
+
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -640,17 +647,20 @@ def generate_exam_sets(request, class_id, exam_id):
             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
 
             if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
+                # Generate a unique set ID
+                set_id = f"{exam_id}{random.randint(10, 99)}"  # Exam ID + random 2 digits
                 test_set = TestSet(exam=exam, student=student, set_no=set_no)
                 test_set.save()
                 test_set.questions.add(*selected_questions)
                 test_set.answer_key = answer_key
+                test_set.set_id = set_id  # Assign the custom set ID
                 test_set.save()
 
                 generated_sets.append({
                     'student_id': student.student_id,
                     'student_name': f"{student.first_name} {student.last_name}",
                     'set_no': set_no,
-                    'set_id': test_set.id,
+                    'set_id': set_id,  # Use the generated set ID
                     'answer_key': answer_key,
                 })
 
@@ -669,51 +679,80 @@ def generate_exam_sets(request, class_id, exam_id):
 
 
 @login_required
-def download_csv(request, class_id, exam_id):
+def download_test_paper(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="exam_sets_class_{current_class.id}_exam_{exam.id}.csv"'
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="test_paper_class_{current_class.id}_exam_{exam.id}.pdf"'
 
-    writer = csv.writer(response)
-    # Add a new column for "Point Difficulty"
-    writer.writerow(['Lastname', 'Firstname', 'MiddleInitial', 'ID', 'Exam ID', 'Answer Key', 'Difficulty Points'])
+    # Create the PDF object, using the response object as its "file."
+    pdf_canvas = canvas.Canvas(response, pagesize=letter)
+    width, height = letter
+    pdf_canvas.setTitle(f"Test Paper for {exam.name}")
 
-    # Fetch the test sets for the specific exam and class
+    # Define styles
+    pdf_canvas.setFont("Helvetica-Bold", 18)
+
+    # Loop through each student to generate a test paper
     test_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
-
-    # Map difficulty levels to their corresponding numeric value
-    difficulty_map = {
-        'Easy': 1,
-        'Medium': 2,
-        'Hard': 3,
-    }
+    line_height = 20
 
     for test_set in test_sets:
         student = test_set.student
-        formatted_id = student.student_id[4:] if len(student.student_id) > 4 else student.student_id
-        
-        # Fetch the answer key from the test_set
-        answer_key = test_set.answer_key or ''  # Fallback to an empty string if no answer key is available
-        difficulty_point = ''
 
-        # Loop through the questions in the test set and fetch their difficulty levels
-        for question in test_set.questions.all():
-            difficulty_point += str(difficulty_map.get(question.difficulty, 0))  # Append each difficulty as a single string
+        # Create a new page for each student
+        pdf_canvas.showPage()
+        pdf_canvas.setFont("Helvetica-Bold", 18)
+        pdf_canvas.drawString(50, height - 40, f"Exam Name: {exam.name}")
+        pdf_canvas.setFont("Helvetica", 14)
+        pdf_canvas.drawString(50, height - 70, f"Student Name: {student.first_name} {student.last_name}")
 
-        # Format the test set ID to 5 digits with leading zeros
-        formatted_exam_id = str(test_set.id).zfill(5)
+        # Add TestSet ID
+        pdf_canvas.drawString(50, height - 90, f"TestSet ID: {test_set.id}")  # Add TestSet ID here
 
-        writer.writerow([
-            student.last_name,
-            student.first_name,
-            student.middle_initial or '',
-            formatted_id,
-            formatted_exam_id,  # Exam ID formatted as 5 digits
-            answer_key,         # Include the answer key
-            difficulty_point    # Include the point difficulty as a continuous string (no commas)
-        ])
+        # Add questions for the exam
+        questions = test_set.questions.all()
+        question_count = 1
+        y_position = height - 110  # Start position for questions
+
+        for question in questions:
+            if y_position < 40:  # If the space is too low, create a new page (though it shouldn't happen now)
+                pdf_canvas.showPage()
+                y_position = height - 40  # Reset y position
+
+            # Print question
+            pdf_canvas.setFont("Helvetica-Bold", 12)
+            pdf_canvas.drawString(50, y_position, f"Q{question_count}: {question.question_text}")
+            y_position -= line_height
+
+            # Print answer options
+            options = [
+                question.option_a,
+                question.option_b,
+                question.option_c,
+                question.option_d,
+                question.option_e,
+            ]
+
+            # Adjust the spacing for answer options
+            for idx, option in enumerate(options):
+                if option:  # Check if option is not empty
+                    label = chr(65 + idx)  # A, B, C, D, E
+                    pdf_canvas.setFont("Helvetica", 12)
+                    pdf_canvas.drawString(50 + (idx % 2) * 250, y_position, f"{label}. {option}")
+                    if idx % 2 == 1:  # Move down after every two options
+                        y_position -= line_height
+
+            question_count += 1
+            y_position -= line_height  # Space between questions
+
+        # Add space between different students' test papers
+        y_position -= 40
+
+    # Close the PDF object cleanly.
+    pdf_canvas.showPage()
+    pdf_canvas.save()
 
     return response
 
@@ -839,10 +878,10 @@ def add_exam_view(request):
         form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
             try:
-                form.save()
+                form.save()  # This will call the save method in the Exam model
                 messages.success(request, 'Exam added successfully!')
                 return redirect('exams')
-            except IntegrityError as e:
+            except IntegrityError:
                 form.add_error('exam_id', 'Exam ID must be unique.')
                 messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
         else:
@@ -851,10 +890,9 @@ def add_exam_view(request):
         form = ExamForm(user=request.user)
 
     user_classes = Class.objects.filter(user=request.user)
-    # Debug print
-    print(f"Classes: {user_classes}")
     context = {'form': form, 'classes': user_classes}
     return render(request, 'exams.html', context)
+
 
 @login_required
 def exam_detail_view(request, exam_id):
@@ -864,21 +902,19 @@ def exam_detail_view(request, exam_id):
     current_class = exam.class_assigned
 
     if request.method == 'POST':
-        # Get the selected exam ID to copy questions from
         selected_exam_id = request.POST.get('exam_source_id')
         if selected_exam_id:
+            # Logic for copying questions
             source_exam = get_object_or_404(Exam, id=selected_exam_id)
-            selected_question_ids = request.POST.getlist('questions')  # Get the selected questions
-
+            selected_question_ids = request.POST.getlist('questions')
             if selected_question_ids:
                 selected_questions = Question.objects.filter(id__in=selected_question_ids)
-                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                exam.questions.add(*selected_questions)  # Add selected questions
                 messages.success(request, 'Selected questions copied successfully!')
             else:
                 messages.error(request, 'No questions selected to copy!')
-
-        # If manually adding a new question
         else:
+            # Logic for adding a new question
             question_text = request.POST.get('question_text')
             option_a = request.POST.get('option_a')
             option_b = request.POST.get('option_b')
@@ -897,13 +933,12 @@ def exam_detail_view(request, exam_id):
                     option_e=option_e,
                     answer=answer
                 )
-                exam.questions.add(question)  # Add the newly created question to the exam
+                exam.questions.add(question)  # Add newly created question to the exam
                 messages.success(request, 'New question added successfully!')
             else:
                 messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required!')
 
-    # Refetch the questions after copying/adding
-    questions = exam.questions.all()
+    questions = exam.questions.all()  # Refetch questions
 
     return render(request, 'exam_detail.html', {
         'exam': exam,
