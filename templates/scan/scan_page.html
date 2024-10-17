@@ -27,7 +27,7 @@
 
     <h2 class="text-xl font-semibold mb-4 text-center">Check Exam and Scan Images</h2>
 
-    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">    
         {% csrf_token %}
         
         <!-- Ensure pre-selected exam matches the current one -->
@@ -59,8 +59,21 @@
                     </tr>
                 </thead>
                 <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                    <!-- Dynamically added rows for each uploaded image -->
+                    {% for image in uploaded_images %}
+                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                            <td class="px-6 py-4">{{ forloop.counter }}</td>
+                            <td class="px-6 py-4">
+                                <img src="{{ MEDIA_URL }}uploads/class_{{ current_class.id }}/exam_{{ current_exam.id }}/{{ image }}" alt="{{ image }}" class="w-16 h-16 object-cover" />
+                                <span class="ml-2">{{ image }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button type="button" class="text-red-600 hover:underline" onclick="removeImage(this)">Remove</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
+                
+                
             </table>
         </div>
 

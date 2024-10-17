@@ -490,48 +490,50 @@ def generate_test_paper_view(request, exam_id):
 
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
 
-
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     exams = current_class.exams.all()
-    
+
     uploaded_images = []
     folder_path = ''
     result_csv = ''
-    
+    csv_file = ''
+
     if request.method == 'POST':
         csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
         selected_exam = get_object_or_404(Exam, id=csv_exam_id)
 
-        # Ensure the selected exam matches the current exam
         if selected_exam.id != current_exam.id:
             messages.error(request, "Selected exam does not match the current exam.")
             return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         uploaded_images = request.FILES.getlist('image_upload')
         if uploaded_images:
-            # Ensure unique folder path for the uploaded images
             folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{selected_exam.id}')
             os.makedirs(folder_path, exist_ok=True)
 
+            saved_images = []
             for image in uploaded_images:
                 fs = FileSystemStorage(location=folder_path)
-                fs.save(image.name, image)
+                filename = fs.save(image.name, image)
+                saved_images.append(filename)
 
             messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
+            uploaded_images = saved_images
 
         if csv_exam_id and uploaded_images:
             # Ensure correct path to CSV file
-            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}.csv')
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}_sets.csv')
+
+            print("CSV file path:", csv_file)  # Debugging line
 
             if not os.path.exists(csv_file):
                 messages.error(request, "The specified CSV file was not found.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)  # Redirect back to the same page if CSV not found
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
             try:
-                # Call OMR function for scanning
                 result_csv = omr(csv_file, folder_path)
                 messages.success(request, "Scanning completed. Results saved.")
             except Exception as e:
@@ -543,11 +545,11 @@ def scan_page(request, class_id, exam_id):
         'exams': exams,
         'folder_path': folder_path,
         'uploaded_images': uploaded_images,
-        'result_csv': result_csv
+        'result_csv': result_csv,
+        'csv_file': csv_file
     }
 
     return render(request, 'scan_page.html', context)
-
 
 def scan_exam_view(request):
     folder_path = None
@@ -601,7 +603,6 @@ def process_scanned_images(folder_path, images):
     return results
 
 
-
 @login_required
 def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
@@ -629,6 +630,7 @@ def generate_exam_sets(request, class_id, exam_id):
             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
         generated_sets = []
+        csv_rows = []  # List to store rows for CSV
 
         for idx, student in enumerate(students):
             set_no = (idx % num_sets) + 1
@@ -664,7 +666,23 @@ def generate_exam_sets(request, class_id, exam_id):
                     'answer_key': answer_key,
                 })
 
-        messages.success(request, "New exam sets generated successfully.")
+                # Add a row to the CSV rows list
+                csv_rows.append([student.student_id, student.first_name, student.last_name, set_no, set_id, answer_key])
+
+        # Save the generated sets to a CSV file
+        if csv_rows:
+            csv_file_path = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{exam.id}_sets.csv')
+            os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)  # Create directories if they don't exist
+            
+            with open(csv_file_path, mode='w', newline='') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(['Student ID', 'First Name', 'Last Name', 'Set No', 'Set ID', 'Answer Key'])  # Write header
+                writer.writerows(csv_rows)  # Write data rows
+
+            messages.success(request, "New exam sets generated successfully and saved to CSV.")
+        else:
+            messages.warning(request, "No sets were generated.")
+
         return redirect('exam_detail', exam_id=exam.id)
 
     context = {
@@ -676,7 +694,6 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
-
 
 @login_required
 def download_test_paper(request, class_id, exam_id):
