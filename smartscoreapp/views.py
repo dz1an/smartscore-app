@@ -585,16 +585,6 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "The specified CSV file was not found.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            # Check number of images against number of students in the CSV
-            with open(csv_file, 'r') as f:
-                reader = csv.reader(f)
-                csv_rows = list(reader)
-                expected_image_count = len(csv_rows) - 1  # Exclude header
-
-            if len(uploaded_images) != expected_image_count:
-                messages.error(request, f"Mismatch: Expected {expected_image_count} images, but received {len(uploaded_images)}.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
             try:
                 result_csv = omr(csv_file, folder_path)
                 messages.success(request, "Scanning completed. Results saved.")
@@ -612,6 +602,7 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
+
 
 
 def scan_exam_view(request):
@@ -738,7 +729,7 @@ def generate_exam_sets(request, class_id, exam_id):
                 # Add a row to the CSV rows list in the correct order
                 csv_rows.append([
                     student.last_name, student.first_name, student.middle_initial, 
-                    student.student_id[4:], exam.id, answer_key, difficulty_points  # Use exam.id instead of set_id
+                    student.student_id[4:], set_id, answer_key, difficulty_points  # Remove first 4 characters from ID
                 ])
 
         # Save the generated sets to a CSV file
@@ -749,7 +740,7 @@ def generate_exam_sets(request, class_id, exam_id):
             with open(csv_file_path, mode='w', newline='') as csv_file:
                 writer = csv.writer(csv_file)
                 # Updated CSV headers to the correct order
-                writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Exam ID', 'Answer Key', 'Difficulty Points'])
+                writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points'])
                 writer.writerows(csv_rows)  # Write data rows
 
             messages.success(request, "New exam sets generated successfully and saved to CSV.")
