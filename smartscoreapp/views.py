@@ -171,8 +171,16 @@ def class_detail_view(request, class_id):
     if class_instance.user != user_instance:
         raise PermissionDenied("You are not authorized to view this class.")
 
-    # Order students by last name, first name, and middle initial
-    students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name', 'middle_initial')
+    # Get the sort parameter from the request
+    sort_by = request.GET.get('sort_by', 'last_name')  # Default sort by last name
+
+    # Order students based on the sort parameter
+    if sort_by == 'first_name':
+        students = Student.objects.filter(assigned_class=class_instance).order_by('first_name', 'last_name')
+    elif sort_by == 'most_recent':
+        students = Student.objects.filter(assigned_class=class_instance).order_by('-id')  # Assuming 'id' is an auto-increment field
+    else:  # Default to last name sorting
+        students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -194,6 +202,7 @@ def class_detail_view(request, class_id):
         'class': class_instance,
         'students': students,
         'form': form,
+        'sort_by': sort_by,  # Pass the current sort option to the template
     }
     return render(request, 'class_detail.html', context)
 
