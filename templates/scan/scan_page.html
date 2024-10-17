@@ -40,42 +40,48 @@
             </select>
         </div>
 
-        <!-- Image Upload Indicator -->
-        <div>
-            <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Images:</label>
-            <input type="file" id="image_upload" name="image_upload" accept="image/*" multiple 
-                   class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
-        </div>
+<!-- Image Upload Indicator -->
+<div>
+    <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Images:</label>
+    <input type="file" id="image_upload" name="image_upload" accept="image/*" multiple 
+           class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+</div>
 
-        <!-- Uploaded Images Table -->
-        <h3 class="text-lg font-medium mt-4">Uploaded Images</h3>
-        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                    <tr>
-                        <th scope="col" class="px-6 py-3">#</th>
-                        <th scope="col" class="px-6 py-3">Image</th>
-                        <th scope="col" class="px-6 py-3">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                    {% for image in uploaded_images %}
-                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                            <td class="px-6 py-4">{{ forloop.counter }}</td>
-                            <td class="px-6 py-4">
-                                <img src="{{ MEDIA_URL }}uploads/class_{{ current_class.id }}/exam_{{ current_exam.id }}/{{ image }}" alt="{{ image }}" class="w-16 h-16 object-cover" />
-                                <span class="ml-2">{{ image }}</span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <button type="button" class="text-red-600 hover:underline" onclick="removeImage(this)">Remove</button>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-                
-                
-            </table>
-        </div>
+<!-- Uploaded Images Table -->
+<h3 class="text-lg font-medium mt-4">Uploaded Images</h3>
+<div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+                <th scope="col" class="px-6 py-3">#</th>
+                <th scope="col" class="px-6 py-3">Image</th>
+                <th scope="col" class="px-6 py-3">Action</th>
+            </tr>
+        </thead>
+        <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+            {% for image in uploaded_images %}
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <td class="px-6 py-4">{{ forloop.counter }}</td>
+                    <td class="px-6 py-4">
+                        <img src="{{ MEDIA_URL }}uploads/class_{{ current_class.id }}/exam_{{ current_exam.id }}/{{ image }}" alt="{{ image }}" class="w-16 h-16 object-cover" />
+                        <span class="ml-2">{{ image }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button type="button" class="text-red-600 hover:underline" onclick="removeImage('{{ image }}')">Remove</button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function removeImage(imageName) {
+        // Add JavaScript or Ajax functionality to remove the image if needed
+        alert('Remove functionality not implemented yet for ' + imageName);
+    }
+</script>
+
 
         <!-- Scan Button -->
         <div>

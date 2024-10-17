@@ -603,6 +603,8 @@ def scan_page(request, class_id, exam_id):
 
     return render(request, 'scan_page.html', context)
 
+
+
 def scan_exam_view(request):
     folder_path = None
     csv_file = None
@@ -707,27 +709,27 @@ def generate_exam_sets(request, class_id, exam_id):
             )
 
             if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
-                # Generate a unique set ID
-                set_id = f"{exam_id}{random.randint(10, 99)}"  # Exam ID + random 2 digits
+                # Generate a unique 5-digit set ID
+                set_id = f"{exam_id}{random.randint(100, 999)}"  # Exam ID + random 3 digits
                 test_set = TestSet(exam=exam, student=student, set_no=set_no)
                 test_set.save()
                 test_set.questions.add(*selected_questions)
                 test_set.answer_key = answer_key
-                test_set.set_id = set_id  # Assign the custom set ID
+                test_set.set_id = set_id  # Assign the custom 5-digit set ID
                 test_set.save()
 
                 generated_sets.append({
                     'student_id': student.student_id,
                     'student_name': f"{student.first_name} {student.last_name}",
-                    'set_no': set_no,
                     'set_id': set_id,  # Use the generated set ID
                     'answer_key': answer_key,
                     'difficulty_points': difficulty_points  # Add difficulty points to each set
                 })
 
-                # Add a row to the CSV rows list
+                # Add a row to the CSV rows list in the correct order
                 csv_rows.append([
-                    student.student_id, student.first_name, student.last_name, set_no, set_id, answer_key, difficulty_points
+                    student.last_name, student.first_name, student.middle_initial, 
+                    student.student_id[4:], set_id, answer_key, difficulty_points  # Remove first 4 characters from ID
                 ])
 
         # Save the generated sets to a CSV file
@@ -737,7 +739,8 @@ def generate_exam_sets(request, class_id, exam_id):
             
             with open(csv_file_path, mode='w', newline='') as csv_file:
                 writer = csv.writer(csv_file)
-                writer.writerow(['Student ID', 'First Name', 'Last Name', 'Set No', 'Set ID', 'Answer Key', 'Difficulty Points'])  # Write header
+                # Updated CSV headers to the correct order
+                writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points'])
                 writer.writerows(csv_rows)  # Write data rows
 
             messages.success(request, "New exam sets generated successfully and saved to CSV.")
