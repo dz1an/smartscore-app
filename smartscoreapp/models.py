@@ -46,12 +46,13 @@ class Question(models.Model):
     class Meta:
         ordering = ['difficulty']
 
+
 class Exam(models.Model):
     exam_id = models.CharField(max_length=3, unique=True, editable=False)
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.SET_NULL, null=True)  # Set to NULL on class deletion
     questions = models.ManyToManyField(Question, related_name='exams')
-    set_id = models.CharField(max_length=9, unique=True, blank=True)
+    set_id = models.CharField(max_length=6, unique=True, blank=True)  # Updated to 6 for exam_id + 2 digits
 
     def __str__(self):
         return self.name
@@ -59,10 +60,10 @@ class Exam(models.Model):
     def save(self, *args, **kwargs):
         if not self.exam_id:
             self.exam_id = self.generate_exam_id()
-
+        
         if not self.set_id:
             self.set_id = self.generate_set_id()
-
+        
         super().save(*args, **kwargs)
 
     def generate_exam_id(self):
@@ -75,9 +76,9 @@ class Exam(models.Model):
         return str(next_id).zfill(3)  # Zero-fill to ensure 3 digits (e.g., 001, 002)
 
     def generate_set_id(self):
-        exam_id = str(random.randint(0, 99)).zfill(2)  # Two-digit random number
-        set_number = str(random.randint(0, 99999)).zfill(5)  # Five-digit random number
-        return f"{exam_id}-{set_number}"
+        # Generate two random digits
+        random_digits = str(random.randint(0, 99)).zfill(2)  # Two-digit random number with leading zero if necessary
+        return f"{self.exam_id}{random_digits}"  # Concatenate exam_id with the random digits
 
 
 class Student(models.Model):

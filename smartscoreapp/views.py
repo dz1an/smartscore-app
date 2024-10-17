@@ -965,7 +965,9 @@ def add_exam_view(request):
         form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
             try:
-                form.save()  # This will call the save method in the Exam model
+                # Save the exam instance, which triggers the `save` method in the Exam model
+                exam = form.save(commit=False)  # Create an instance but don't save it yet
+                exam.save()  # This will generate exam_id and set_id
                 messages.success(request, 'Exam added successfully!')
                 return redirect('exams')
             except IntegrityError:
@@ -979,7 +981,6 @@ def add_exam_view(request):
     user_classes = Class.objects.filter(user=request.user)
     context = {'form': form, 'classes': user_classes}
     return render(request, 'exams.html', context)
-
 
 @login_required
 def exam_detail_view(request, exam_id):
