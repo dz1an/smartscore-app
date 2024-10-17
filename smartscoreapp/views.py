@@ -307,6 +307,49 @@ def add_question_view(request, exam_id):
         'questions': [],
     })
 
+    exam = get_object_or_404(Exam, id=exam_id)
+    available_exams = Exam.objects.exclude(id=exam_id)
+
+    if request.method == 'POST':
+        question_text = request.POST.get('question_text')
+        option_a = request.POST.get('option_a')
+        option_b = request.POST.get('option_b')
+        option_c = request.POST.get('option_c')
+        option_d = request.POST.get('option_d')
+        option_e = request.POST.get('option_e', '')
+        correct_answer = request.POST.get('correct_answer')
+        difficulty = request.POST.get('difficulty')  # Ensure difficulty is captured
+        selected_question_ids = request.POST.getlist('selected_questions')
+
+        if question_text and option_a and option_b and correct_answer and difficulty:
+            # Create new question
+            question = Question.objects.create(
+                question_text=question_text,
+                option_a=option_a,
+                option_b=option_b,
+                option_c=option_c,
+                option_d=option_d,
+                option_e=option_e,
+                answer=correct_answer,
+                difficulty=difficulty  # Save difficulty level
+            )
+            exam.questions.add(question)
+            messages.success(request, 'New question added successfully!')
+
+        # Add selected questions from other exams
+        if selected_question_ids:
+            selected_questions = Question.objects.filter(id__in=selected_question_ids)
+            exam.questions.add(*selected_questions)
+            messages.success(request, 'Selected questions added successfully!')
+
+        return redirect('exam_detail', exam_id=exam.id)
+
+    return render(request, 'add_question.html', {
+        'exam': exam,
+        'available_exams': available_exams,
+        'questions': [],
+    })
+
 
 @login_required
 def edit_question_view(request, question_id):
@@ -648,6 +691,12 @@ def generate_exam_sets(request, class_id, exam_id):
 
             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
 
+            # Generate difficulty points string based on selected questions
+            difficulty_points = ''.join(
+                '1' if question.difficulty == 'Easy' else '2' if question.difficulty == 'Medium' else '3'
+                for question in selected_questions
+            )
+
             if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
                 # Generate a unique set ID
                 set_id = f"{exam_id}{random.randint(10, 99)}"  # Exam ID + random 2 digits
@@ -664,10 +713,13 @@ def generate_exam_sets(request, class_id, exam_id):
                     'set_no': set_no,
                     'set_id': set_id,  # Use the generated set ID
                     'answer_key': answer_key,
+                    'difficulty_points': difficulty_points  # Add difficulty points to each set
                 })
 
                 # Add a row to the CSV rows list
-                csv_rows.append([student.student_id, student.first_name, student.last_name, set_no, set_id, answer_key])
+                csv_rows.append([
+                    student.student_id, student.first_name, student.last_name, set_no, set_id, answer_key, difficulty_points
+                ])
 
         # Save the generated sets to a CSV file
         if csv_rows:
@@ -676,7 +728,7 @@ def generate_exam_sets(request, class_id, exam_id):
             
             with open(csv_file_path, mode='w', newline='') as csv_file:
                 writer = csv.writer(csv_file)
-                writer.writerow(['Student ID', 'First Name', 'Last Name', 'Set No', 'Set ID', 'Answer Key'])  # Write header
+                writer.writerow(['Student ID', 'First Name', 'Last Name', 'Set No', 'Set ID', 'Answer Key', 'Difficulty Points'])  # Write header
                 writer.writerows(csv_rows)  # Write data rows
 
             messages.success(request, "New exam sets generated successfully and saved to CSV.")
@@ -694,6 +746,7 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
+
 
 @login_required
 def download_test_paper(request, class_id, exam_id):
@@ -915,8 +968,16 @@ def add_exam_view(request):
 def exam_detail_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     available_exams = Exam.objects.exclude(id=exam_id)  # Other exams to copy questions from
-    questions = exam.questions.all()  # Questions already added to the current exam
     current_class = exam.class_assigned
+
+    # Determine sorting option
+    sort_by = request.GET.get('sort_by', 'most_recent')
+    questions = exam.questions.all()  # Questions already added to the current exam
+
+    if sort_by == 'difficulty':
+        questions = sorted(questions, key=lambda q: ('Easy', 'Medium', 'Hard').index(q.difficulty))
+    elif sort_by == 'most_recent':
+        questions = questions.order_by('-id')  # Assuming that ID corresponds to the creation time
 
     if request.method == 'POST':
         selected_exam_id = request.POST.get('exam_source_id')
@@ -955,13 +1016,12 @@ def exam_detail_view(request, exam_id):
             else:
                 messages.error(request, 'Question text, Option A, Option B, and Correct Answer are required!')
 
-    questions = exam.questions.all()  # Refetch questions
-
     return render(request, 'exam_detail.html', {
         'exam': exam,
         'current_class': current_class,
         'questions': questions,
-        'available_exams': available_exams
+        'available_exams': available_exams,
+        'sort_by': sort_by  # Pass the sort option to the template
     })
 
 
