@@ -710,7 +710,7 @@ def generate_exam_sets(request, class_id, exam_id):
 
             if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
                 # Generate a unique 5-digit set ID
-                set_id = f"{exam_id}{random.randint(100, 999)}"  # Exam ID + random 3 digits
+                set_id = f"{exam.exam_id}{random.randint(100, 999)}"  # Exam ID + random 3 digits
                 test_set = TestSet(exam=exam, student=student, set_no=set_no)
                 test_set.save()
                 test_set.questions.add(*selected_questions)
@@ -729,7 +729,7 @@ def generate_exam_sets(request, class_id, exam_id):
                 # Add a row to the CSV rows list in the correct order
                 csv_rows.append([
                     student.last_name, student.first_name, student.middle_initial, 
-                    student.student_id[4:], set_id, answer_key, difficulty_points  # Remove first 4 characters from ID
+                    student.student_id[4:], exam.exam_id, answer_key, difficulty_points  # Use exam.exam_id instead of set_id
                 ])
 
         # Save the generated sets to a CSV file
@@ -740,7 +740,7 @@ def generate_exam_sets(request, class_id, exam_id):
             with open(csv_file_path, mode='w', newline='') as csv_file:
                 writer = csv.writer(csv_file)
                 # Updated CSV headers to the correct order
-                writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points'])
+                writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Exam ID', 'Answer Key', 'Difficulty Points'])
                 writer.writerows(csv_rows)  # Write data rows
 
             messages.success(request, "New exam sets generated successfully and saved to CSV.")
@@ -776,7 +776,7 @@ def download_test_paper(request, class_id, exam_id):
     # Define styles
     pdf_canvas.setFont("Helvetica-Bold", 18)
 
-    # Loop through each student to generate a test paper
+    # Loop through each test set to generate a test paper
     test_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
     line_height = 20
     bottom_margin = 50  # Define bottom margin
@@ -784,7 +784,7 @@ def download_test_paper(request, class_id, exam_id):
     for test_set in test_sets:
         student = test_set.student
 
-        # Create a new page for each student
+        # Create a new page for each test set
         pdf_canvas.showPage()
         pdf_canvas.setFont("Helvetica-Bold", 18)
         pdf_canvas.drawString(50, height - 40, f"Exam Name: {exam.name}")
@@ -792,7 +792,7 @@ def download_test_paper(request, class_id, exam_id):
         pdf_canvas.drawString(50, height - 70, f"Student Name: {student.first_name} {student.last_name}")
 
         # Add TestSet ID
-        pdf_canvas.drawString(50, height - 90, f"TestSet ID: {test_set.id}")  # Add TestSet ID here
+        pdf_canvas.drawString(50, height - 90, f"Test Set ID: {test_set.set_id}")  # Add Test Set ID here
 
         # Add questions for the exam
         questions = test_set.questions.all()
@@ -809,7 +809,7 @@ def download_test_paper(request, class_id, exam_id):
             pdf_canvas.drawString(50, y_position, f"Q{question_count}: {question.question_text}")
             y_position -= line_height
 
-            # Print answer options
+            # Print answer options (up to E)
             options = [
                 question.option_a,
                 question.option_b,
