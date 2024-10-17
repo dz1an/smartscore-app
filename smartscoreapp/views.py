@@ -779,6 +779,7 @@ def download_test_paper(request, class_id, exam_id):
     # Loop through each student to generate a test paper
     test_sets = TestSet.objects.filter(exam=exam, student__in=current_class.students.all())
     line_height = 20
+    bottom_margin = 50  # Define bottom margin
 
     for test_set in test_sets:
         student = test_set.student
@@ -799,7 +800,7 @@ def download_test_paper(request, class_id, exam_id):
         y_position = height - 110  # Start position for questions
 
         for question in questions:
-            if y_position < 40:  # If the space is too low, create a new page (though it shouldn't happen now)
+            if y_position < bottom_margin + 40:  # If the space is too low, create a new page
                 pdf_canvas.showPage()
                 y_position = height - 40  # Reset y position
 
@@ -822,6 +823,7 @@ def download_test_paper(request, class_id, exam_id):
                 if option:  # Check if option is not empty
                     label = chr(65 + idx)  # A, B, C, D, E
                     pdf_canvas.setFont("Helvetica", 12)
+                    # Position the options side by side (2 per line)
                     pdf_canvas.drawString(50 + (idx % 2) * 250, y_position, f"{label}. {option}")
                     if idx % 2 == 1:  # Move down after every two options
                         y_position -= line_height
@@ -832,12 +834,15 @@ def download_test_paper(request, class_id, exam_id):
         # Add space between different students' test papers
         y_position -= 40
 
+    # Add bottom margin
+    pdf_canvas.setFont("Helvetica", 10)
+    pdf_canvas.drawString(50, bottom_margin, "End of Test Paper")  # Optional footer
+
     # Close the PDF object cleanly.
     pdf_canvas.showPage()
     pdf_canvas.save()
 
     return response
-
 
 
 @login_required
