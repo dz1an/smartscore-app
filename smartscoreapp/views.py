@@ -502,12 +502,18 @@ def scan_page(request, class_id, exam_id):
     result_csv = ''
     
     if request.method == 'POST':
-        csv_exam_id = request.POST.get('csv_indicator')
+        csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
         selected_exam = get_object_or_404(Exam, id=csv_exam_id)
+
+        # Ensure the selected exam matches the current exam
+        if selected_exam.id != current_exam.id:
+            messages.error(request, "Selected exam does not match the current exam.")
+            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         uploaded_images = request.FILES.getlist('image_upload')
         if uploaded_images:
-            folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'exam_{selected_exam.id}')
+            # Ensure unique folder path for the uploaded images
+            folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{selected_exam.id}')
             os.makedirs(folder_path, exist_ok=True)
 
             for image in uploaded_images:
@@ -517,13 +523,15 @@ def scan_page(request, class_id, exam_id):
             messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
 
         if csv_exam_id and uploaded_images:
-            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'exam_{selected_exam.id}.csv')
-            
+            # Ensure correct path to CSV file
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}.csv')
+
             if not os.path.exists(csv_file):
                 messages.error(request, "The specified CSV file was not found.")
-                return redirect('exams')  # Redirect to exams view if CSV not found
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)  # Redirect back to the same page if CSV not found
 
             try:
+                # Call OMR function for scanning
                 result_csv = omr(csv_file, folder_path)
                 messages.success(request, "Scanning completed. Results saved.")
             except Exception as e:

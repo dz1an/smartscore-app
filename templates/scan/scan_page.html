@@ -30,15 +30,13 @@
     <form method="POST" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
         
-        <!-- CSV File Indicator -->
+        <!-- Ensure pre-selected exam matches the current one -->
         <div>
             <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
             <select id="csv_indicator" name="csv_indicator" required 
                     class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-                <option value="" disabled selected>Select an Exam</option>
-                {% for exam in exams %}
-                    <option value="{{ exam.id }}">{{ exam.name }}</option>
-                {% endfor %}
+                <option value="{{ current_exam.id }}" selected>{{ current_exam.name }}</option>
+                <!-- Other options hidden for consistency -->
             </select>
         </div>
 
@@ -108,7 +106,7 @@
         <h3 class="text-lg font-medium mt-6">Folder Created: {{ folder_path }}</h3>
         <p class="text-sm">CSV File Saved: {{ csv_file.name }}</p>
         <ul class="list-disc list-inside">
-            {% for image in images %}
+            {% for image in uploaded_images %}
             <li>{{ image.name }}</li>
             {% endfor %}
         </ul>
