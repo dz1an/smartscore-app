@@ -8,7 +8,7 @@ current_time = datetime.datetime.now()
 
 def omr(csv_path, images):
     # Define the expected headers
-    expected_headers = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Exam ID', 'Answer Key', 'Difficulty Points']
+    expected_headers = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points']
     
     try:
         # Load the CSV file and validate headers
@@ -40,7 +40,7 @@ def omr(csv_path, images):
 def load_and_validate_csv(csv_path, expected_headers):
     """Load CSV and ensure headers match."""
     try:
-        df = pd.read_csv(csv_path, dtype={'ID': str, 'Exam ID': str, 'Answer Key': str, 'Difficulty Points': str})
+        df = pd.read_csv(csv_path, dtype={'ID': str, 'Set ID': str, 'Answer Key': str, 'Difficulty Points': str})
         if list(df.columns) != expected_headers:
             raise ValueError(f"CSV headers do not match the expected headers: {expected_headers}")
         print("CSV file loaded successfully with correct headers.")
@@ -62,7 +62,7 @@ def build_id_to_info(df):
             'Last Name': row['Last Name'],
             'First Name': row['First Name'],
             'Middle Initial': row['Middle Initial'],
-            'Exam ID': row['Exam ID'],
+            'Set ID': row['Set ID'],
             'Answer Key': row['Answer Key'],
             'Difficulty Points': row['Difficulty Points']
         }
@@ -97,7 +97,7 @@ def process_image(image_path, id_to_info, filename):
         
         # Exam ID
         exam_id = utilis.int_list_to_string(scan.exam_id_check(scan.exam_id_scan(cropExam)))
-        exam_id_valid = utilis.are_strings_equal(id_info['Exam ID'], exam_id)
+        exam_id_valid = utilis.are_strings_equal(id_info['Set ID'], exam_id)
 
         # Answer checking
         score, invAns, incAns = scan.ans_check(scan.answer_scan(cropAns), id_info['Answer Key'], id_info['Difficulty Points'])
