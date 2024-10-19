@@ -52,7 +52,7 @@ class Exam(models.Model):
     name = models.CharField(max_length=50)
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.SET_NULL, null=True)  # Set to NULL on class deletion
     questions = models.ManyToManyField(Question, related_name='exams')
-    set_id = models.CharField(max_length=6, unique=True, blank=True)  # Updated to 6 for exam_id + 2 digits
+    set_id = models.CharField(max_length=6, unique=True, blank=True)  
 
     def __str__(self):
         return self.name
