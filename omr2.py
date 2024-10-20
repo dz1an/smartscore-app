@@ -119,4 +119,16 @@ def process_image(image_path, id_to_info, filename):
         print("-" * 40)
         
     except Exception as e:
+        # Output student info and exam results
+        additional_content = [
+            "Invalid Last Name",
+            "Invalid First Name",
+            "Invalid Middle Initial",
+            "Invalid Student ID",
+            "Invalid Set ID",
+            0,
+            None,
+            None
+        ]       
+        utilis.append_to_csv(additional_content, filename)
         print(f"Failed to process image {image_path}: {e}")
