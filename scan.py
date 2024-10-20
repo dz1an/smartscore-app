@@ -358,7 +358,7 @@ def answer_scan(cropAns):
 
     os.makedirs(temp_dir, exist_ok=True)
 
-    print(ans_mark)
+    # print(ans_mark)
     
     return ans_mark
 
@@ -381,7 +381,7 @@ def ans_check(answer_marks,answer_key, points_per_diff):
 
     # GRADING
     grading = utilis.grade(ansResult, answersKey, questions)
-    print(grading)
+    # print(grading)
 
     # EVALUATE SCORE
     score = utilis.score(grading, diff_points, questions)
