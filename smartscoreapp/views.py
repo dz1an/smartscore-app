@@ -172,15 +172,17 @@ def class_detail_view(request, class_id):
         raise PermissionDenied("You are not authorized to view this class.")
 
     # Get the sort parameter from the request
-    sort_by = request.GET.get('sort_by', 'last_name')  # Default sort by last name
+    sort_by = request.GET.get('sort_by', 'last_name')
 
-    # Order students based on the sort parameter
+    # Order students based on the sort parameter and filter out those without an assigned class
+    students = Student.objects.filter(assigned_class=class_instance).exclude(assigned_class=None)
+
     if sort_by == 'first_name':
-        students = Student.objects.filter(assigned_class=class_instance).order_by('first_name', 'last_name')
+        students = students.order_by('first_name', 'last_name')
     elif sort_by == 'most_recent':
-        students = Student.objects.filter(assigned_class=class_instance).order_by('-id')  # Assuming 'id' is an auto-increment field
-    else:  # Default to last name sorting
-        students = Student.objects.filter(assigned_class=class_instance).order_by('last_name', 'first_name')
+        students = students.order_by('-id')
+    else:
+        students = students.order_by('last_name', 'first_name')
 
     if request.method == 'POST':
         form = StudentForm(request.POST)
@@ -202,7 +204,7 @@ def class_detail_view(request, class_id):
         'class': class_instance,
         'students': students,
         'form': form,
-        'sort_by': sort_by,  # Pass the current sort option to the template
+        'sort_by': sort_by,
     }
     return render(request, 'class_detail.html', context)
 
@@ -1190,18 +1192,53 @@ def bulk_upload_students_view(request, class_id):
 
 
 @login_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def edit_student(request, student_id):
-    student = get_object_or_404(Student, student_id=student_id)
-    form = EditStudentForm(request.POST, instance=student)
-    if form.is_valid():
-        form.save()
-        messages.success(request, 'Student updated successfully!')
-    else:
-        messages.error(request, 'There was an error updating the student.')
-    return redirect('class_detail', class_id=student.assigned_class.id)
+    try:
+        student = get_object_or_404(Student, student_id=student_id)
 
+        if request.method == "POST":
+            first_name = request.POST.get('first_name', student.first_name)
+            last_name = request.POST.get('last_name', student.last_name)
+            middle_initial = request.POST.get('middle_initial', student.middle_initial)
 
+            if not hasattr(student, 'assigned_class') or student.assigned_class is None:
+                return JsonResponse({
+                    'success': False,
+                    'error': f"Student with ID {student_id} has no assigned class. Please assign a class first."
+                }, status=400)
+
+            student.first_name = first_name
+            student.last_name = last_name
+            student.middle_initial = middle_initial
+            student.save()
+
+            return JsonResponse({
+                'success': True, 
+                'message': 'Student updated successfully!',
+                'student': {
+                    'student_id': student.student_id,
+                    'first_name': student.first_name,
+                    'last_name': student.last_name,
+                    'middle_initial': student.middle_initial,
+                }
+            })
+
+        # Handle GET request
+        return JsonResponse({
+            'success': True,
+            'student': {
+                'student_id': student.student_id,
+                'first_name': student.first_name,
+                'last_name': student.last_name,
+                'middle_initial': student.middle_initial,
+            }
+        })
+
+    except Student.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Student not found.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 def delete_student_view(request, class_id, student_id):

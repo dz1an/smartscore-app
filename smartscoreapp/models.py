@@ -86,7 +86,7 @@ class Student(models.Model):
     last_name = models.CharField(max_length=50)
     middle_initial = models.CharField(max_length=1, blank=True)
     student_id = models.CharField(max_length=12, blank=True)  # Not unique
-    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students')
+    assigned_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name='students', null=False)
     short_id = models.CharField(max_length=8, editable=False, null=True, blank=True)
 
 

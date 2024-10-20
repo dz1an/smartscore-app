@@ -43,7 +43,7 @@ urlpatterns = [
 
     # Students
     path('students/', students_view, name='students'),
-    path('students/<str:student_id>/edit/', views.edit_student, name='edit_student'),
+    path('edit-student/<str:student_id>/', views.edit_student, name='edit_student'),
     path('students/<int:student_id>/test_papers/', student_test_papers_view, name='student_test_papers'),
     path('test_set/<int:test_set_id>/', view_test_set_view, name='view_test_set'),
     path('classes/<int:class_id>/bulk_upload/', bulk_upload_students_view, name='bulk_upload_students'),

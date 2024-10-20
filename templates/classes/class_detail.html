@@ -210,7 +210,6 @@
     </div>
   </div>
 </div>
-
 <!-- Delete Student Modal -->
 <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
@@ -289,11 +288,63 @@ function closeDeleteModal() {
     document.getElementById('deleteStudentName').textContent = studentName;  // Display student's name in the confirmation message
 }
 
-
-
   function closeDeleteModal() {
     document.getElementById('deleteStudentModal').classList.add('hidden');
   }
+  function openEditModal(studentId, firstName, middleInitial, lastName) {
+    document.getElementById('editFirstName').value = firstName;
+    document.getElementById('editMiddleInitial').value = middleInitial;
+    document.getElementById('editLastName').value = lastName;
+
+    const form = document.getElementById('editStudentForm');
+    form.action = `/edit-student/${studentId}/`;
+
+    document.getElementById('editStudentModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('editStudentModal').classList.add('hidden');
+}
+
+function submitEditForm(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditModal();
+            // Update the student information in the table without reloading
+            updateStudentInTable(data.student);
+        } else {
+            alert(data.error || 'An error occurred while updating the student.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the student.');
+    });
+}
+
+function updateStudentInTable(student) {
+    const row = document.querySelector(`tr[data-student-id="${student.student_id}"]`);
+    if (row) {
+        row.querySelector('.student-name').textContent = `${student.last_name}, ${student.first_name} ${student.middle_initial}`;
+        // Update other fields if necessary
+    }
+}
+
+// Add event listener to the form
+document.getElementById('editStudentForm').addEventListener('submit', submitEditForm);
 </script>
 
 {% endblock %}
