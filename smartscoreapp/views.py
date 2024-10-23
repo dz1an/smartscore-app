@@ -1194,51 +1194,37 @@ def bulk_upload_students_view(request, class_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_student(request, student_id):
+    # Fetch the student by both student_id and the class they belong to
+    class_instance = request.GET.get('class_id')  # Ensure you're passing the class_id when calling this endpoint
+
     try:
-        student = get_object_or_404(Student, student_id=student_id)
+        student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
 
         if request.method == "POST":
             first_name = request.POST.get('first_name', student.first_name)
             last_name = request.POST.get('last_name', student.last_name)
             middle_initial = request.POST.get('middle_initial', student.middle_initial)
 
-            if not hasattr(student, 'assigned_class') or student.assigned_class is None:
-                return JsonResponse({
-                    'success': False,
-                    'error': f"Student with ID {student_id} has no assigned class. Please assign a class first."
-                }, status=400)
-
             student.first_name = first_name
             student.last_name = last_name
             student.middle_initial = middle_initial
             student.save()
 
-            return JsonResponse({
-                'success': True, 
-                'message': 'Student updated successfully!',
-                'student': {
-                    'student_id': student.student_id,
-                    'first_name': student.first_name,
-                    'last_name': student.last_name,
-                    'middle_initial': student.middle_initial,
-                }
-            })
+            # Redirect back to the class detail page or wherever appropriate
+            return redirect('class_detail', class_id=class_instance)
 
-        # Handle GET request
-        return JsonResponse({
-            'success': True,
-            'student': {
-                'student_id': student.student_id,
-                'first_name': student.first_name,
-                'last_name': student.last_name,
-                'middle_initial': student.middle_initial,
-            }
+        # Handle GET request and render the edit form
+        return render(request, 'edit_student.html', {
+            'student': student,
+            'class_id': class_instance,
         })
 
     except Student.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Student not found.'}, status=404)
+        # Handle the case where the student does not exist
+        return redirect('class_detail', class_id=class_instance)  # Redirect to class detail if student not found
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        # Handle any other exceptions
+        return redirect('class_detail', class_id=class_instance)  # Redirect to class detail
 
 @login_required
 def delete_student_view(request, class_id, student_id):
@@ -1260,7 +1246,7 @@ def delete_student_view(request, class_id, student_id):
     })
 
 
-def delete_student(request, student_id, class_id):
+
     # Fetch the class and ensure the student belongs to that class
     class_instance = get_object_or_404(Class, id=class_id, user=request.user)
     student_instance = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)
