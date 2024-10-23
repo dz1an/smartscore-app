@@ -197,6 +197,10 @@
         {% csrf_token %}
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Student</h2>
         <div class="mb-4">
+          <label for="editStudentId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Student ID</label>
+          <input type="text" id="editStudentId" name="student_id" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" required>
+        </div>
+        <div class="mb-4">
           <label for="editFirstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
           <input type="text" id="editFirstName" name="first_name" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
         </div>
@@ -214,6 +218,8 @@
     </div>
   </div>
 </div>
+
+
 <!-- Delete Student Modal -->
 <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
   <div class="flex items-center justify-center min-h-screen">
@@ -291,20 +297,23 @@ function closeDeleteModal() {
   document.getElementById('deleteStudentModal').classList.add('hidden');
 }
 
-  function openEditModal(studentId, firstName, middleInitial, lastName, classId) {
-    document.getElementById('editFirstName').value = firstName;
-    document.getElementById('editMiddleInitial').value = middleInitial;
-    document.getElementById('editLastName').value = lastName;
+function openEditModal(studentId, firstName, middleInitial, lastName, classId) {
+  document.getElementById('editStudentId').value = studentId; // Set the student ID
+  document.getElementById('editFirstName').value = firstName;
+  document.getElementById('editMiddleInitial').value = middleInitial;
+  document.getElementById('editLastName').value = lastName;
 
-    const form = document.getElementById('editStudentForm');
-    form.action = `/edit-student/${studentId}/?class_id=${classId}`;  // Update this line to include class ID
+  const form = document.getElementById('editStudentForm');
+  form.action = `/edit-student/${studentId}/?class_id=${classId}`;
 
-    document.getElementById('editStudentModal').classList.remove('hidden');
+  document.getElementById('editStudentModal').classList.remove('hidden');
 }
 
 function closeEditModal() {
-    document.getElementById('editStudentModal').classList.add('hidden');
+  document.getElementById('editStudentModal').classList.add('hidden');
 }
+
+
 
 function updateStudentInTable(student) {
     const row = document.querySelector(`tr[data-student-id="${student.student_id}"]`);

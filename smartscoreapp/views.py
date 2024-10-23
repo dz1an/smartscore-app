@@ -1194,37 +1194,35 @@ def bulk_upload_students_view(request, class_id):
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_student(request, student_id):
-    # Fetch the student by both student_id and the class they belong to
-    class_instance = request.GET.get('class_id')  # Ensure you're passing the class_id when calling this endpoint
+    class_instance = request.GET.get('class_id')
 
     try:
         student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
 
         if request.method == "POST":
+            student_id = request.POST.get('student_id', student.student_id)  # Fetch the student ID
             first_name = request.POST.get('first_name', student.first_name)
             last_name = request.POST.get('last_name', student.last_name)
             middle_initial = request.POST.get('middle_initial', student.middle_initial)
 
+            # Update the student details
+            student.student_id = student_id  # Update student ID
             student.first_name = first_name
             student.last_name = last_name
             student.middle_initial = middle_initial
             student.save()
 
-            # Redirect back to the class detail page or wherever appropriate
             return redirect('class_detail', class_id=class_instance)
 
-        # Handle GET request and render the edit form
         return render(request, 'edit_student.html', {
             'student': student,
             'class_id': class_instance,
         })
 
     except Student.DoesNotExist:
-        # Handle the case where the student does not exist
-        return redirect('class_detail', class_id=class_instance)  # Redirect to class detail if student not found
+        return redirect('class_detail', class_id=class_instance)
     except Exception as e:
-        # Handle any other exceptions
-        return redirect('class_detail', class_id=class_instance)  # Redirect to class detail
+        return redirect('class_detail', class_id=class_instance)
 
 @login_required
 def delete_student_view(request, class_id, student_id):
