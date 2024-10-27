@@ -565,23 +565,27 @@ def scan_page(request, class_id, exam_id):
 
         uploaded_images = request.FILES.getlist('image_upload')
         if uploaded_images:
-            folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{selected_exam.id}')
+            # Create relative path for storage
+            relative_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{selected_exam.id}')
+            folder_path = os.path.join(settings.MEDIA_ROOT, relative_path)
             os.makedirs(folder_path, exist_ok=True)
 
             saved_images = []
             for image in uploaded_images:
                 fs = FileSystemStorage(location=folder_path)
                 filename = fs.save(image.name, image)
-                saved_images.append(filename)
+                # Store the relative URL path
+                file_url = os.path.join(settings.MEDIA_URL, relative_path, filename)
+                saved_images.append({
+                    'name': filename,
+                    'url': file_url
+                })
 
             messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
             uploaded_images = saved_images
 
         if csv_exam_id and uploaded_images:
-            # Ensure correct path to CSV file
             csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}_sets.csv')
-
-            print("CSV file path:", csv_file)  # Debugging line
 
             if not os.path.exists(csv_file):
                 messages.error(request, "The specified CSV file was not found.")
@@ -604,8 +608,6 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
-
-
 
 def scan_exam_view(request):
     folder_path = None
