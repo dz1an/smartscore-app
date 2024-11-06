@@ -4,8 +4,5 @@ venv
 db.sqlite3
 media
 migrations
-__pycache__
+
 node_modules
-smartscoreapp/__pycache__/models.cpython-39.pyc
-smartscoreapp/__pycache__/settings.cpython-310.pyc
-smartscoreapp/__pycache__/settings.cpython-39.pyc
