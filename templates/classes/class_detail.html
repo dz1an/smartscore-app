@@ -42,25 +42,35 @@
   {{ students.count }} Enrolled Students
 </h2>
 <!-- Add Student and Bulk Upload Buttons -->
-<div class="mb-4 flex space-x-4">
+<div class="mb-4 flex space-x-2 justify-end">
   <button 
-  data-modal-target="add-student-modal-{{ class.id }}" 
-  data-modal-toggle="add-student-modal-{{ class.id }}" 
-  class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-2 py-1 rounded-lg focus:outline-none">
-  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-  </svg>
-  Add Student
-</button>
+    data-modal-target="add-student-modal-{{ class.id }}" 
+    data-modal-toggle="add-student-modal-{{ class.id }}" 
+    class="flex items-center text-sm text-white bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg shadow-md transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-opacity-50">
+    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+    </svg>
+    Add Student
+  </button>
 
-  
-
-  <button class="flex items-center text-sm text-white bg-blue-500 hover:bg-blue-600 px-2 py-1 rounded-lg focus:outline-none" onclick="openBulkUploadModal()">
-    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+  <button class="flex items-center text-sm text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg shadow-md transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50" onclick="openBulkUploadModal()">
+    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
     </svg>
     Bulk Upload Students
   </button>
+</div>
+
+
+<!-- Sort by Dropdown -->
+<div class="mb-4">
+  <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</label>
+  <select id="sort-by" name="sort_by" class="mt-1 block w-1/4 px-3 py-2 border border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:text-gray-300"
+    onchange="location = this.value;">
+    <option value="?sort_by=first_name" {% if sort_by == 'first_name' %}selected{% endif %}>First Name</option>
+    <option value="?sort_by=last_name" {% if sort_by == 'last_name' %}selected{% endif %}>Last Name</option>
+    <option value="?sort_by=most_recent" {% if sort_by == 'most_recent' %}selected{% endif %}>Most Recent</option>
+  </select>
 </div>
 
 <!-- Table of Enrolled Students -->
@@ -86,14 +96,19 @@
         <td class="px-6 py-4 text-center flex justify-center space-x-2">
             <a href="{% url 'student_test_papers' student.id %}" class="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-500">View</a>
             <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500"
-                onclick="openEditModal('{{ student.student_id }}', '{{ student.first_name }}', '{{ student.middle_initial }}', '{{ student.last_name }}')">Edit</button>
+    onclick="openEditModal('{{ student.student_id }}', '{{ student.first_name }}', '{{ student.middle_initial }}', '{{ student.last_name }}', '{{ class.id }}')">Edit</button>
+
                 
-                <!-- to be fixed -->
-                <form method="POST" action="{% url 'delete_student' class.id student.student_id %}">
-                  {% csrf_token %}
-                  <button type="submit" class="text-red-500 hover:text-red-600">Delete</button>
-              </form>
+<!-- Trigger Delete Student Modal -->
+<button 
+    type="button" 
+    onclick="openDeleteModal('{{ student.student_id }}', '{{ student.first_name }} {{ student.last_name }}', '{{ class.id }}')"
+    class="text-red-500 hover:text-red-600">
+    Delete
+</button>
+
               
+
         </td>
     </tr>
     
@@ -106,8 +121,8 @@
   </table>
 </div>
 
-</div>
 
+</div>
 <!-- Modals -->
 <!-- Modal for adding a student to the class -->
 <div id="add-student-modal-{{ class.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
@@ -182,6 +197,10 @@
         {% csrf_token %}
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Student</h2>
         <div class="mb-4">
+          <label for="editStudentId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Student ID</label>
+          <input type="text" id="editStudentId" name="student_id" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white" required>
+        </div>
+        <div class="mb-4">
           <label for="editFirstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">First Name</label>
           <input type="text" id="editFirstName" name="first_name" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-900 dark:text-white">
         </div>
@@ -199,6 +218,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Delete Student Modal -->
 <div id="deleteStudentModal" class="hidden fixed z-10 inset-0 overflow-y-auto">
@@ -267,22 +287,46 @@
     document.getElementById('deleteStudentName').textContent = studentName;
 }
 
+function openDeleteModal(studentId, studentName, classId) {
+  document.getElementById('deleteStudentModal').classList.remove('hidden');
+  document.getElementById('deleteStudentForm').action = `/classes/${classId}/students/${studentId}/delete/`;  // Adjust to match your URL pattern
+  document.getElementById('deleteStudentName').textContent = studentName;  // Display student's name in the confirmation message
+}
+
 function closeDeleteModal() {
-    document.getElementById('deleteStudentModal').classList.add('hidden');
+  document.getElementById('deleteStudentModal').classList.add('hidden');
+}
+
+function openEditModal(studentId, firstName, middleInitial, lastName, classId) {
+  document.getElementById('editStudentId').value = studentId; // Set the student ID
+  document.getElementById('editFirstName').value = firstName;
+  document.getElementById('editMiddleInitial').value = middleInitial;
+  document.getElementById('editLastName').value = lastName;
+
+  const form = document.getElementById('editStudentForm');
+  form.action = `/edit-student/${studentId}/?class_id=${classId}`;
+
+  document.getElementById('editStudentModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editStudentModal').classList.add('hidden');
 }
 
 
-  function openDeleteModal(studentId, studentName, classId) {
-    document.getElementById('deleteStudentModal').classList.remove('hidden');
-    document.getElementById('deleteStudentForm').action = `/classes/${classId}/students/${studentId}/delete/`;  // Make sure this matches your URL pattern
-    document.getElementById('deleteStudentName').textContent = studentName;  // Display student's name in the confirmation message
+
+function updateStudentInTable(student) {
+    const row = document.querySelector(`tr[data-student-id="${student.student_id}"]`);
+    if (row) {
+        row.querySelector('.student-name').textContent = `${student.last_name}, ${student.first_name} ${student.middle_initial}`;
+        // Update other fields if necessary
+    }
 }
 
-
-
-  function closeDeleteModal() {
-    document.getElementById('deleteStudentModal').classList.add('hidden');
-  }
+// Add event listener to the form
+document.getElementById('editStudentForm').addEventListener('submit', submitEditForm);
 </script>
+
+
 
 {% endblock %}

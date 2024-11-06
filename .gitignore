@@ -1,4 +1,7 @@
 node_modules
-venv
 db.sqlite3
-.venv
+venv
+media
+migrations
+__pycache__
+
