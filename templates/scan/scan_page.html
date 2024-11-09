@@ -29,59 +29,53 @@
 
     <form method="POST" enctype="multipart/form-data" class="space-y-6">    
         {% csrf_token %}
-        
+
         <!-- Ensure pre-selected exam matches the current one -->
         <div>
             <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
             <select id="csv_indicator" name="csv_indicator" required 
                     class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
                 <option value="{{ current_exam.id }}" selected>{{ current_exam.name }}</option>
-                <!-- Other options hidden for consistency -->
             </select>
         </div>
 
-<!-- Image Upload Indicator -->
-<div>
-    <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Images:</label>
-    <input type="file" id="image_upload" name="image_upload" accept="image/*" multiple 
-           class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
-</div>
+        <!-- Image Upload Indicator -->
+        <div>
+            <label for="image_upload" class="block text-sm font-medium text-gray-700">Upload Images:</label>
+            <input type="file" id="image_upload" name="image_upload" accept="image/*" multiple 
+                   class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+        </div>
 
-    <!-- Uploaded Images Table -->
-    <h3 class="text-lg font-medium mt-4">Uploaded Images</h3>
-    <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
-        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                <tr>
-                    <th scope="col" class="px-6 py-3">#</th>
-                    <th scope="col" class="px-6 py-3">Image</th>
-                    <th scope="col" class="px-6 py-3">Action</th>
-                </tr>
-            </thead>
-            <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                {% for image in uploaded_images %}
-                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                        <td class="px-6 py-4">{{ forloop.counter }}</td>
-                        <td class="px-6 py-4">
-                            <img src="{{ image.url }}" alt="{{ image.name }}" class="w-16 h-16 object-cover" />
-                            <span class="ml-2">{{ image.name }}</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <button type="button" class="text-red-600 hover:underline" onclick="removeImage('{{ image.name }}')">Remove</button>
-                        </td>
+        <!-- Uploaded Images Table -->
+        <h3 class="text-lg font-medium mt-4">Uploaded Images</h3>
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">#</th>
+                        <th scope="col" class="px-6 py-3">Image</th>
+                        <th scope="col" class="px-6 py-3">Action</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-<script>
-    function removeImage(imageName) {
-        // Add JavaScript or Ajax functionality to remove the image if needed
-        alert('Remove functionality not implemented yet for ' + imageName);
-    }
-</script>
-
+                </thead>
+                <tbody id="image-table" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {% for image in uploaded_images %}
+                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                            <td class="px-6 py-4">{{ forloop.counter }}</td>
+                            <td class="px-6 py-4">
+                                <img src="{{ image.url }}" alt="{{ image.name }}" class="w-16 h-16 object-cover" />
+                                <span class="ml-2">{{ image.name }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <form method="POST" action="{% url 'delete_image' image.name %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-red-600 hover:underline">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <!-- Scan Button -->
         <div>
@@ -92,35 +86,7 @@
         </div>
     </form>
 
-    <!-- JavaScript to handle adding images to the table dynamically -->
-    <script>
-        const imageTable = document.getElementById('image-table');
-        
-        document.getElementById('image_upload').addEventListener('change', function(event) {
-            imageTable.innerHTML = '';  // Clear previous list
-            Array.from(event.target.files).forEach((file, index) => {
-                const url = URL.createObjectURL(file); // Create a URL for the file
-                let row = `<tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                              <td class="px-6 py-4">${index + 1}</td>
-                              <td class="px-6 py-4">
-                                  <img src="${url}" alt="${file.name}" class="w-16 h-16 object-cover" />
-                                  <span class="ml-2">${file.name}</span>
-                              </td>
-                              <td class="px-6 py-4">
-                                  <button type="button" class="text-red-600 hover:underline" onclick="removeImage(this)">Remove</button>
-                              </td>
-                           </tr>`;
-                imageTable.insertAdjacentHTML('beforeend', row);
-            });
-        });
-
-        function removeImage(button) {
-            // Remove the row from the table
-            const row = button.closest('tr');
-            row.parentNode.removeChild(row);
-        }
-    </script>
-
+    <!-- Display CSV file path and folder if created -->
     {% if folder_path %}
         <h3 class="text-lg font-medium mt-6">Folder Created: {{ folder_path }}</h3>
         {% if csv_file %}
@@ -133,4 +99,5 @@
         </ul>
     {% endif %}
 </div>
+
 {% endblock %}

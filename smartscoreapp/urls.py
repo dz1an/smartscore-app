@@ -67,7 +67,7 @@ urlpatterns = [
     path('exams/<int:exam_id>/print-test-paper/', print_test_paper_view, name='print_test_paper'),
     path('process-scanned-papers/', process_scanned_papers_view, name='process_scanned_papers'),
     path('edit_question/<int:question_id>/', views.edit_question_view, name='edit_question'),
-
+    path('delete-test-set/<int:test_set_id>/', views.delete_test_set, name='delete_test_set'),
 
 
 
@@ -86,7 +86,8 @@ urlpatterns = [
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_sets'),
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_exam_sets'),
     path('exams/<int:class_id>/<int:exam_id>/download_test_paper/', download_test_paper, name='download_test_paper'),
-    
+    path('scan/<int:class_id>/<int:exam_id>/remove_image/<str:image_name>/', views.remove_image, name='remove_image'),
+
 
     # Settings
     path('settings/', settings_view, name='settings'),

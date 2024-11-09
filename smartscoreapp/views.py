@@ -544,18 +544,40 @@ def generate_test_paper_view(request, exam_id):
 
     return render(request, 'generate_test_paper.html', {'exam': exam, 'questions_with_options': questions_with_options, 'students': students})
 
+
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     exams = current_class.exams.all()
 
-    uploaded_images = []
+    uploaded_images = request.session.get('uploaded_images', [])
     folder_path = ''
     result_csv = ''
     csv_file = ''
 
     if request.method == 'POST':
+        # Handling the deletion of results and images
+        if 'delete_results' in request.POST:
+            # Delete uploaded images from filesystem
+            if uploaded_images:
+                for image in uploaded_images:
+                    image_path = os.path.join(settings.MEDIA_ROOT, image['url'][len(settings.MEDIA_URL):])
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                uploaded_images = []
+                request.session['uploaded_images'] = uploaded_images  # Save to session
+                messages.success(request, "Uploaded images deleted successfully.")
+
+            # Delete CSV result
+            if result_csv and os.path.exists(result_csv):
+                os.remove(result_csv)
+                result_csv = ''
+                messages.success(request, "Scan result CSV deleted successfully.")
+
+            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+        # Handling normal image upload and CSV processing
         csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
         selected_exam = get_object_or_404(Exam, id=csv_exam_id)
 
@@ -581,8 +603,10 @@ def scan_page(request, class_id, exam_id):
                     'url': file_url
                 })
 
-            messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
             uploaded_images = saved_images
+            request.session['uploaded_images'] = uploaded_images  # Save uploaded images to session
+
+            messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
 
         if csv_exam_id and uploaded_images:
             csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}_sets.csv')
@@ -608,6 +632,36 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
+
+
+@login_required
+def remove_image(request, class_id, exam_id, image_name):
+    # Ensure the request is a POST (to avoid issues with unintended GET requests)
+    if request.method == 'POST':
+        current_class = get_object_or_404(Class, id=class_id)
+        current_exam = get_object_or_404(Exam, id=exam_id)
+
+        # Get the image file path
+        folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+        file_path = os.path.join(folder_path, image_name)
+
+        try:
+            # Check if the file exists, if so, delete it
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                # You can add logic here to also delete any associated result if needed
+                messages.success(request, "Image and associated result deleted successfully.")
+            else:
+                messages.error(request, "File not found.")
+                return JsonResponse({'status': 'error', 'message': 'File not found.'}, status=404)
+        except Exception as e:
+            messages.error(request, f"Error deleting file: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+        return JsonResponse({'status': 'success', 'message': 'Image deleted successfully.'})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
+
 
 def scan_exam_view(request):
     folder_path = None
@@ -666,7 +720,7 @@ def generate_exam_sets(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
 
-    # Correct difficulty filtering
+    # Filter questions based on difficulty
     easy_questions = list(exam.questions.filter(difficulty='Easy'))
     medium_questions = list(exam.questions.filter(difficulty='Medium'))
     hard_questions = list(exam.questions.filter(difficulty='Hard'))
@@ -682,17 +736,27 @@ def generate_exam_sets(request, class_id, exam_id):
         hard_q_requested = int(request.POST.get('hard_questions', 0))
 
         students = list(current_class.students.all())
+        total_students = len(students)
 
+        # Validate number of sets
+        if num_sets > total_students:
+            num_sets = total_students  # Adjust num_sets to match total students
+
+        # Check if there are enough questions
         if easy_q_requested > easy_count or medium_q_requested > medium_count or hard_q_requested > hard_count:
             messages.error(request, "Not enough questions available for the selected difficulty.")
             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
+        # Clear existing test sets for re-generation
+        TestSet.objects.filter(exam=exam, student__in=students).delete()
+
         generated_sets = []
-        csv_rows = []  # List to store rows for CSV
+        csv_rows = []
 
-        for idx, student in enumerate(students):
-            set_no = (idx % num_sets) + 1
-
+        # Create a list of all possible sets first
+        all_sets = []
+        for set_no in range(1, num_sets + 1):
+            # Shuffle and select questions for each set
             random.shuffle(easy_questions)
             random.shuffle(medium_questions)
             random.shuffle(hard_questions)
@@ -705,64 +769,111 @@ def generate_exam_sets(request, class_id, exam_id):
             random.shuffle(selected_questions)
 
             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
-
-            # Generate difficulty points string based on selected questions
             difficulty_points = ''.join(
-                '1' if question.difficulty == 'Easy' else '2' if question.difficulty == 'Medium' else '3'
+                '1' if question.difficulty == 'Easy' 
+                else '2' if question.difficulty == 'Medium' 
+                else '3'
                 for question in selected_questions
             )
 
-            if not TestSet.objects.filter(exam=exam, student=student, set_no=set_no).exists():
-                # Generate a unique 5-character set ID: 3 from exam_id and 2 random digits
-                set_id = f"{exam.exam_id}{random.randint(0, 99):02d}"  # Concatenate exam_id with 2-digit random number
+            all_sets.append({
+                'set_no': set_no,
+                'questions': selected_questions,
+                'answer_key': answer_key,
+                'difficulty_points': difficulty_points
+            })
+
+        # Used set to track generated set_ids
+        used_set_ids = set()
+
+        # Assign sets to students
+        for idx, student in enumerate(students):
+            # Use modulo to cycle through available sets
+            set_data = all_sets[idx % num_sets]
+            
+            # Generate a 5-digit set ID (3 from exam_id + 2 random)
+            exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id, padded if needed
+            
+            while True:
+                random_part = f"{random.randint(0, 99):02d}"  # 2 random digits, zero-padded
+                set_id = f"{exam_id_part}{random_part}"
                 
-                test_set = TestSet(exam=exam, student=student, set_no=set_no)
-                test_set.save()
-                test_set.questions.add(*selected_questions)
-                test_set.answer_key = answer_key
-                test_set.set_id = set_id  # Assign the custom 5-character set ID
-                test_set.save()
+                if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
+                    used_set_ids.add(set_id)
+                    break
 
-                generated_sets.append({
-                    'student_id': student.student_id,
-                    'student_name': f"{student.first_name} {student.last_name}",
-                    'set_id': set_id,  # Use the generated Set ID
-                    'answer_key': answer_key,
-                    'difficulty_points': difficulty_points  # Add difficulty points to each set
-                })
+            # Create and save the test set
+            test_set = TestSet(
+                exam=exam,
+                student=student,
+                set_no=set_data['set_no'],
+                answer_key=set_data['answer_key'],
+                set_id=set_id
+            )
+            test_set.save()
+            test_set.questions.add(*set_data['questions'])
 
-                # Add a row to the CSV rows list with Set ID instead of Exam ID
-                csv_rows.append([
-                    student.last_name, student.first_name, student.middle_initial, 
-                    student.student_id[4:], set_id, answer_key, difficulty_points  # Use set_id instead of exam.exam_id
-                ])
+            # Add to generated sets list
+            generated_sets.append({
+                'student_id': student.student_id,
+                'student_name': f"{student.first_name} {student.last_name}",
+                'set_id': set_id,
+                'answer_key': set_data['answer_key'],
+                'difficulty_points': set_data['difficulty_points']
+            })
 
-        # Save the generated sets to a CSV file
+            # Add row to CSV
+            csv_rows.append([
+                student.last_name,
+                student.first_name,
+                student.middle_initial,
+                student.student_id[4:],
+                set_id,
+                set_data['answer_key'],
+                set_data['difficulty_points']
+            ])
+
+        # Save to CSV file
         if csv_rows:
             csv_file_path = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{exam.id}_sets.csv')
-            os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)  # Create directories if they don't exist
+            os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
             
             with open(csv_file_path, mode='w', newline='') as csv_file:
                 writer = csv.writer(csv_file)
-                # Updated CSV headers to the correct order
                 writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points'])
-                writer.writerows(csv_rows)  # Write data rows
+                writer.writerows(csv_rows)
 
-            messages.success(request, "New exam sets generated successfully and saved to CSV.")
+            messages.success(request, f"Successfully generated {len(generated_sets)} exam sets across {num_sets} unique test versions.")
         else:
             messages.warning(request, "No sets were generated.")
 
-        return redirect('exam_detail', exam_id=exam.id)
+        return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
 
     context = {
         'exam': exam,
         'current_class': current_class,
-        'generated_sets': TestSet.objects.filter(exam=exam, student__in=current_class.students.all()),
+        'generated_sets': TestSet.objects.filter(exam=exam, student__in=current_class.students.all()).order_by('student__last_name', 'student__first_name'),
         'easy_count': easy_count,
         'medium_count': medium_count,
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
+
+
+
+@login_required
+def delete_test_set(request, test_set_id):
+    test_set = get_object_or_404(TestSet, id=test_set_id)
+    exam = test_set.exam
+
+    # Use 'class_assigned.user' instead of 'class_assigned.owner'
+    if request.user == exam.class_assigned.user:  # Access the user field in the Class model
+        test_set.delete()
+        messages.success(request, "Test set deleted successfully.")
+    else:
+        return HttpResponseForbidden("You do not have permission to delete this test set.")
+
+    return redirect('generate_exam_sets', class_id=exam.class_assigned.id, exam_id=exam.id)
 
 
 @login_required
