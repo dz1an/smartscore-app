@@ -551,30 +551,34 @@ def scan_page(request, class_id, exam_id):
     current_exam = get_object_or_404(Exam, id=exam_id)
     exams = current_class.exams.all()
 
+    # Define consistent paths
+    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
+    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
+    
     uploaded_images = request.session.get('uploaded_images', [])
-    folder_path = ''
     result_csv = ''
     csv_file = ''
 
     if request.method == 'POST':
-        # Handle image upload
         if 'image_upload' in request.FILES:
             uploaded_files = request.FILES.getlist('image_upload')
             if uploaded_files:
-                # Create relative path for storage
-                relative_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-                folder_path = os.path.join(settings.MEDIA_ROOT, relative_path)
-                os.makedirs(folder_path, exist_ok=True)
+                # Ensure upload directory exists
+                os.makedirs(absolute_upload_path, exist_ok=True)
 
                 saved_images = []
                 for image in uploaded_files:
-                    fs = FileSystemStorage(location=folder_path)
+                    # Create storage with absolute path
+                    fs = FileSystemStorage(location=absolute_upload_path)
                     filename = fs.save(image.name, image)
+                    
                     # Store the relative URL path
-                    file_url = os.path.join(settings.MEDIA_URL, relative_path, filename)
+                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
                     saved_images.append({
                         'name': filename,
-                        'url': file_url
+                        'url': file_url,
+                        'absolute_path': os.path.join(absolute_upload_path, filename)
                     })
 
                 uploaded_images = saved_images
@@ -582,7 +586,6 @@ def scan_page(request, class_id, exam_id):
                 messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-        # Handle scanning
         elif 'scan_images' in request.POST:
             csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
             selected_exam = get_object_or_404(Exam, id=csv_exam_id)
@@ -595,29 +598,46 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "No images available for scanning.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}_sets.csv')
+            # Construct CSV path consistently with generate_exam_sets view
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
+                                  f'class_{current_class.id}', 
+                                  f'exam_{selected_exam.id}_sets.csv')
 
             if not os.path.exists(csv_file):
-                messages.error(request, "The specified CSV file was not found.")
+                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
             try:
-                result_csv = omr(csv_file, folder_path)
-                messages.success(request, "Scanning completed. Results saved.")
+                # Verify upload folder exists and contains files
+                if not os.path.exists(absolute_upload_path):
+                    messages.error(request, "Upload folder not found.")
+                    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+                # Call OMR with absolute paths
+                result_csv = omr(csv_file, absolute_upload_path)
+                
+                if result_csv and os.path.exists(result_csv):
+                    messages.success(request, "Scanning completed. Results saved successfully.")
+                else:
+                    messages.warning(request, "Scanning completed but no results were generated.")
+                    
             except Exception as e:
                 messages.error(request, f"Scanning failed: {str(e)}")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-        # Handle deletion of results and images
         elif 'delete_results' in request.POST:
+            # Delete uploaded images
             if uploaded_images:
                 for image in uploaded_images:
-                    image_path = os.path.join(settings.MEDIA_ROOT, image['url'][len(settings.MEDIA_URL):])
+                    image_path = os.path.join(settings.MEDIA_ROOT, 
+                                            image['url'].replace(settings.MEDIA_URL, '').lstrip('/'))
                     if os.path.exists(image_path):
                         os.remove(image_path)
                 uploaded_images = []
                 request.session['uploaded_images'] = uploaded_images
                 messages.success(request, "Uploaded images deleted successfully.")
 
+            # Delete results if they exist
             if result_csv and os.path.exists(result_csv):
                 os.remove(result_csv)
                 result_csv = ''
@@ -629,14 +649,13 @@ def scan_page(request, class_id, exam_id):
         'current_class': current_class,
         'current_exam': current_exam,
         'exams': exams,
-        'folder_path': folder_path,
+        'upload_path': absolute_upload_path,
         'uploaded_images': uploaded_images,
         'result_csv': result_csv,
         'csv_file': csv_file
     }
 
     return render(request, 'scan_page.html', context)
-
 
 @login_required
 def remove_image(request, class_id, exam_id, image_name):
@@ -872,6 +891,8 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
+
+
 
 @login_required
 def delete_test_set(request, test_set_id):
