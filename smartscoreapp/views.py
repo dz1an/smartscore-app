@@ -740,7 +740,7 @@ def generate_exam_sets(request, class_id, exam_id):
 
         # Validate number of sets
         if num_sets > total_students:
-            num_sets = total_students  # Adjust num_sets to match total students
+            num_sets = total_students
 
         # Check if there are enough questions
         if easy_q_requested > easy_count or medium_q_requested > medium_count or hard_q_requested > hard_count:
@@ -783,25 +783,33 @@ def generate_exam_sets(request, class_id, exam_id):
                 'difficulty_points': difficulty_points
             })
 
-        # Used set to track generated set_ids
-        used_set_ids = set()
+        # Generate set IDs based on number of sets
+        exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id
+
+        if num_sets == 1:
+            # For single set, generate one set ID for all students
+            random_part = f"{random.randint(0, 99):02d}"
+            common_set_id = f"{exam_id_part}{random_part}"
+            set_ids = [common_set_id] * len(students)
+        else:
+            # For multiple sets, generate unique set IDs
+            set_ids = []
+            used_set_ids = set()
+            
+            for _ in range(len(students)):
+                while True:
+                    random_part = f"{random.randint(0, 99):02d}"
+                    set_id = f"{exam_id_part}{random_part}"
+                    
+                    if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
+                        used_set_ids.add(set_id)
+                        set_ids.append(set_id)
+                        break
 
         # Assign sets to students
-        for idx, student in enumerate(students):
-            # Use modulo to cycle through available sets
+        for idx, (student, set_id) in enumerate(zip(students, set_ids)):
             set_data = all_sets[idx % num_sets]
             
-            # Generate a 5-digit set ID (3 from exam_id + 2 random)
-            exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id, padded if needed
-            
-            while True:
-                random_part = f"{random.randint(0, 99):02d}"  # 2 random digits, zero-padded
-                set_id = f"{exam_id_part}{random_part}"
-                
-                if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
-                    used_set_ids.add(set_id)
-                    break
-
             # Create and save the test set
             test_set = TestSet(
                 exam=exam,
@@ -858,8 +866,6 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
-
-
 
 @login_required
 def delete_test_set(request, test_set_id):

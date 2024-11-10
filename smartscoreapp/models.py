@@ -163,24 +163,56 @@ class TestSet(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     set_no = models.IntegerField()
-    set_id = models.CharField(max_length=5, unique=True, blank=True)  # Set ID as CharField
+    set_id = models.CharField(max_length=5, blank=True)  # Removed unique=True
     questions = models.ManyToManyField('Question', related_name='test_sets', blank=True)
-    answer_key = models.CharField(max_length=255, blank=True)  # Add answer_key field
+    answer_key = models.CharField(max_length=255, blank=True)
+    
+    class Meta:
+        unique_together = [['exam', 'student']]  # Ensure one test set per student per exam
 
     def save(self, *args, **kwargs):
         if not self.set_id:  # Check if set_id is not already set
-            self.set_id = self.generate_set_id()  # Generate set_id
+            self.set_id = self.generate_set_id()
         super().save(*args, **kwargs)
 
+    @classmethod
+    def get_or_generate_common_set_id(cls, exam):
+        """
+        Get existing set ID for single set exam or generate a new one
+        """
+        exam_id = str(exam.exam_id).zfill(3)[:3]
+        existing_set = cls.objects.filter(exam=exam).first()
+        
+        if existing_set:
+            return existing_set.set_id
+        
+        set_number = str(random.randint(0, 99)).zfill(2)
+        return f"{exam_id}{set_number}"
+
+    @classmethod
+    def generate_unique_set_id(cls, exam):
+        """
+        Generate a unique set ID for multiple sets exam
+        """
+        exam_id = str(exam.exam_id).zfill(3)[:3]
+        used_set_ids = set(cls.objects.filter(exam=exam).values_list('set_id', flat=True))
+        
+        while True:
+            set_number = str(random.randint(0, 99)).zfill(2)
+            set_id = f"{exam_id}{set_number}"
+            if set_id not in used_set_ids:
+                return set_id
+
     def generate_set_id(self):
-        exam_id = str(self.exam.id).zfill(3)[:3]
-        set_number = str(random.randint(0, 99)).zfill(2)  # Ensure two-digit set number
+        """
+        Fallback method for generating set ID
+        """
+        exam_id = str(self.exam.exam_id).zfill(3)[:3]
+        set_number = str(random.randint(0, 99)).zfill(2)
         return f"{exam_id}{set_number}"
 
     def __str__(self):
         return f"{self.exam.name} - {self.student.first_name} {self.student.last_name} (Set {self.set_no}, ID: {self.set_id})"
-
-
 
 # Specify unique related_name attributes for groups and user_permissions fields
 User._meta.get_field('groups').remote_field.related_name = 'custom_user_groups'
