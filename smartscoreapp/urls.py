@@ -87,7 +87,8 @@ urlpatterns = [
     path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_exam_sets'),
     path('exams/<int:class_id>/<int:exam_id>/download_test_paper/', download_test_paper, name='download_test_paper'),
     path('scan/<int:class_id>/<int:exam_id>/remove_image/<str:image_name>/', views.remove_image, name='remove_image'),
-
+    path('exams/<int:class_id>/<int:exam_id>/scan/', views.scan_page, name='scan_page'),
+    path('exams/<int:class_id>/<int:exam_id>/remove-image/<str:image_name>/',views.remove_image, name='remove_image'), 
 
     # Settings
     path('settings/', settings_view, name='settings'),

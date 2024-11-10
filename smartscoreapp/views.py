@@ -557,58 +557,44 @@ def scan_page(request, class_id, exam_id):
     csv_file = ''
 
     if request.method == 'POST':
-        # Handling the deletion of results and images
-        if 'delete_results' in request.POST:
-            # Delete uploaded images from filesystem
-            if uploaded_images:
-                for image in uploaded_images:
-                    image_path = os.path.join(settings.MEDIA_ROOT, image['url'][len(settings.MEDIA_URL):])
-                    if os.path.exists(image_path):
-                        os.remove(image_path)
-                uploaded_images = []
-                request.session['uploaded_images'] = uploaded_images  # Save to session
-                messages.success(request, "Uploaded images deleted successfully.")
+        # Handle image upload
+        if 'image_upload' in request.FILES:
+            uploaded_files = request.FILES.getlist('image_upload')
+            if uploaded_files:
+                # Create relative path for storage
+                relative_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+                folder_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+                os.makedirs(folder_path, exist_ok=True)
 
-            # Delete CSV result
-            if result_csv and os.path.exists(result_csv):
-                os.remove(result_csv)
-                result_csv = ''
-                messages.success(request, "Scan result CSV deleted successfully.")
+                saved_images = []
+                for image in uploaded_files:
+                    fs = FileSystemStorage(location=folder_path)
+                    filename = fs.save(image.name, image)
+                    # Store the relative URL path
+                    file_url = os.path.join(settings.MEDIA_URL, relative_path, filename)
+                    saved_images.append({
+                        'name': filename,
+                        'url': file_url
+                    })
 
-            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+                uploaded_images = saved_images
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-        # Handling normal image upload and CSV processing
-        csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
-        selected_exam = get_object_or_404(Exam, id=csv_exam_id)
+        # Handle scanning
+        elif 'scan_images' in request.POST:
+            csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
+            selected_exam = get_object_or_404(Exam, id=csv_exam_id)
 
-        if selected_exam.id != current_exam.id:
-            messages.error(request, "Selected exam does not match the current exam.")
-            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+            if selected_exam.id != current_exam.id:
+                messages.error(request, "Selected exam does not match the current exam.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-        uploaded_images = request.FILES.getlist('image_upload')
-        if uploaded_images:
-            # Create relative path for storage
-            relative_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{selected_exam.id}')
-            folder_path = os.path.join(settings.MEDIA_ROOT, relative_path)
-            os.makedirs(folder_path, exist_ok=True)
+            if not uploaded_images:
+                messages.error(request, "No images available for scanning.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            saved_images = []
-            for image in uploaded_images:
-                fs = FileSystemStorage(location=folder_path)
-                filename = fs.save(image.name, image)
-                # Store the relative URL path
-                file_url = os.path.join(settings.MEDIA_URL, relative_path, filename)
-                saved_images.append({
-                    'name': filename,
-                    'url': file_url
-                })
-
-            uploaded_images = saved_images
-            request.session['uploaded_images'] = uploaded_images  # Save uploaded images to session
-
-            messages.success(request, f"{len(uploaded_images)} image(s) uploaded successfully.")
-
-        if csv_exam_id and uploaded_images:
             csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{selected_exam.id}_sets.csv')
 
             if not os.path.exists(csv_file):
@@ -620,6 +606,24 @@ def scan_page(request, class_id, exam_id):
                 messages.success(request, "Scanning completed. Results saved.")
             except Exception as e:
                 messages.error(request, f"Scanning failed: {str(e)}")
+
+        # Handle deletion of results and images
+        elif 'delete_results' in request.POST:
+            if uploaded_images:
+                for image in uploaded_images:
+                    image_path = os.path.join(settings.MEDIA_ROOT, image['url'][len(settings.MEDIA_URL):])
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                uploaded_images = []
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, "Uploaded images deleted successfully.")
+
+            if result_csv and os.path.exists(result_csv):
+                os.remove(result_csv)
+                result_csv = ''
+                messages.success(request, "Scan result CSV deleted successfully.")
+
+            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
     context = {
         'current_class': current_class,
@@ -649,19 +653,21 @@ def remove_image(request, class_id, exam_id, image_name):
             # Check if the file exists, if so, delete it
             if os.path.exists(file_path):
                 os.remove(file_path)
-                # You can add logic here to also delete any associated result if needed
-                messages.success(request, "Image and associated result deleted successfully.")
+                # Also remove the image from the session
+                uploaded_images = request.session.get('uploaded_images', [])
+                uploaded_images = [img for img in uploaded_images if img['name'] != image_name]
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, "Image deleted successfully.")
             else:
                 messages.error(request, "File not found.")
-                return JsonResponse({'status': 'error', 'message': 'File not found.'}, status=404)
         except Exception as e:
             messages.error(request, f"Error deleting file: {str(e)}")
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-        return JsonResponse({'status': 'success', 'message': 'Image deleted successfully.'})
+        return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
-
+    # If not POST, redirect to scan page with an error message
+    messages.error(request, "Invalid request method.")
+    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
 def scan_exam_view(request):
     folder_path = None
