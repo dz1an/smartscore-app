@@ -88,11 +88,7 @@
             {% if test_set.answer_key %}
               - Answer Key: {{ test_set.answer_key }}
             {% endif %}
-            <!-- Delete button -->
-            <form action="{% url 'delete_test_set' test_set.id %}" method="POST" style="display: inline;">
-              {% csrf_token %}
-              <button type="submit" class="text-red-600 hover:underline">Delete</button>
-            </form>
+            
           </li>
         {% endfor %}
       </ul>
