@@ -1,6 +1,7 @@
 node_modules
 media
 migrations
+__pycache__
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

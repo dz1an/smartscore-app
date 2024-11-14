@@ -2,85 +2,71 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
-<!-- Breadcrumb -->
-<nav class="flex mb-4" aria-label="Breadcrumb">
-  <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
-    <li class="inline-flex items-center">
-      <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
-        <svg class="w-3 h-3 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-          <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+  <!-- Breadcrumb -->
+  <nav class="flex mb-4" aria-label="Breadcrumb">
+    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+      <li class="inline-flex items-center">
+        <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+          <svg class="w-3 h-3 me-2.5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+          </svg>
+          Home
+        </a>
+      </li>
+      <li class="flex items-center">
+        <svg class="w-3 h-3 text-gray-400 mx-1 rtl:rotate-180" viewBox="0 0 6 10">
+          <path stroke="currentColor" d="m1 9 4-4-4-4"/>
         </svg>
-        Home
-      </a>
-    </li>
-    <li class="flex items-center">
-      <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-      </svg>
-      <a href="{% url 'students' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Students</a>
-    </li>
-  </ol>
-</nav>
+        <a href="{% url 'students' %}" class="text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">Students</a>
+      </li>
+    </ol>
+  </nav>
 
-<!-- Header -->
-<div class="mb-6 flex items-center justify-between">
-  <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Test Papers for {{ student.first_name }} {{ student.last_name }}</h1>
-  <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
-</div>
+  <!-- Header -->
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Test Papers for {{ student.first_name }} {{ student.last_name }}</h1>
+    <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+  </div>
 
-{% include 'message_display.html' %}
+  {% include 'message_display.html' %}
 
-<!-- Table of Test Papers -->
-<div class="relative overflow-x-auto mb-6">
-  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-      <tr>
-        <th scope="col" class="px-6 py-3">Exam Name</th>
-        <th scope="col" class="px-6 py-3">Set Number</th>
-        <th scope="col" class="px-6 py-3">Set ID</th>
-        <th scope="col" class="px-6 py-3">Questions and Answers</th>
-        <th scope="col" class="px-6 py-3">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for test_set in test_sets %}
-        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ test_set.exam.name }}</td>
-          <td class="px-6 py-4">{{ test_set.set_no }}</td>
-          <td class="px-6 py-4">{{ test_set.set_id }}</td>
-          <td class="px-6 py-4">
-            <ul class="list-disc pl-4">
-              {% for question in test_set.exam.questions.all %}
-                <li class="mb-2">
-                  <strong>{{ question.question_text }}</strong>
-                  <ul class="list-none pl-4 mt-1">
-                    {% for student_question in student.student_questions.all %}
-                      {% if student_question.question == question %}
-                        <li class="text-gray-700 dark:text-gray-300"><strong>Answer:</strong> {{ student_question.student_answer }}</li>
-                      {% endif %}
-                    {% endfor %}
-                  </ul>
-                </li>
-              {% endfor %}
-            </ul>
-          </td>
-          <td class="px-6 py-4">
-            <a href="{% url 'grade_exam' test_set.exam.id student.id %}" class="text-blue-500 hover:underline">Grade Exam</a>
-          </td>
+  <!-- Table of Test Papers -->
+  <div class="relative overflow-x-auto mb-6">
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+      <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th scope="col" class="px-6 py-3">Exam Name</th>
+          <th scope="col" class="px-6 py-3">Set Number</th>
+          <th scope="col" class="px-6 py-3">Set ID</th>
+          <th scope="col" class="px-6 py-3">Status</th>
         </tr>
-      {% empty %}
-        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-          <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+      </thead>
+      <tbody>
+        {% for test_set in test_sets %}
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ test_set.exam.name }}</td>
+            <td class="px-6 py-4">{{ test_set.set_no }}</td>
+            <td class="px-6 py-4">{{ test_set.set_id }}</td>
+            <td class="px-6 py-4">
+              {% if test_set.is_graded %}
+                <span class="text-green-600">Graded</span>
+              {% else %}
+                <a href="{% url 'grade_exam' test_set.exam.id student.id %}" class="text-blue-500 hover:underline">Grade Exam</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No test papers available for this student.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-<!-- Back Button and Print Button -->
-<div class="flex items-center justify-between">
-  <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
-  <button onclick="window.print()" class="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg">Print Test Paper</button>
-</div>
+  <!-- Back Button -->
+  <div class="flex items-center">
+    <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+  </div>
 </div>
 {% endblock %}

@@ -1194,42 +1194,23 @@ def exam_detail_view(request, exam_id):
 
 @login_required
 def grade_exam_view(request, exam_id, student_id):
-    try:
-        exam = Exam.objects.get(id=exam_id)
-        student = Student.objects.get(id=student_id)
-        student_questions = StudentQuestion.objects.filter(exam=exam, student=student)
+    student = get_object_or_404(Student, id=student_id)
+    exam = get_object_or_404(Exam, id=exam_id)
+    student_questions = StudentQuestion.objects.filter(student=student, exam=exam)
 
-        if request.method == 'POST':
-            for student_question in student_questions:
-                marks_field = f'marks_{student_question.id}'
-                marks = request.POST.get(marks_field, 0)
-                # Auto-grading logic
-                if student_question.student_answer == student_question.question.answer:
-                    student_question.marks = 1  # Assign 1 mark for correct answers, you can adjust the value
-                else:
-                    student_question.marks = 0  # Assign 0 mark for incorrect answers, you can adjust the value
-                # Allow manual adjustment
-                if marks:
-                    student_question.marks = int(marks)
-                student_question.save()
+    # Calculate score
+    total_score = sum(q.marks for q in student_questions)
+    total_marks = len(student_questions)  # Total number of questions
 
-            messages.success(request, "Grades saved successfully!")
-            return redirect('grade_exam', exam_id=exam.id, student_id=student.id)
+    context = {
+        'exam': exam,
+        'student': student,
+        'student_questions': student_questions,
+        'total_score': total_score,
+        'total_marks': total_marks,
+    }
+    return render(request, 'grade_exam.html', context)
 
-        return render(request, 'exams/grade_exam.html', {
-            'exam': exam,
-            'student': student,
-            'student_questions': student_questions
-        })
-    except Exam.DoesNotExist:
-        messages.error(request, "Exam not found.")
-        return redirect('exams')
-    except Student.DoesNotExist:
-        messages.error(request, "Student not found.")
-        return redirect('exams')
-    except Exception as e:
-        messages.error(request, f"Error: {e}")
-        return redirect('exams')
 
 def students_view(request):
     students = Student.objects.all()
@@ -1430,13 +1411,13 @@ def add_student_to_exam_view(request, exam_id):
     
     return render(request, 'add_student_to_exam.html', {'student_form': student_form, 'test_set_form': test_set_form})
 
+
 @login_required
 def student_test_papers_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)
-    test_sets = TestSet.objects.filter(student=student)  # Correct the query here
+    test_sets = TestSet.objects.filter(student=student).select_related('exam').prefetch_related('exam__questions')
 
     return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
-
 
 @login_required
 def view_test_set_view(request, test_set_id):
