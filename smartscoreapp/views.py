@@ -657,6 +657,8 @@ def scan_page(request, class_id, exam_id):
 
     return render(request, 'scan_page.html', context)
 
+
+
 @login_required
 def remove_image(request, class_id, exam_id, image_name):
     # Ensure the request is a POST (to avoid issues with unintended GET requests)

@@ -44,16 +44,22 @@
           </tr>
         </thead>
         <tbody>
-          {% for student_question in student_questions %}
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-              <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ student_question.question.question_text }}</td>
-              <td class="px-6 py-4">{{ student_question.student_answer }}</td>
-              <td class="px-6 py-4">{{ student_question.question.answer }}</td>
-              <td class="px-6 py-4">
-                <input type="number" name="marks_{{ student_question.id }}" value="{{ student_question.marks }}" min="0" class="bg-gray-50 border text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500" aria-label="Enter marks for question">
-              </td>
+          {% if student_questions %}
+            {% for student_question in student_questions %}
+              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ student_question.question.question_text }}</td>
+                <td class="px-6 py-4">{{ student_question.student_answer }}</td>
+                <td class="px-6 py-4">{{ student_question.question.answer }}</td>
+                <td class="px-6 py-4">
+                  <input type="number" name="marks_{{ student_question.id }}" value="{{ student_question.marks }}" min="0" class="bg-gray-50 border text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500" aria-label="Enter marks for question">
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="px-6 py-4 text-center text-gray-500">No questions available for grading.</td>
             </tr>
-          {% endfor %}
+          {% endif %}
         </tbody>
       </table>
     </div>
