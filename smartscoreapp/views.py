@@ -1192,16 +1192,35 @@ def exam_detail_view(request, exam_id):
     })
 
 
+
 @login_required
 def grade_exam_view(request, exam_id, student_id):
+    # Fetch the relevant student, exam, and student questions
     student = get_object_or_404(Student, id=student_id)
     exam = get_object_or_404(Exam, id=exam_id)
     student_questions = StudentQuestion.objects.filter(student=student, exam=exam)
 
-    # Calculate score
+    # Calculate total score and marks to provide a summary
     total_score = sum(q.marks for q in student_questions)
-    total_marks = len(student_questions)  # Total number of questions
+    total_marks = len(student_questions)
 
+    if request.method == 'POST':
+        # Handle grading submission
+        for student_question in student_questions:
+            try:
+                marks_field = f"marks_{student_question.id}"
+                marks = int(request.POST.get(marks_field, 0))
+                student_question.marks = marks
+                student_question.save()
+            except ValueError:
+                messages.error(request, f"Invalid marks for question {student_question.question.question_text}. Please enter a number.")
+                return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
+
+        # Success message after grading
+        messages.success(request, 'Grades saved successfully!')
+        return redirect('class_detail', student.assigned_class.id)
+
+    # Pass the necessary context data to the template
     context = {
         'exam': exam,
         'student': student,
@@ -1210,8 +1229,6 @@ def grade_exam_view(request, exam_id, student_id):
         'total_marks': total_marks,
     }
     return render(request, 'grade_exam.html', context)
-
-
 def students_view(request):
     students = Student.objects.all()
     return render(request, 'students.html', {'students': students})
