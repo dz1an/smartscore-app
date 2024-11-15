@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
+<div class="max-w-7xl mx-auto p-6">
   <!-- Breadcrumb -->
   <nav class="flex mb-4" aria-label="Breadcrumb">
     <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
@@ -23,52 +23,95 @@
   </nav>
 
   <!-- Header -->
-  <div class="mb-6 flex items-center justify-between">
-    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Grade Exam for {{ student.first_name }} {{ student.last_name }}</h1>
-    <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Grade Exam for {{ student.first_name }} {{ student.last_name }}</h1>
+      <a href="{% url 'class_detail' student.assigned_class.id %}" class="text-blue-500 hover:underline">Back to Class</a>
+    </div>
+    {% include 'message_display.html' %}
   </div>
 
-  {% include 'message_display.html' %}
+  <div class="flex flex-col lg:flex-row gap-6">
+    <!-- Left Column - Grading Form -->
+    <div class="lg:w-3/5 bg-white shadow-md rounded-lg p-6">
+      <!-- Grading Summary -->
+      <div class="mb-4">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          <strong>Total Score:</strong> {{ total_score }} / {{ total_marks }}
+        </p>
+      </div>
 
-  <!-- Grading Form -->
-  <form method="POST" action="{% url 'grade_exam' exam.id student.id %}">
-    {% csrf_token %}
-    <div class="relative overflow-x-auto mb-6">
-      <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-          <tr>
-            <th scope="col" class="px-6 py-3">Question</th>
-            <th scope="col" class="px-6 py-3">Student Answer</th>
-            <th scope="col" class="px-6 py-3">Correct Answer</th>
-            <th scope="col" class="px-6 py-3">Marks</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if student_questions %}
-            {% for student_question in student_questions %}
-              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ student_question.question.question_text }}</td>
-                <td class="px-6 py-4">{{ student_question.student_answer }}</td>
-                <td class="px-6 py-4">{{ student_question.question.answer }}</td>
-                <td class="px-6 py-4">
-                  <input type="number" name="marks_{{ student_question.id }}" value="{{ student_question.marks }}" min="0" class="bg-gray-50 border text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500" aria-label="Enter marks for question">
-                </td>
+      <!-- Grading Form -->
+      <form method="POST" action="{% url 'grade_exam' exam.id student.id %}">
+        {% csrf_token %}
+        <div class="relative overflow-x-auto mb-6">
+          <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+              <tr>
+                <th scope="col" class="px-6 py-3">Question</th>
+                <th scope="col" class="px-6 py-3">Student Answer</th>
+                <th scope="col" class="px-6 py-3">Correct Answer</th>
+                <th scope="col" class="px-6 py-3">Marks</th>
               </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="px-6 py-4 text-center text-gray-500">No questions available for grading.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {% if student_questions %}
+                {% for student_question in student_questions %}
+                  <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ student_question.question.question_text }}</td>
+                    <td class="px-6 py-4">{{ student_question.student_answer }}</td>
+                    <td class="px-6 py-4">{{ student_question.question.answer }}</td>
+                    <td class="px-6 py-4">
+                      <input type="number" 
+                             name="marks_{{ student_question.id }}" 
+                             value="{{ student_question.marks }}" 
+                             min="0" 
+                             class="bg-gray-50 border text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500" 
+                             aria-label="Enter marks for question">
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="4" class="px-6 py-4 text-center text-gray-500">No questions available for grading.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-end space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600 mt-4 pt-4">
+          <button type="button" onclick="window.history.back()" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Cancel</button>
+          <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save Grades</button>
+        </div>
+      </form>
     </div>
 
-    <!-- Form Actions -->
-    <div class="flex items-center justify-end space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600 mt-4 pt-4">
-      <button type="button" onclick="window.history.back()" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Cancel</button>
-      <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Save Grades</button>
+    <!-- Right Column - Scanned Image -->
+    <div class="lg:w-2/5">
+      {% if scanned_image_path %}
+        <div class="bg-white shadow-md rounded-lg p-6">
+          <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Scanned Answer Sheet</h2>
+          <div class="relative h-full">
+            <img src="{{ scanned_image_path }}" 
+                 alt="Scanned answer sheet" 
+                 class="w-full object-contain rounded-lg border border-gray-200"
+                 style="max-height: 800px;">
+          </div>
+        </div>
+      {% else %}
+        <div class="bg-white shadow-md rounded-lg p-6">
+          <div class="text-center text-gray-500 dark:text-gray-400">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No scanned image available</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload the scanned answer sheet to view it here.</p>
+          </div>
+        </div>
+      {% endif %}
     </div>
-  </form>
+  </div>
 </div>
 {% endblock %}

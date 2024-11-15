@@ -1194,7 +1194,6 @@ def exam_detail_view(request, exam_id):
     })
 
 
-
 @login_required
 def grade_exam_view(request, exam_id, student_id):
     # Fetch the relevant student, exam, and student questions
@@ -1202,12 +1201,40 @@ def grade_exam_view(request, exam_id, student_id):
     exam = get_object_or_404(Exam, id=exam_id)
     student_questions = StudentQuestion.objects.filter(student=student, exam=exam)
 
+    # Look for OMR results
+    result_csv_path = os.path.join(
+        settings.MEDIA_ROOT, 
+        'csv', 
+        f'class_{student.assigned_class.id}',
+        f'exam_{exam.id}_results.csv'
+    )
+
+    # If the results CSV exists and grades haven't been populated yet
+    if os.path.exists(result_csv_path) and not any(q.marks for q in student_questions):
+        try:
+            with open(result_csv_path, 'r') as file:
+                csv_reader = csv.DictReader(file)
+                for row in csv_reader:
+                    # Match student by ID or another unique identifier
+                    if str(row.get('student_id')) == str(student_id):
+                        # Update each question's marks based on OMR results
+                        for student_question in student_questions:
+                            question_num = f'question_{student_question.question.number}'
+                            if question_num in row:
+                                # Convert OMR result to marks (assuming 1 for correct, 0 for incorrect)
+                                is_correct = int(row[question_num])
+                                student_question.marks = is_correct
+                                student_question.save()
+                        break
+        except Exception as e:
+            messages.error(request, f"Error loading OMR results: {str(e)}")
+
     # Calculate total score and marks to provide a summary
     total_score = sum(q.marks for q in student_questions)
     total_marks = len(student_questions)
 
     if request.method == 'POST':
-        # Handle grading submission
+        # Handle manual grade adjustments
         for student_question in student_questions:
             try:
                 marks_field = f"marks_{student_question.id}"
@@ -1218,22 +1245,157 @@ def grade_exam_view(request, exam_id, student_id):
                 messages.error(request, f"Invalid marks for question {student_question.question.question_text}. Please enter a number.")
                 return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
 
-        # Success message after grading
         messages.success(request, 'Grades saved successfully!')
         return redirect('class_detail', student.assigned_class.id)
 
-    # Pass the necessary context data to the template
+    # Get the scanned image path if it exists
+    scanned_image_path = os.path.join(
+        settings.MEDIA_URL,
+        'uploads',
+        f'class_{student.assigned_class.id}',
+        f'exam_{exam_id}',
+        f'student_{student_id}.jpg'  # Adjust the filename pattern as needed
+    )
+
     context = {
         'exam': exam,
         'student': student,
         'student_questions': student_questions,
         'total_score': total_score,
         'total_marks': total_marks,
+        'scanned_image_path': scanned_image_path if os.path.exists(os.path.join(settings.MEDIA_ROOT, scanned_image_path.lstrip('/'))) else None,
     }
     return render(request, 'grade_exam.html', context)
+
+@login_required
 def students_view(request):
-    students = Student.objects.all()
-    return render(request, 'students.html', {'students': students})
+    """
+    View to display all students and handle student-related operations.
+    """
+    # Get all students, ordered by name
+    students = Student.objects.all().order_by('first_name', 'last_name')
+    
+    if request.method == 'POST':
+        # Handle any POST operations here if needed
+        pass
+        
+    context = {
+        'students': students,
+        'title': 'Students List'  # Add a title for the page
+    }
+    return render(request, 'students.html', context)
+
+@login_required
+def scan_page(request, class_id, exam_id):
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    exams = current_class.exams.all()
+
+    # Define consistent paths
+    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
+    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
+    
+    uploaded_images = request.session.get('uploaded_images', [])
+    result_csv = ''
+    csv_file = ''
+
+    if request.method == 'POST':
+        if 'image_upload' in request.FILES:
+            uploaded_files = request.FILES.getlist('image_upload')
+            if uploaded_files:
+                # Ensure upload directory exists
+                os.makedirs(absolute_upload_path, exist_ok=True)
+
+                saved_images = []
+                for image in uploaded_files:
+                    # Create storage with absolute path
+                    fs = FileSystemStorage(location=absolute_upload_path)
+                    filename = fs.save(image.name, image)
+                    
+                    # Store the relative URL path
+                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
+                    saved_images.append({
+                        'name': filename,
+                        'url': file_url,
+                        'absolute_path': os.path.join(absolute_upload_path, filename)
+                    })
+
+                uploaded_images = saved_images
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+        elif 'scan_images' in request.POST:
+            csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
+            selected_exam = get_object_or_404(Exam, id=csv_exam_id)
+
+            if selected_exam.id != current_exam.id:
+                messages.error(request, "Selected exam does not match the current exam.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            if not uploaded_images:
+                messages.error(request, "No images available for scanning.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            # Construct CSV path consistently with generate_exam_sets view
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
+                                  f'class_{current_class.id}', 
+                                  f'exam_{selected_exam.id}_sets.csv')
+
+            if not os.path.exists(csv_file):
+                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            try:
+                # Verify upload folder exists and contains files
+                if not os.path.exists(absolute_upload_path):
+                    messages.error(request, "Upload folder not found.")
+                    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+                # Call OMR with absolute paths
+                result_csv = omr(csv_file, absolute_upload_path)
+                
+                if result_csv and os.path.exists(result_csv):
+                    messages.success(request, "Scanning completed. Results saved successfully.")
+                else:
+                    messages.warning(request, "Scanning completed but no results were generated.")
+                    
+            except Exception as e:
+                messages.error(request, f"Scanning failed: {str(e)}")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+        elif 'delete_results' in request.POST:
+            # Delete uploaded images
+            if uploaded_images:
+                for image in uploaded_images:
+                    image_path = os.path.join(settings.MEDIA_ROOT, 
+                                            image['url'].replace(settings.MEDIA_URL, '').lstrip('/'))
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                uploaded_images = []
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, "Uploaded images deleted successfully.")
+
+            # Delete results if they exist
+            if result_csv and os.path.exists(result_csv):
+                os.remove(result_csv)
+                result_csv = ''
+                messages.success(request, "Scan result CSV deleted successfully.")
+
+            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+    context = {
+        'current_class': current_class,
+        'current_exam': current_exam,
+        'exams': exams,
+        'upload_path': absolute_upload_path,
+        'uploaded_images': uploaded_images,
+        'result_csv': result_csv,
+        'csv_file': csv_file
+    }
+
+    return render(request, 'scan_page.html', context)
 
 @login_required
 def add_student_view(request, class_id):
