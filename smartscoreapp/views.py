@@ -1196,77 +1196,123 @@ def exam_detail_view(request, exam_id):
 
 @login_required
 def grade_exam_view(request, exam_id, student_id):
-    # Fetch the relevant student, exam, and student questions
     student = get_object_or_404(Student, id=student_id)
     exam = get_object_or_404(Exam, id=exam_id)
     student_questions = StudentQuestion.objects.filter(student=student, exam=exam)
 
-    # Look for OMR results
-    result_csv_path = os.path.join(
-        settings.MEDIA_ROOT, 
-        'csv', 
-        f'class_{student.assigned_class.id}',
-        f'exam_{exam.id}_results.csv'
-    )
-
-    # If the results CSV exists and grades haven't been populated yet
-    if os.path.exists(result_csv_path) and not any(q.marks for q in student_questions):
-        try:
-            with open(result_csv_path, 'r') as file:
-                csv_reader = csv.DictReader(file)
-                for row in csv_reader:
-                    # Match student by ID or another unique identifier
-                    if str(row.get('student_id')) == str(student_id):
-                        # Update each question's marks based on OMR results
-                        for student_question in student_questions:
-                            question_num = f'question_{student_question.question.number}'
-                            if question_num in row:
-                                # Convert OMR result to marks (assuming 1 for correct, 0 for incorrect)
-                                is_correct = int(row[question_num])
-                                student_question.marks = is_correct
-                                student_question.save()
-                        break
-        except Exception as e:
-            messages.error(request, f"Error loading OMR results: {str(e)}")
-
-    # Calculate total score and marks to provide a summary
-    total_score = sum(q.marks for q in student_questions)
-    total_marks = len(student_questions)
-
-    if request.method == 'POST':
-        # Handle manual grade adjustments
-        for student_question in student_questions:
-            try:
-                marks_field = f"marks_{student_question.id}"
-                marks = int(request.POST.get(marks_field, 0))
-                student_question.marks = marks
-                student_question.save()
-            except ValueError:
-                messages.error(request, f"Invalid marks for question {student_question.question.question_text}. Please enter a number.")
-                return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
-
-        messages.success(request, 'Grades saved successfully!')
-        return redirect('class_detail', student.assigned_class.id)
-
-    # Get the scanned image path if it exists
-    scanned_image_path = os.path.join(
-        settings.MEDIA_URL,
+    # Find the most recent OMR results file
+    results_dir = os.path.join(
+        settings.MEDIA_ROOT,
         'uploads',
         f'class_{student.assigned_class.id}',
-        f'exam_{exam_id}',
-        f'student_{student_id}.jpg'  # Adjust the filename pattern as needed
+        f'exam_{exam.id}'
     )
+    
+    omr_results = None
+    if os.path.exists(results_dir):
+        result_files = [f for f in os.listdir(results_dir) if f.startswith('Results_exam_') and f.endswith('.csv')]
+        if result_files:
+            # Get the most recent results file
+            latest_result = max(result_files, key=lambda x: os.path.getctime(os.path.join(results_dir, x)))
+            result_path = os.path.join(results_dir, latest_result)
+            
+            try:
+                with open(result_path, 'r') as file:
+                    csv_reader = csv.DictReader(file)
+                    for row in csv_reader:
+                        # Match student by their ID
+                        if str(row.get('ID')) == str(student.student_id):
+                            omr_results = row
+                            break
+            except Exception as e:
+                messages.error(request, f"Error reading OMR results: {str(e)}")
+
+    # If we found OMR results and grades haven't been set yet
+    if omr_results and not any(q.marks for q in student_questions):
+        try:
+            # Parse incorrect answers
+            incorrect_answers = eval(omr_results.get('Incorrect Answer', '[]'))
+            invalid_answers = eval(omr_results.get('Invalid Answer', '[]'))
+            
+            # Update marks for each question
+            for student_question in student_questions:
+                question_num = student_question.question.number
+                # Mark as correct (1) if not in incorrect or invalid answers
+                is_correct = question_num not in incorrect_answers and question_num not in invalid_answers
+                student_question.marks = 1 if is_correct else 0
+                student_question.save()
+            
+            messages.success(request, 'OMR results loaded successfully!')
+        except Exception as e:
+            messages.error(request, f"Error processing OMR results: {str(e)}")
+
+    # Handle form submission for manual grading
+    if request.method == 'POST':
+        if 'save_grades' in request.POST:
+            for student_question in student_questions:
+                try:
+                    marks = int(request.POST.get(f"marks_{student_question.id}", 0))
+                    if 0 <= marks <= 1:
+                        student_question.marks = marks
+                        student_question.save()
+                    else:
+                        messages.error(request, f"Invalid marks for question {student_question.question.number}. Must be 0 or 1.")
+                        return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
+                except ValueError:
+                    messages.error(request, f"Invalid marks for question {student_question.question.number}.")
+                    return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
+            
+            messages.success(request, 'Grades saved successfully!')
+            return redirect('class_detail', class_id=student.assigned_class.id)
+        
+        elif 'reset_grades' in request.POST:
+            student_questions.update(marks=None)
+            messages.success(request, 'Grades reset successfully!')
+            return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
+
+    # Get scanned images
+    scanned_images = []
+    if os.path.exists(results_dir):
+        for file in os.listdir(results_dir):
+            if file.endswith(('.jpg', '.png', '.jpeg', '.pdf')):
+                image_url = os.path.join(
+                    settings.MEDIA_URL,
+                    'uploads',
+                    f'class_{student.assigned_class.id}',
+                    f'exam_{exam.id}',
+                    file
+                )
+                scanned_images.append(image_url)
+
+    # Calculate statistics
+    total_questions = len(student_questions)
+    graded_questions = sum(1 for q in student_questions if q.marks is not None)
+    total_score = sum(q.marks or 0 for q in student_questions)
+    score_percentage = (total_score / total_questions * 100) if total_questions > 0 else 0
+
+    # Add OMR results to context if available
+    omr_info = None
+    if omr_results:
+        omr_info = {
+            'score': omr_results.get('Score', 'N/A'),
+            'invalid_answers': eval(omr_results.get('Invalid Answer', '[]')),
+            'incorrect_answers': eval(omr_results.get('Incorrect Answer', '[]')),
+            'set_id': omr_results.get('Set ID', 'N/A')
+        }
 
     context = {
-        'exam': exam,
         'student': student,
+        'exam': exam,
         'student_questions': student_questions,
         'total_score': total_score,
-        'total_marks': total_marks,
-        'scanned_image_path': scanned_image_path if os.path.exists(os.path.join(settings.MEDIA_ROOT, scanned_image_path.lstrip('/'))) else None,
+        'total_questions': total_questions,
+        'graded_questions': graded_questions,
+        'score_percentage': score_percentage,
+        'scanned_images': scanned_images,
+        'omr_results': omr_info
     }
-    return render(request, 'grade_exam.html', context)
 
+    return render(request, 'grade_exam.html', context)
 @login_required
 def students_view(request):
     """
