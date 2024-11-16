@@ -32,6 +32,9 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.units import inch
+import xlsxwriter
+from django.http import HttpResponseNotAllowed
+
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -1313,6 +1316,9 @@ def grade_exam_view(request, exam_id, student_id):
     }
 
     return render(request, 'grade_exam.html', context)
+
+
+
 @login_required
 def students_view(request):
     """
@@ -1442,6 +1448,120 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
+
+
+@login_required
+def scan_results_view(request, class_id, exam_id):
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Define result paths consistently with scan_page view
+    result_csv = os.path.join(settings.MEDIA_ROOT, 'results', 
+                             f'class_{class_id}', 
+                             f'exam_{exam_id}_results.csv')
+    
+    # Also check alternative path in case results are stored in upload directory
+    alternative_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 
+                                  f'class_{class_id}', 
+                                  f'exam_{exam_id}',
+                                  'results.csv')
+    
+    scan_results = []
+    csv_path = None
+    
+    # Try both possible locations for the results file
+    if os.path.exists(result_csv):
+        csv_path = result_csv
+    elif os.path.exists(alternative_path):
+        csv_path = alternative_path
+    
+    if csv_path:
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    # Ensure consistent status formatting
+                    status = row.get('status', '').lower()
+                    if status not in ['success', 'failed']:
+                        status = 'failed' if any(error_key in row for error_key in ['error', 'failure']) else 'success'
+                    
+                    scan_results.append({
+                        'student_id': row.get('student_id', 'N/A'),
+                        'set_number': row.get('set_number', 'N/A'),
+                        'answers': row.get('answers', ''),
+                        'score': row.get('score', 'N/A'),
+                        'status': status,
+                        'details': {k: v for k, v in row.items() if k not in ['student_id', 'set_number', 'answers', 'score', 'status']}
+                    })
+        except Exception as e:
+            messages.error(request, f"Error reading results file: {str(e)}")
+    else:
+        messages.warning(request, "No results file found. Please scan the exam papers first.")
+    
+    # Calculate summary statistics
+    success_count = len([r for r in scan_results if r['status'] == 'success'])
+    failed_count = len([r for r in scan_results if r['status'] != 'success'])
+    
+    context = {
+        'current_class': current_class,
+        'current_exam': current_exam,
+        'scan_results': scan_results,
+        'scanned_count': len(scan_results),
+        'success_count': success_count,
+        'failed_count': failed_count,
+    }
+    
+    return render(request, 'scan_results.html', context)
+
+def export_results(request, class_id, exam_id):
+    """
+    Export scan results to Excel
+    """
+    from openpyxl import Workbook
+    from django.http import HttpResponse
+    
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Get results using the same logic as scan_results_view
+    result_csv = os.path.join(settings.MEDIA_ROOT, 'results', 
+                             f'class_{class_id}', 
+                             f'exam_{exam_id}_results.csv')
+    alternative_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 
+                                  f'class_{class_id}', 
+                                  f'exam_{exam_id}',
+                                  'results.csv')
+    
+    csv_path = None
+    if os.path.exists(result_csv):
+        csv_path = result_csv
+    elif os.path.exists(alternative_path):
+        csv_path = alternative_path
+        
+    if not csv_path:
+        messages.error(request, "No results file found to export.")
+        return redirect('scan_results', class_id=class_id, exam_id=exam_id)
+    
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Scan Results"
+        
+        # Read CSV and write to Excel
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                ws.append(row)
+        
+        # Prepare response
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=exam_{exam_id}_results.xlsx'
+        wb.save(response)
+        return response
+        
+    except Exception as e:
+        messages.error(request, f"Error exporting results: {str(e)}")
+        return redirect('scan_results', class_id=class_id, exam_id=exam_id) 
 
 @login_required
 def add_student_view(request, class_id):

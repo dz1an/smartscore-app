@@ -89,10 +89,17 @@
                         <option value="{{ current_exam.id }}" selected>{{ current_exam.name }}</option>
                     </select>
                 </div>
-                <button type="submit" name="scan_images"
-                        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                    Start Scanning
-                </button>
+                <div class="flex space-x-4">
+                    <button type="submit" name="scan_images"
+                            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                        Start Scanning
+                    </button>
+                    <button type="button" 
+                            onclick="window.location.href='{% url 'scan_results' class_id=current_class.id exam_id=current_exam.id %}'"
+                            class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:outline-none focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                        View Scan Results
+                    </button>
+                </div>
             </form>
         </div>
         {% endif %}

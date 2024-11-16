@@ -19,12 +19,12 @@
               </div>
               <div class="text-right">
                 <span class="text-xs font-semibold inline-block text-blue-600">
-                  {{ score_percentage|floatformat:1 }}%
+                  {{ score_percentage|floatformat:1|default:"0" }}%
                 </span>
               </div>
             </div>
             <div class="overflow-hidden h-2 text-xs flex rounded bg-blue-200">
-              <div style="width: {{ score_percentage }}%"
+              <div style="width: {{ score_percentage|default:0 }}%"
                    class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600">
               </div>
             </div>
@@ -37,28 +37,41 @@
           <div class="space-y-3">
             <div class="bg-white p-3 rounded-lg shadow-sm">
               <p class="text-gray-600 text-sm">Total Score</p>
-              <p class="text-2xl font-bold text-blue-600">{{ total_score }} / {{ total_questions }}</p>
+              <p class="text-2xl font-bold text-blue-600">{{ total_score|default:"0" }} / {{ total_questions }}</p>
             </div>
             <div class="bg-white p-3 rounded-lg shadow-sm">
               <p class="text-gray-600 text-sm">Graded Questions</p>
-              <p class="text-2xl font-bold text-green-600">{{ graded_questions }} / {{ total_questions }}</p>
+              <p class="text-2xl font-bold text-green-600">{{ graded_questions|default:"0" }} / {{ total_questions }}</p>
             </div>
           </div>
           <!-- Right Column -->
+          {% if omr_results %}
           <div class="space-y-3">
             <div class="bg-white p-3 rounded-lg shadow-sm">
               <p class="text-gray-600 text-sm">Incorrect Answers</p>
               <p class="text-2xl font-bold text-red-600">
-                {{ omr_results.incorrect_answers|length }} / {{ total_questions }}
+                {{ omr_results.incorrect_answers|length|default:"0" }} / {{ total_questions }}
               </p>
             </div>
             <div class="bg-white p-3 rounded-lg shadow-sm">
               <p class="text-gray-600 text-sm">Invalid Answers</p>
               <p class="text-2xl font-bold text-yellow-600">
-                {{ omr_results.invalid_answers|length }} / {{ total_questions }}
+                {{ omr_results.invalid_answers|length|default:"0" }} / {{ total_questions }}
               </p>
             </div>
           </div>
+          {% else %}
+          <div class="space-y-3">
+            <div class="bg-white p-3 rounded-lg shadow-sm">
+              <p class="text-gray-600 text-sm">Incorrect Answers</p>
+              <p class="text-2xl font-bold text-red-600">0 / {{ total_questions }}</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg shadow-sm">
+              <p class="text-gray-600 text-sm">Invalid Answers</p>
+              <p class="text-2xl font-bold text-yellow-600">0 / {{ total_questions }}</p>
+            </div>
+          </div>
+          {% endif %}
         </div>
 
         {% if omr_results %}
@@ -68,15 +81,15 @@
           <div class="bg-white rounded-lg p-4 shadow-sm">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <p class="text-sm text-gray-600"><strong>OMR Score:</strong> {{ omr_results.score }}</p>
-                <p class="text-sm text-gray-600"><strong>Set ID:</strong> {{ omr_results.set_id }}</p>
+                <p class="text-sm text-gray-600"><strong>OMR Score:</strong> {{ omr_results.score|default:"N/A" }}</p>
+                <p class="text-sm text-gray-600"><strong>Set ID:</strong> {{ omr_results.set_id|default:"N/A" }}</p>
               </div>
               <div>
                 {% if omr_results.incorrect_answers %}
                 <p class="text-sm text-gray-600">
                   <strong>Incorrect Questions:</strong>
                   <span class="text-red-600">
-                    {{ omr_results.incorrect_answers|join:", " }}
+                    {{ omr_results.incorrect_answers|join:", "|default:"None" }}
                   </span>
                 </p>
                 {% endif %}
@@ -84,7 +97,7 @@
                 <p class="text-sm text-gray-600">
                   <strong>Invalid Answers:</strong>
                   <span class="text-yellow-600">
-                    {{ omr_results.invalid_answers|join:", " }}
+                    {{ omr_results.invalid_answers|join:", "|default:"None" }}
                   </span>
                 </p>
                 {% endif %}
@@ -111,12 +124,14 @@
             </thead>
             <tbody>
               {% for student_question in student_questions %}
-                <tr class="bg-white border-b hover:bg-gray-50 {% if omr_results and student_question.question.number in omr_results.incorrect_answers %}bg-red-50{% endif %} {% if omr_results and student_question.question.number in omr_results.invalid_answers %}bg-yellow-50{% endif %}">
+                <tr class="bg-white border-b hover:bg-gray-50 
+                  {% if omr_results and student_question.question.number in omr_results.incorrect_answers %}bg-red-50{% endif %} 
+                  {% if omr_results and student_question.question.number in omr_results.invalid_answers %}bg-yellow-50{% endif %}">
                   <td class="px-6 py-4 font-medium text-gray-900">
                     Q{{ student_question.question.number }}
                   </td>
-                  <td class="px-6 py-4">{{ student_question.student_answer }}</td>
-                  <td class="px-6 py-4">{{ student_question.question.answer }}</td>
+                  <td class="px-6 py-4">{{ student_question.student_answer|default:"-" }}</td>
+                  <td class="px-6 py-4">{{ student_question.question.answer|default:"-" }}</td>
                   <td class="px-6 py-4">
                     {% if omr_results %}
                       {% if student_question.question.number in omr_results.incorrect_answers %}

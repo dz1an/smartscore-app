@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from smartscoreapp.views import (
     index, login_view, register_view, registered_users_view, download_exam_sets_csv,
-    classes_view, class_detail_view, exams_view, exam_detail_view, 
+    classes_view, class_detail_view, exams_view, exam_detail_view, scan_results_view, 
     logout_view, add_class_view, add_student_view, add_exam_view, delete_account_view,
     add_student_to_exam_view, settings_view, edit_student, delete_student_view,
     update_class_name_view, students_view, delete_class_view, edit_question_view, delete_question_view,
@@ -90,6 +90,10 @@ urlpatterns = [
     path('exams/<int:class_id>/<int:exam_id>/scan/', views.scan_page, name='scan_page'),
     path('exams/<int:class_id>/<int:exam_id>/remove-image/<str:image_name>/',views.remove_image, name='remove_image'), 
 
+
+    path('exams/<int:class_id>/<int:exam_id>/scan-results/', views.scan_results_view, name='scan_results'),
+    path('class/<int:class_id>/exam/<int:exam_id>/export/', views.export_results, name='export_results'),
+    
     # Settings
     path('settings/', settings_view, name='settings'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
