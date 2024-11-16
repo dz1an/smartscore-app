@@ -559,7 +559,22 @@ def scan_page(request, class_id, exam_id):
     absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
     base_csv_path = os.path.join('csv', f'class_{current_class.id}')
     
-    uploaded_images = request.session.get('uploaded_images', [])
+    # Get all images from the directory instead of session
+    def get_uploaded_images():
+        if not os.path.exists(absolute_upload_path):
+            return []
+            
+        uploaded_images = []
+        for filename in os.listdir(absolute_upload_path):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
+                uploaded_images.append({
+                    'name': filename,
+                    'url': file_url,
+                    'absolute_path': os.path.join(absolute_upload_path, filename)
+                })
+        return uploaded_images
+
     result_csv = ''
     csv_file = ''
 
@@ -569,23 +584,12 @@ def scan_page(request, class_id, exam_id):
             if uploaded_files:
                 # Ensure upload directory exists
                 os.makedirs(absolute_upload_path, exist_ok=True)
-
-                saved_images = []
+                
                 for image in uploaded_files:
                     # Create storage with absolute path
                     fs = FileSystemStorage(location=absolute_upload_path)
                     filename = fs.save(image.name, image)
-                    
-                    # Store the relative URL path
-                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
-                    saved_images.append({
-                        'name': filename,
-                        'url': file_url,
-                        'absolute_path': os.path.join(absolute_upload_path, filename)
-                    })
-
-                uploaded_images = saved_images
-                request.session['uploaded_images'] = uploaded_images
+                
                 messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
@@ -597,6 +601,7 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "Selected exam does not match the current exam.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
+            uploaded_images = get_uploaded_images()
             if not uploaded_images:
                 messages.error(request, "No images available for scanning.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
@@ -629,16 +634,13 @@ def scan_page(request, class_id, exam_id):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'delete_results' in request.POST:
-            # Delete uploaded images
-            if uploaded_images:
-                for image in uploaded_images:
-                    image_path = os.path.join(settings.MEDIA_ROOT, 
-                                            image['url'].replace(settings.MEDIA_URL, '').lstrip('/'))
-                    if os.path.exists(image_path):
-                        os.remove(image_path)
-                uploaded_images = []
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, "Uploaded images deleted successfully.")
+            # Delete all images in the directory
+            if os.path.exists(absolute_upload_path):
+                for filename in os.listdir(absolute_upload_path):
+                    file_path = os.path.join(absolute_upload_path, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                messages.success(request, "All images deleted successfully.")
 
             # Delete results if they exist
             if result_csv and os.path.exists(result_csv):
@@ -653,15 +655,12 @@ def scan_page(request, class_id, exam_id):
         'current_exam': current_exam,
         'exams': exams,
         'upload_path': absolute_upload_path,
-        'uploaded_images': uploaded_images,
+        'uploaded_images': get_uploaded_images(),  # Get actual images from directory
         'result_csv': result_csv,
         'csv_file': csv_file
     }
 
     return render(request, 'scan_page.html', context)
-
-
-
 @login_required
 def remove_image(request, class_id, exam_id, image_name):
     # Ensure the request is a POST (to avoid issues with unintended GET requests)
@@ -1455,46 +1454,44 @@ def scan_results_view(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
-    # Define result paths consistently with scan_page view
-    result_csv = os.path.join(settings.MEDIA_ROOT, 'results', 
+    # Directory where results might be stored
+    upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
                              f'class_{class_id}', 
-                             f'exam_{exam_id}_results.csv')
-    
-    # Also check alternative path in case results are stored in upload directory
-    alternative_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                                  f'class_{class_id}', 
-                                  f'exam_{exam_id}',
-                                  'results.csv')
+                             f'exam_{exam_id}')
     
     scan_results = []
     csv_path = None
     
-    # Try both possible locations for the results file
-    if os.path.exists(result_csv):
-        csv_path = result_csv
-    elif os.path.exists(alternative_path):
-        csv_path = alternative_path
+    # Look for any CSV file in the directory that starts with "Results_exam"
+    if os.path.exists(upload_dir):
+        csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
+        if csv_files:
+            # Use the most recent file if multiple exist
+            csv_path = os.path.join(upload_dir, sorted(csv_files)[-1])
     
     if csv_path:
         try:
             with open(csv_path, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    # Ensure consistent status formatting
-                    status = row.get('status', '').lower()
-                    if status not in ['success', 'failed']:
-                        status = 'failed' if any(error_key in row for error_key in ['error', 'failure']) else 'success'
-                    
+                    # Based on your CSV structure from Image 3
                     scan_results.append({
-                        'student_id': row.get('student_id', 'N/A'),
-                        'set_number': row.get('set_number', 'N/A'),
-                        'answers': row.get('answers', ''),
-                        'score': row.get('score', 'N/A'),
-                        'status': status,
-                        'details': {k: v for k, v in row.items() if k not in ['student_id', 'set_number', 'answers', 'score', 'status']}
+                        'student_id': f"{row.get('ID', 'N/A')}",
+                        'set_number': row.get('Set ID', 'N/A'),
+                        'score': row.get('Score', 'N/A'),
+                        'answers': '', # Add if you have this data
+                        'status': 'failed' if row.get('Invalid Answer') or row.get('Incorrect Answer') else 'success',
+                        'details': {
+                            'Last Name': row.get('Last Name', ''),
+                            'First Name': row.get('First Name', ''),
+                            'Middle Initial': row.get('Middle Initial', ''),
+                            'Invalid Answer': row.get('Invalid Answer', ''),
+                            'Incorrect Answer': row.get('Incorrect Answer', '')
+                        }
                     })
         except Exception as e:
             messages.error(request, f"Error reading results file: {str(e)}")
+            print(f"Error details: {str(e)}") # For debugging
     else:
         messages.warning(request, "No results file found. Please scan the exam papers first.")
     
@@ -1511,8 +1508,11 @@ def scan_results_view(request, class_id, exam_id):
         'failed_count': failed_count,
     }
     
+    # For debugging
+    print(f"Found CSV path: {csv_path}")
+    print(f"Number of results: {len(scan_results)}")
+    
     return render(request, 'scan_results.html', context)
-
 def export_results(request, class_id, exam_id):
     """
     Export scan results to Excel
@@ -1562,6 +1562,7 @@ def export_results(request, class_id, exam_id):
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id) 
+
 
 @login_required
 def add_student_view(request, class_id):
