@@ -35,7 +35,8 @@ from reportlab.lib.units import inch
 import xlsxwriter
 from django.http import HttpResponseNotAllowed
 import textwrap
-
+import shutil
+from django.urls import reverse
 
 
 User = get_user_model()
@@ -622,6 +623,8 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
+
+
 @login_required
 def remove_image(request, class_id, exam_id, image_name):
     # Ensure the request is a POST (to avoid issues with unintended GET requests)
@@ -1474,36 +1477,89 @@ def scan_page(request, class_id, exam_id):
 
 
 @login_required
+def delete_scan_results(request, class_id, exam_id):
+    """Delete scan results for a specific exam"""
+    # Verify the class and exam exist and belong to the current user
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    
+    # Only allow POST requests to prevent accidental deletions
+    if request.method == 'POST':
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
+                                f'class_{class_id}', 
+                                f'exam_{exam_id}')
+        
+        try:
+            # Check if directory exists before attempting deletion
+            if os.path.exists(upload_dir):
+                # Remove the entire directory and its contents
+                shutil.rmtree(upload_dir)
+                messages.success(request, "Scan results deleted successfully.")
+            else:
+                messages.info(request, "No scan results found to delete.")
+                
+        except PermissionError:
+            messages.error(request, "Permission denied. Could not delete results.")
+        except Exception as e:
+            messages.error(request, f"Error deleting results: {str(e)}")
+    
+    # Redirect back to scan results page
+    return redirect(reverse('scan_results', kwargs={'class_id': class_id, 'exam_id': exam_id}))
+
+@login_required
 def scan_results_view(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
-    # Directory where results might be stored
     upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
                              f'class_{class_id}', 
                              f'exam_{exam_id}')
     
     scan_results = []
+    question_stats = {}
     csv_path = None
     
-    # Look for any CSV file in the directory that starts with "Results_exam"
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
         if csv_files:
-            # Use the most recent file if multiple exist
             csv_path = os.path.join(upload_dir, sorted(csv_files)[-1])
     
     if csv_path:
         try:
             with open(csv_path, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
+                headers = reader.fieldnames
+                
+                # Extract question columns (assuming they're named Q1, Q2, etc.)
+                question_columns = [col for col in headers if col.startswith('Q') and col[1:].isdigit()]
+                
+                # Reset file pointer to start
+                file.seek(0)
+                next(reader)  # Skip header row
+                
                 for row in reader:
-                    # Based on your CSV structure from Image 3
+                    # Process individual question responses
+                    question_responses = {}
+                    for q in question_columns:
+                        answer = row.get(q, '')
+                        is_correct = row.get(f'{q}_correct', 'true').lower() == 'true'
+                        question_responses[q] = {
+                            'answer': answer,
+                            'is_correct': is_correct
+                        }
+                        
+                        # Update question statistics
+                        if q not in question_stats:
+                            question_stats[q] = {'correct': 0, 'total': 0}
+                        question_stats[q]['total'] += 1
+                        if is_correct:
+                            question_stats[q]['correct'] += 1
+                    
                     scan_results.append({
                         'student_id': f"{row.get('ID', 'N/A')}",
                         'set_number': row.get('Set ID', 'N/A'),
                         'score': row.get('Score', 'N/A'),
-                        'answers': '', # Add if you have this data
+                        'questions': question_responses,
                         'status': 'failed' if row.get('Invalid Answer') or row.get('Incorrect Answer') else 'success',
                         'details': {
                             'Last Name': row.get('Last Name', ''),
@@ -1513,13 +1569,21 @@ def scan_results_view(request, class_id, exam_id):
                             'Incorrect Answer': row.get('Incorrect Answer', '')
                         }
                     })
+                    
+                # Calculate success rate for each question
+                for q in question_stats:
+                    total = question_stats[q]['total']
+                    if total > 0:
+                        question_stats[q]['success_rate'] = (question_stats[q]['correct'] / total) * 100
+                    else:
+                        question_stats[q]['success_rate'] = 0
+                        
         except Exception as e:
             messages.error(request, f"Error reading results file: {str(e)}")
-            print(f"Error details: {str(e)}") # For debugging
+            print(f"Error details: {str(e)}")
     else:
         messages.warning(request, "No results file found. Please scan the exam papers first.")
     
-    # Calculate summary statistics
     success_count = len([r for r in scan_results if r['status'] == 'success'])
     failed_count = len([r for r in scan_results if r['status'] != 'success'])
     
@@ -1527,16 +1591,16 @@ def scan_results_view(request, class_id, exam_id):
         'current_class': current_class,
         'current_exam': current_exam,
         'scan_results': scan_results,
+        'question_stats': question_stats,
         'scanned_count': len(scan_results),
         'success_count': success_count,
         'failed_count': failed_count,
     }
     
-    # For debugging
-    print(f"Found CSV path: {csv_path}")
-    print(f"Number of results: {len(scan_results)}")
-    
     return render(request, 'scan_results.html', context)
+
+
+
 def export_results(request, class_id, exam_id):
     """
     Export scan results to Excel
@@ -1586,6 +1650,14 @@ def export_results(request, class_id, exam_id):
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id) 
+
+
+@login_required
+def student_test_papers_view(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    test_sets = TestSet.objects.filter(student=student).select_related('exam').prefetch_related('exam__questions')
+
+    return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
 
 
 @login_required

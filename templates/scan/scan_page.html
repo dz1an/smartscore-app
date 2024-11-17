@@ -77,31 +77,75 @@
             </div>
         </div>
 
-        <!-- Scan Form -->
-        <div class="bg-gray-50 p-6 rounded-lg">
-            <h2 class="text-xl font-semibold mb-4">Scan Images</h2>
-            <form method="POST" class="space-y-4">    
-                {% csrf_token %}
-                <div>
-                    <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
-                    <select id="csv_indicator" name="csv_indicator" required 
-                            class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="{{ current_exam.id }}" selected>{{ current_exam.name }}</option>
-                    </select>
-                </div>
-                <div class="flex space-x-4">
-                    <button type="submit" name="scan_images"
-                            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                        Start Scanning
-                    </button>
-                    <button type="button" 
-                            onclick="window.location.href='{% url 'scan_results' class_id=current_class.id exam_id=current_exam.id %}'"
-                            class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:outline-none focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                        View Scan Results
-                    </button>
-                </div>
-            </form>
+<!-- Scan Form -->
+<div class="bg-gray-50 p-6 rounded-lg">
+    <h2 class="text-xl font-semibold mb-4">Scan Images</h2>
+    <form method="POST" class="space-y-4" id="scanForm">    
+        {% csrf_token %}
+        <div>
+            <label for="csv_indicator" class="block text-sm font-medium text-gray-700">Select Exam CSV:</label>
+            <select id="csv_indicator" name="csv_indicator" required 
+                    class="mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="{{ current_exam.id }}" selected>{{ current_exam.name }}</option>
+            </select>
         </div>
+        <div class="flex space-x-4">
+            <!-- Regular button (shown by default) -->
+            <button type="submit" name="scan_images" id="scanButton"
+                    class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg transition-all duration-150">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Start Scanning
+            </button>
+            
+            <!-- Loading button (hidden by default) -->
+            <button disabled type="button" id="loadingButton"
+                    class="hidden items-center justify-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 rounded-lg cursor-wait">
+                <div class="flex items-center">
+                    <!-- Primary spinner -->
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="flex flex-col items-start">
+                        <span>Scanning in progress...</span>
+                        <span class="text-xs text-blue-100">Please don't refresh the page</span>
+                    </span>
+                </div>
+            </button>
+
+            <button type="button" 
+                    onclick="window.location.href='{% url 'scan_results' class_id=current_class.id exam_id=current_exam.id %}'"
+                    class="text-white bg-purple-600 hover:bg-purple-700 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                View Scan Results
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('scanForm').addEventListener('submit', function(e) {
+        // Hide scan button, show loading button
+        document.getElementById('scanButton').classList.add('hidden');
+        document.getElementById('loadingButton').classList.remove('hidden');
+        document.getElementById('loadingButton').classList.add('inline-flex');
+        
+        // Disable the form while processing
+        const form = this;
+        setTimeout(function() {
+            const inputs = form.getElementsByTagName('input');
+            const selects = form.getElementsByTagName('select');
+            for (let i = 0; i < inputs.length; i++) inputs[i].disabled = true;
+            for (let i = 0; i < selects.length; i++) selects[i].disabled = true;
+        }, 0);
+    });
+</script>
+
+
         {% endif %}
 
         <!-- Results Display -->
