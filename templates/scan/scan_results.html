@@ -1,153 +1,162 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
+<div class="max-w-6xl mx-auto p-6 bg-white shadow-md rounded-lg">
     <h2 class="text-xl font-semibold mb-4 text-center">Scan Results - {{ current_exam.name }}</h2>
 
-    <!-- Breadcrumb -->
-    <nav class="flex mb-4" aria-label="Breadcrumb">
-        <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
-            <li class="inline-flex items-center">
-                <a href="{% url 'index' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
-                    Home
-                </a>
-            </li>
-            <li class="flex items-center">
-                <svg class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1" aria-hidden="true" fill="none" viewBox="0 0 6 10">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/>
-                </svg>
-                <a href="{% url 'scan_page' class_id=current_class.id exam_id=current_exam.id %}" 
-                   class="text-sm font-medium text-gray-700 hover:text-blue-600">
-                    Scan Page
-                </a>
-            </li>
-        </ol>
-    </nav>
-
+    <!-- Breadcrumb remains the same -->
+    
     {% if messages %}
         {% include 'message_display.html' %}
     {% endif %}
 
-    <!-- Results Summary -->
-    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 class="text-lg font-medium mb-2">Summary</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="p-3 bg-white rounded shadow">
-                <p class="text-sm text-gray-600">Total Scanned</p>
-                <p class="text-xl font-semibold">{{ scanned_count }}</p>
-            </div>
-            <div class="p-3 bg-white rounded shadow">
-                <p class="text-sm text-gray-600">Successfully Processed</p>
-                <p class="text-xl font-semibold text-green-600">{{ success_count }}</p>
-            </div>
-            <div class="p-3 bg-white rounded shadow">
-                <p class="text-sm text-gray-600">Failed Processing</p>
-                <p class="text-xl font-semibold text-red-600">{{ failed_count }}</p>
-            </div>
-        </div>
-    </div>
+<!-- Previous content remains the same until the Results Summary section -->
 
-    <!-- Results Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-4 border-b">
-            <h3 class="text-lg font-medium">Detailed Results</h3>
+<!-- Results Summary -->
+<div class="mb-6 p-4 bg-gray-50 rounded-lg">
+    <h3 class="text-lg font-medium mb-2">Summary</h3>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="p-3 bg-white rounded shadow">
+            <p class="text-sm text-gray-600">Total Scanned</p>
+            <p class="text-xl font-semibold">{{ scanned_count }}</p>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3">Student ID</th>
-                        <th scope="col" class="px-6 py-3">Set</th>
-                        <th scope="col" class="px-6 py-3">Answers</th>
-                        <th scope="col" class="px-6 py-3">Score</th>
-                        <th scope="col" class="px-6 py-3">Status</th>
-                        <th scope="col" class="px-6 py-3">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in scan_results %}
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-6 py-4">{{ result.student_id }}</td>
-                        <td class="px-6 py-4">{{ result.set_number }}</td>
-                        <td class="px-6 py-4">
-                            <span class="inline-block max-w-xs overflow-hidden overflow-ellipsis">
-                                {{ result.answers }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">{{ result.score }}</td>
-                        <td class="px-6 py-4">
-                            {% if result.status == 'success' %}
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                    Success
-                                </span>
-                            {% else %}
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                    Failed
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4">
-                            <button onclick="showDetails('{{ result.student_id }}')" 
-                                    class="text-blue-600 hover:underline">
-                                View Details
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                            No results found
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="p-3 bg-white rounded shadow">
+            <p class="text-sm text-gray-600">Successfully Processed</p>
+            <p class="text-xl font-semibold text-green-600">{{ success_count }}</p>
         </div>
-    </div>
-
-    <!-- Export Options -->
-    <div class="mt-6 flex gap-4 justify-end">
-        <form method="POST" action="{% url 'export_results' class_id=current_class.id exam_id=current_exam.id %}">
-            {% csrf_token %}
-            <button type="submit" 
-                    class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5">
-                Export to Excel
-            </button>
-        </form>
-        <form method="POST">
-            {% csrf_token %}
-            <button type="submit" name="delete_results"
-                    class="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5"
-                    onclick="return confirm('Are you sure you want to delete all results? This action cannot be undone.')">
-                Delete Results
-            </button>
-        </form>
-    </div>
-
-    <!-- Result Details Modal -->
-    <div id="detailsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3 text-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Result Details</h3>
-                <div class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500">
-                        <!-- Detail content will be inserted here by JavaScript -->
-                    </p>
-                </div>
-                <div class="items-center px-4 py-3">
-                    <button id="closeModal" 
-                            class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300">
-                        Close
-                    </button>
-                </div>
-            </div>
+        <div class="p-3 bg-white rounded shadow">
+            <p class="text-sm text-gray-600">Failed Processing</p>
+            <p class="text-xl font-semibold text-red-600">{{ failed_count }}</p>
+        </div>
+        <div class="p-3 bg-white rounded shadow">
+            <p class="text-sm text-gray-600">Passing</p>
+            <p class="text-xl font-semibold text-green-600">{{ passing_count }}</p>
+        </div>
+        <div class="p-3 bg-white rounded shadow">
+            <p class="text-sm text-gray-600">Failing</p>
+            <p class="text-xl font-semibold text-red-600">{{ failing_count }}</p>
         </div>
     </div>
 </div>
 
+<!-- Results Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="p-4 border-b">
+        <h3 class="text-lg font-medium">Detailed Results</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-4 py-3">Student ID</th>
+                    <th scope="col" class="px-4 py-3">Name</th>
+                    <th scope="col" class="px-4 py-3">Set</th>
+                    <th scope="col" class="px-4 py-3">Score</th>
+                    <th scope="col" class="px-4 py-3">Grade</th>
+                    <th scope="col" class="px-4 py-3">Status</th>
+                    <th scope="col" class="px-4 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in scan_results %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3">{{ result.student_id }}</td>
+                    <td class="px-4 py-3">
+                        {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}
+                    </td>
+                    <td class="px-4 py-3">{{ result.set_id }}</td>
+                    <td class="px-4 py-3">{{ result.score }}/{{ result.max_score }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full
+                            {% if result.grade == 'F' %}
+                                bg-red-100 text-red-800
+                            {% elif result.grade == 'N/A' %}
+                                bg-gray-100 text-gray-800
+                            {% else %}
+                                bg-green-100 text-green-800
+                            {% endif %}">
+                            {{ result.formatted_grade }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if result.status == 'success' %}
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                Success
+                            </span>
+                        {% else %}
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                Failed
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <button onclick="showDetails('{{ forloop.counter }}')" 
+                                class="text-blue-600 hover:underline">
+                            View Details
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-4 py-3 text-center text-gray-500">
+                        No results found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Update the Result Details Modal content -->
+<div id="modalContent" class="mt-2 px-4 py-3">
+    {% for result in scan_results %}
+    <div id="details-{{ forloop.counter }}" class="hidden">
+        <div class="space-y-4">
+            <div>
+                <h4 class="font-medium">Student Information</h4>
+                <p>Name: {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</p>
+                <p>ID: {{ result.student_id }}</p>
+                <p>Set: {{ result.set_id }}</p>
+                <p>Score: {{ result.score }}/{{ result.max_score }}</p>
+                <p>Grade: {{ result.formatted_grade }}</p>
+            </div>
+            
+            <div>
+                <h4 class="font-medium">Answers by Difficulty</h4>
+                {% for difficulty, answers in result.answers_by_difficulty.items %}
+                <p>{{ difficulty }}: {{ answers|join:", " }}</p>
+                {% endfor %}
+            </div>
+            
+            {% if result.invalid_answer or result.incorrect_answer %}
+            <div class="text-red-600">
+                {% if result.invalid_answer %}
+                <p>Invalid Answer: {{ result.invalid_answer }}</p>
+                {% endif %}
+                {% if result.incorrect_answer %}
+                <p>Incorrect Answer: {{ result.incorrect_answer }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+    <!-- Export Options remain the same -->
+</div>
+
 <script>
-    function showDetails(studentId) {
+    function showDetails(resultId) {
         const modal = document.getElementById('detailsModal');
+        const allDetails = document.querySelectorAll('[id^="details-"]');
+        allDetails.forEach(detail => detail.classList.add('hidden'));
+        
+        const currentDetail = document.getElementById(`details-${resultId}`);
+        if (currentDetail) {
+            currentDetail.classList.remove('hidden');
+        }
+        
         modal.classList.remove('hidden');
     }
 

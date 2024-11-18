@@ -860,6 +860,154 @@ def generate_exam_sets(request, class_id, exam_id):
     }
     return render(request, 'exams/generate_sets.html', context)
 
+def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
+    """
+    Grade a student's exam based on the answer key and difficulty points
+    
+    Parameters:
+    student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
+    answer_key (str): String of correct answers (0-based indices, e.g., "01230")
+    difficulty_points (str): String indicating point value for each question (e.g., "11123")
+    
+    Returns:
+    tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers)
+    """
+    total_score = 0
+    max_possible_score = 0
+    breakdown = {
+        'Easy': {'correct': 0, 'total': 0, 'points': 0},
+        'Medium': {'correct': 0, 'total': 0, 'points': 0},
+        'Hard': {'correct': 0, 'total': 0, 'points': 0}
+    }
+    incorrect_answers = []
+    
+    # Convert answer key to list of integers
+    correct_answers = [int(ans) for ans in answer_key]
+    
+    # Create a map of question indices to difficulties
+    difficulty_map = {
+        '1': 'Easy',
+        '2': 'Medium',
+        '3': 'Hard'
+    }
+    
+    # Count expected answers by difficulty
+    expected_counts = {
+        'Easy': difficulty_points.count('1'),
+        'Medium': difficulty_points.count('2'),
+        'Hard': difficulty_points.count('3')
+    }
+    
+    # Validate number of answers provided
+    for difficulty, expected in expected_counts.items():
+        student_ans = student_answers_by_difficulty.get(difficulty, [])
+        if len(student_ans) != expected:
+            return 0, sum(int(p) for p in difficulty_points), breakdown, [
+                f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
+            ]
+    
+    # Grade each answer
+    current_index_by_difficulty = {
+        'Easy': 0,
+        'Medium': 0,
+        'Hard': 0
+    }
+    
+    for i, (correct_ans, points) in enumerate(zip(correct_answers, difficulty_points)):
+        difficulty = difficulty_map[points]
+        points = int(points)
+        max_possible_score += points
+        
+        # Get the student's answer for this difficulty level
+        student_ans_index = current_index_by_difficulty[difficulty]
+        if student_ans_index >= len(student_answers_by_difficulty[difficulty]):
+            incorrect_answers.append(f"Missing {difficulty} answer at position {i}")
+            continue
+            
+        student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
+        current_index_by_difficulty[difficulty] += 1
+        
+        # Update statistics
+        breakdown[difficulty]['total'] += 1
+        
+        # Check if answer is correct
+        if student_ans == correct_ans:
+            breakdown[difficulty]['correct'] += 1
+            breakdown[difficulty]['points'] += points
+            total_score += points
+        else:
+            incorrect_answers.append(
+                f"Incorrect {difficulty} answer at position {i}: "
+                f"answered {student_ans}, correct was {correct_ans}"
+            )
+    
+    # Calculate percentages for the breakdown
+    for difficulty in breakdown:
+        if breakdown[difficulty]['total'] > 0:
+            breakdown[difficulty]['percentage'] = (
+                breakdown[difficulty]['correct'] / breakdown[difficulty]['total'] * 100
+            )
+        else:
+            breakdown[difficulty]['percentage'] = 0
+    
+    return total_score, max_possible_score, breakdown, incorrect_answers
+
+def format_grade_report(student_id, student_name, score, max_score, breakdown, errors, set_id=None):
+    """
+    Format a readable grade report for a student
+    """
+    percentage = (score / max_score * 100) if max_score > 0 else 0
+    
+    report = f"Grade Report for {student_name} (ID: {student_id})"
+    if set_id:
+        report += f" - Set {set_id}"
+    report += f"\nTotal Score: {score}/{max_score} ({percentage:.1f}%)\n\n"
+    
+    report += "Breakdown by Difficulty:\n"
+    for difficulty, results in breakdown.items():
+        if results['total'] > 0:
+            report += (f"{difficulty}: {results['correct']}/{results['total']} correct "
+                      f"({results['percentage']:.1f}%) - {results['points']} points\n")
+    
+    if errors:
+        report += "\nErrors:\n"
+        for error in errors:
+            report += f"- {error}\n"
+            
+    return report
+# Example usage:
+if __name__ == "__main__":
+    # Example data based on your exam generation system
+    answer_key = "01230"  # Example answer key
+    difficulty_points = "11123"  # 3 Easy questions, 1 Medium question, 1 Hard question
+    
+    # Student answers grouped by difficulty
+    student_answers = {
+        'Easy': [0, 1, 2],  # 3 Easy answers
+        'Medium': [3],      # 1 Medium answer
+        'Hard': [0]         # 1 Hard answer
+    }
+    
+    # Grade the exam
+    score, max_score, breakdown, errors = grade_exam(
+        student_answers,
+        answer_key,
+        difficulty_points
+    )
+    
+    # Generate report
+    report = format_grade_report(
+        student_id="2001234",
+        student_name="John Doe",
+        score=score,
+        max_score=max_score,
+        breakdown=breakdown,
+        errors=errors,
+        set_id="001A"
+    )
+    print(report)
+
+
 
 
 @login_required
@@ -1024,6 +1172,8 @@ def download_test_paper(request, class_id, exam_id):
     # Close the PDF object cleanly
     pdf_canvas.save()
     return response
+
+
 
 @login_required
 def download_exam_sets_csv(request, class_id, exam_id):
@@ -1506,6 +1656,8 @@ def delete_scan_results(request, class_id, exam_id):
     # Redirect back to scan results page
     return redirect(reverse('scan_results', kwargs={'class_id': class_id, 'exam_id': exam_id}))
 
+
+
 @login_required
 def scan_results_view(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
@@ -1516,8 +1668,48 @@ def scan_results_view(request, class_id, exam_id):
                              f'exam_{exam_id}')
     
     scan_results = []
-    question_stats = {}
+    question_stats = {
+        'Easy': {'correct': 0, 'total': 0},
+        'Medium': {'correct': 0, 'total': 0},
+        'Hard': {'correct': 0, 'total': 0}
+    }
     csv_path = None
+    
+    def calculate_grade(score, max_score):
+        if not score or not max_score:
+            return 'N/A'
+        
+        percentage = (float(score) / float(max_score)) * 100
+        
+        if percentage >= 95:
+            return 'A+'
+        elif percentage >= 90:
+            return 'A'
+        elif percentage >= 85:
+            return 'B+'
+        elif percentage >= 80:
+            return 'B'
+        elif percentage >= 75:
+            return 'C+'
+        elif percentage >= 70:
+            return 'C'
+        elif percentage >= 65:
+            return 'D+'
+        elif percentage >= 60:
+            return 'D'
+        else:
+            return 'F'
+    
+    def format_grade(score, max_score):
+        if not score or not max_score:
+            return 'N/A'
+        
+        try:
+            percentage = (float(score) / float(max_score)) * 100
+            letter_grade = calculate_grade(score, max_score)
+            return f"{percentage:.1f}% ({letter_grade})"
+        except (ValueError, ZeroDivisionError):
+            return 'N/A'
     
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
@@ -1528,55 +1720,51 @@ def scan_results_view(request, class_id, exam_id):
         try:
             with open(csv_path, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
-                headers = reader.fieldnames
-                
-                # Extract question columns (assuming they're named Q1, Q2, etc.)
-                question_columns = [col for col in headers if col.startswith('Q') and col[1:].isdigit()]
-                
-                # Reset file pointer to start
-                file.seek(0)
-                next(reader)  # Skip header row
                 
                 for row in reader:
-                    # Process individual question responses
-                    question_responses = {}
-                    for q in question_columns:
-                        answer = row.get(q, '')
-                        is_correct = row.get(f'{q}_correct', 'true').lower() == 'true'
-                        question_responses[q] = {
-                            'answer': answer,
-                            'is_correct': is_correct
-                        }
-                        
-                        # Update question statistics
-                        if q not in question_stats:
-                            question_stats[q] = {'correct': 0, 'total': 0}
-                        question_stats[q]['total'] += 1
-                        if is_correct:
-                            question_stats[q]['correct'] += 1
+                    # Process answers based on difficulty
+                    easy_answers = [int(x) for x in row.get('Easy', '').strip('[]').split(',') if x.strip()]
+                    medium_answers = [int(x) for x in row.get('Medium', '').strip('[]').split(',') if x.strip()]
+                    hard_answers = [int(x) for x in row.get('Hard', '').strip('[]').split(',') if x.strip()]
+                    
+                    # Calculate scores by difficulty
+                    answers_by_difficulty = {
+                        'Easy': easy_answers,
+                        'Medium': medium_answers,
+                        'Hard': hard_answers
+                    }
+                    
+                    # Update statistics
+                    for difficulty, answers in answers_by_difficulty.items():
+                        question_stats[difficulty]['total'] += len(answers)
+                        question_stats[difficulty]['correct'] += len(answers)
+                    
+                    score = row.get('Score', 'N/A')
+                    max_score = sum(len(answers) for answers in answers_by_difficulty.values())
                     
                     scan_results.append({
-                        'student_id': f"{row.get('ID', 'N/A')}",
-                        'set_number': row.get('Set ID', 'N/A'),
-                        'score': row.get('Score', 'N/A'),
-                        'questions': question_responses,
+                        'student_id': row.get('ID', 'N/A'),
+                        'last_name': row.get('Last Name', ''),
+                        'first_name': row.get('First Name', ''),
+                        'middle_initial': row.get('Middle Initial', ''),
+                        'set_id': row.get('Set ID', 'N/A'),
+                        'answers_by_difficulty': answers_by_difficulty,
+                        'score': score,
+                        'max_score': max_score,
+                        'grade': calculate_grade(score, max_score),
+                        'formatted_grade': format_grade(score, max_score),
                         'status': 'failed' if row.get('Invalid Answer') or row.get('Incorrect Answer') else 'success',
-                        'details': {
-                            'Last Name': row.get('Last Name', ''),
-                            'First Name': row.get('First Name', ''),
-                            'Middle Initial': row.get('Middle Initial', ''),
-                            'Invalid Answer': row.get('Invalid Answer', ''),
-                            'Incorrect Answer': row.get('Incorrect Answer', '')
-                        }
+                        'invalid_answer': row.get('Invalid Answer', ''),
+                        'incorrect_answer': row.get('Incorrect Answer', '')
                     })
                     
-                # Calculate success rate for each question
-                for q in question_stats:
-                    total = question_stats[q]['total']
+                # Calculate success rates
+                for difficulty in question_stats:
+                    total = question_stats[difficulty]['total']
                     if total > 0:
-                        question_stats[q]['success_rate'] = (question_stats[q]['correct'] / total) * 100
+                        question_stats[difficulty]['success_rate'] = (question_stats[difficulty]['correct'] / total) * 100
                     else:
-                        question_stats[q]['success_rate'] = 0
+                        question_stats[difficulty]['success_rate'] = 0
                         
         except Exception as e:
             messages.error(request, f"Error reading results file: {str(e)}")
@@ -1587,6 +1775,11 @@ def scan_results_view(request, class_id, exam_id):
     success_count = len([r for r in scan_results if r['status'] == 'success'])
     failed_count = len([r for r in scan_results if r['status'] != 'success'])
     
+    # Calculate class statistics
+    passing_grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D']
+    passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
+    failing_count = len([r for r in scan_results if r['grade'] == 'F'])
+    
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
@@ -1595,6 +1788,8 @@ def scan_results_view(request, class_id, exam_id):
         'scanned_count': len(scan_results),
         'success_count': success_count,
         'failed_count': failed_count,
+        'passing_count': passing_count,
+        'failing_count': failing_count,
     }
     
     return render(request, 'scan_results.html', context)
