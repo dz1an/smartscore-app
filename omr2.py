@@ -110,6 +110,10 @@ def process_image(image_path, id_to_info, filename):
 
         items = len(id_info['Answer Key'])
 
+        incorrect_diff = utilis.extract_characters(id_info['Difficulty Points'], incAns)
+
+        easy_inc, medium_inc, hard_inc = utilis.calculate_frequencies(incorrect_diff)
+
 
         # Output student info and exam results
         additional_content = [
@@ -124,7 +128,11 @@ def process_image(image_path, id_to_info, filename):
             hard,
             score,
             invAns,
-            incAns
+            incAns,
+            incorrect_diff,
+            easy_inc,
+            medium_inc,
+            hard_inc
         ]
         
         utilis.append_to_csv(additional_content, filename)
@@ -145,7 +153,11 @@ def process_image(image_path, id_to_info, filename):
             0,
             0,
             None,
-            None
+            None,
+            None,
+            0,
+            0,
+            0
         ]       
         utilis.append_to_csv(additional_content, filename)
         print(f"Failed to process image {image_path}: {e}")
