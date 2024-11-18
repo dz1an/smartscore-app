@@ -3,6 +3,7 @@ import numpy as np
 import os
 import csv
 import glob
+from collections import Counter
 # from tkinter import Tk, filedialog
 
 def stackImages(scale,imgArray):
@@ -734,8 +735,19 @@ def create_csv(file_name):
         with open(file_name, 'w', newline='') as file:
             writer = csv.writer(file)
             # Write the header
-            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID", "Score", "Invalid Answer", "Incorrect Answer"])
+            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID","Items","Easy","Medium","Hard", "Score", "Invalid Answer", "Incorrect Answer"])
         print(f"File '{file_name}' created successfully with headers.")
 
 
+def count_char_frequencies(input_string):
+    """
+    Count the frequency of characters in a string.
+
+    Args:
+        input_string (str): The string to analyze.
+
+    Returns:
+        dict: A dictionary with characters as keys and their frequencies as values.
+    """
+    return dict(Counter(input_string))
 
