@@ -75,7 +75,7 @@ urlpatterns = [
     path('generate_questionnaire/<int:exam_id>/<int:student_id>/', generate_questionnaire_view, name='generate_questionnaire'),
     path('list_classes/', list_classes_view, name='list_classes'),
     path('class_exams/<int:class_id>/', class_exams_view, name='class_exams'),
-
+    path('exam/<int:exam_id>/download-answer-sheet/', views.download_answer_sheet, name='download_answer_sheet'),
 
     # Grading
     path('grade_exam/<int:exam_id>/<int:student_id>/', grade_exam_view, name='grade_exam'),

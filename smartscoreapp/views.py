@@ -37,6 +37,10 @@ from django.http import HttpResponseNotAllowed
 import textwrap
 import shutil
 from django.urls import reverse
+from background_task import background
+from django.http import FileResponse
+import re
+from django.core.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -842,7 +846,7 @@ def generate_exam_sets(request, class_id, exam_id):
         else:
             messages.warning(request, "No sets were generated.")
 
-        return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
+        return redirect('exam_details_sets', class_id=class_id, exam_id=exam_id)
 
     context = {
         'exam': exam,
@@ -1368,6 +1372,19 @@ def exam_detail_view(request, exam_id):
         'sort_by': sort_by  # Pass the sort option to the template
     })
 
+@login_required
+def download_answer_sheet(request, exam_id):
+   exam = get_object_or_404(Exam, id=exam_id)
+   
+   pdf_path = os.path.join(settings.BASE_DIR, 'static', 'pdf', 'SmartScore_AnswerSheet_Template.pdf')
+   
+   if os.path.exists(pdf_path):
+       response = FileResponse(open(pdf_path, 'rb'), as_attachment=True, filename=f'exam_{exam_id}_answer_sheet.pdf')
+       return response
+   else:
+       from django.http import HttpResponseNotFound
+       return HttpResponseNotFound(f'Answer sheet PDF not found at {pdf_path}')
+
 
 @login_required
 def grade_exam_view(request, exam_id, student_id):
@@ -1851,6 +1868,20 @@ def student_test_papers_view(request, student_id):
     return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
 
 
+
+def validate_student_id(student_id):
+    """
+    Validate student ID to ensure it contains only alphanumeric characters.
+    
+    Args:
+        student_id (str): The student ID to validate
+    
+    Raises:
+        ValidationError: If the student ID contains spaces or special characters
+    """
+    if not re.match(r'^[a-zA-Z0-9]+$', student_id):
+        raise ValidationError("Student ID must contain only letters and numbers, with no spaces or special characters.")
+
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -1859,24 +1890,30 @@ def add_student_view(request, class_id):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         middle_initial = request.POST.get('middle_initial', '')
-        student_id = request.POST.get('student_id')
-
-        # Allow adding the same student ID to different classes
-        # Check if the student ID already exists in the same class
-        if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
-            messages.warning(request, f"Student with ID {student_id} already exists in this class.")
-            return redirect('class_detail', class_id=class_id)
+        student_id = request.POST.get('student_id').strip()  # Remove leading/trailing whitespace
 
         try:
+            # Validate student ID before creating the record
+            validate_student_id(student_id)
+
+            # Check if the student ID already exists in the same class
+            if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                messages.warning(request, f"Student with ID {student_id} already exists in this class.")
+                return redirect('class_detail', class_id=class_id)
+
             # Create the new student record with assigned_class
             Student.objects.create(
                 student_id=student_id,
                 first_name=first_name,
                 last_name=last_name,
                 middle_initial=middle_initial,
-                assigned_class=class_instance  # Ensure the class is assigned here
+                assigned_class=class_instance
             )
             messages.success(request, f"Student {first_name} {last_name} added successfully!")
+            return redirect('class_detail', class_id=class_id)
+        
+        except ValidationError as ve:
+            messages.error(request, str(ve))
             return redirect('class_detail', class_id=class_id)
         except IntegrityError as e:
             messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
@@ -1885,7 +1922,6 @@ def add_student_view(request, class_id):
     return render(request, 'add_student.html', {
         'class_instance': class_instance,
     })
-
 
 @login_required
 def bulk_upload_students_view(request, class_id):
@@ -1901,24 +1937,27 @@ def bulk_upload_students_view(request, class_id):
             decoded_file = csv_file.read().decode('utf-8').splitlines()
             reader = csv.DictReader(decoded_file)
 
-            # Initialize a counter for successfully added students
+            # Initialize counters and lists
             successful_additions = 0
-            existing_student_ids = []  # To keep track of existing student IDs
+            existing_student_ids = []
+            invalid_student_ids = []
             
             for row in reader:
-                student_id = row.get('ID')  # Ensure this matches your CSV header
+                student_id = row.get('ID', '').strip()  # Ensure no leading/trailing whitespace
                 first_name = row.get('First Name')
                 last_name = row.get('Last Name')
                 middle_initial = row.get('Middle Initial', '')
 
-                # Check if the student already exists in the same class
-                if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
-                    existing_student_ids.append(student_id)
-                    messages.warning(request, f"Student with ID {student_id} already exists in this class. Skipping.")
-                    continue  # Skip this student and move to the next one
-                
-                # Create the new student record
                 try:
+                    # Validate student ID
+                    validate_student_id(student_id)
+
+                    # Check if the student already exists in the same class
+                    if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                        existing_student_ids.append(student_id)
+                        continue  # Skip this student
+                    
+                    # Create the new student record
                     Student.objects.create(
                         student_id=student_id,
                         first_name=first_name,
@@ -1926,21 +1965,25 @@ def bulk_upload_students_view(request, class_id):
                         middle_initial=middle_initial,
                         assigned_class=class_instance
                     )
-                    successful_additions += 1  # Increment the counter
+                    successful_additions += 1
+
+                except ValidationError:
+                    invalid_student_ids.append(student_id)
                 except IntegrityError as e:
                     messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
-                    continue  # Skip to next row on error
             
-            # Success message for total added students
+            # Success and info messages
             if successful_additions > 0:
                 messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
             else:
                 messages.info(request, 'No new students were added during the bulk upload.')
             
-            # Info alert with the list of skipped students (if any)
+            # Alert for existing and invalid student IDs
             if existing_student_ids:
-                skipped_ids = ', '.join(existing_student_ids)
-                messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {skipped_ids}')
+                messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {", ".join(existing_student_ids)}')
+            
+            if invalid_student_ids:
+                messages.warning(request, f'Skipped {len(invalid_student_ids)} invalid student IDs: {", ".join(invalid_student_ids)}')
                 
             return redirect('class_detail', class_id=class_id)
     
@@ -1952,7 +1995,6 @@ def bulk_upload_students_view(request, class_id):
         'class_instance': class_instance,
     })
 
-
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_student(request, student_id):
@@ -1962,19 +2004,24 @@ def edit_student(request, student_id):
         student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
 
         if request.method == "POST":
-            student_id = request.POST.get('student_id', student.student_id)  # Fetch the student ID
-            first_name = request.POST.get('first_name', student.first_name)
-            last_name = request.POST.get('last_name', student.last_name)
-            middle_initial = request.POST.get('middle_initial', student.middle_initial)
+            # Validate the new student ID
+            new_student_id = request.POST.get('student_id', student.student_id).strip()
+            
+            try:
+                validate_student_id(new_student_id)
+                
+                # Update student details
+                student.student_id = new_student_id
+                student.first_name = request.POST.get('first_name', student.first_name)
+                student.last_name = request.POST.get('last_name', student.last_name)
+                student.middle_initial = request.POST.get('middle_initial', student.middle_initial)
+                student.save()
 
-            # Update the student details
-            student.student_id = student_id  # Update student ID
-            student.first_name = first_name
-            student.last_name = last_name
-            student.middle_initial = middle_initial
-            student.save()
-
-            return redirect('class_detail', class_id=class_instance)
+                return redirect('class_detail', class_id=class_instance)
+            
+            except ValidationError as ve:
+                messages.error(request, str(ve))
+                return redirect('edit_student', student_id=student_id, class_id=class_instance)
 
         return render(request, 'edit_student.html', {
             'student': student,
@@ -1985,7 +2032,6 @@ def edit_student(request, student_id):
         return redirect('class_detail', class_id=class_instance)
     except Exception as e:
         return redirect('class_detail', class_id=class_instance)
-
 @login_required
 def delete_student_view(request, class_id, student_id):
     # Retrieve the class instance

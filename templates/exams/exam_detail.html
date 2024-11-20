@@ -103,24 +103,37 @@
 
 
 
-      <!-- Add a button to open the Answer Key Modal -->
-       
-       <!-- Add Question Button with Icon -->
-       <button 
-       class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200"
-       onclick="openAddQuestionModal()">
-       <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-       </svg>
-       Add Question
-     </button>
-     <!-- Button to open the Answer Key Modal -->
-    <button 
+<!-- Container for Action Buttons -->
+<div class="flex space-x-2 mb-4">
+  <!-- Add Question Button with Icon -->
+  <button 
+    class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center"
+    onclick="openAddQuestionModal()">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+    </svg>
+    Add Question
+  </button>
+
+  <!-- View Answer Key Button -->
+  <button 
     type="button" 
     onclick="openAnswerKeyModal()" 
     class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200">
     View Answer Key
   </button>
+
+  <!-- Download Answer Sheet PDF Button -->
+  <button 
+    type="button" 
+    onclick="window.location.href='{% url 'download_answer_sheet' exam.id %}'" 
+    class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+    </svg>
+    Download Answer Sheet PDF
+  </button>
+</div>
       
 </div>
 </div>
@@ -330,6 +343,9 @@
     </div>
   </div>
 </div>
+
+
+
 
 
   <script>

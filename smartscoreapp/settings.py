@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'compressor', 
     'core',
     'smartscoreapp', 
+    'background_task',
     
 ]
 
