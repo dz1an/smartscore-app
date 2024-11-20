@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.display-none {
+    display: none;
+}
+.display-inline-flex {
+    display: inline-flex;
+}

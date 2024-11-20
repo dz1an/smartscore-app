@@ -3,6 +3,7 @@ import numpy as np
 import os
 import csv
 import glob
+from collections import Counter
 # from tkinter import Tk, filedialog
 
 def stackImages(scale,imgArray):
@@ -734,8 +735,50 @@ def create_csv(file_name):
         with open(file_name, 'w', newline='') as file:
             writer = csv.writer(file)
             # Write the header
-            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID", "Score", "Invalid Answer", "Incorrect Answer"])
+            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID","Items",
+                             "Easy","Medium","Hard", "Score", "Invalid Answer", "Incorrect Answer",
+                             "Difficulty per Incorrect","Easy Incorrect","Medium Incorrect","Hard Incorrect"])
         print(f"File '{file_name}' created successfully with headers.")
 
 
+def count_char_frequencies(input_string):
+    """
+    Count the frequency of characters in a string.
 
+    Args:
+        input_string (str): The string to analyze.
+
+    Returns:
+        dict: A dictionary with characters as keys and their frequencies as values.
+    """
+    return dict(Counter(input_string))
+
+
+def extract_characters(difficulty_points, incorrect_indices):
+    # Convert incorrect indices from one-based to zero-based
+    zero_based_indices = [index - 1 for index in incorrect_indices]
+    
+    # Extract characters, convert to integers, and return the list
+    extracted_integers = [int(difficulty_points[i]) for i in zero_based_indices]
+    
+    return extracted_integers
+
+def calculate_frequencies(numbers):
+    """
+    Calculate the frequencies of 1, 2, and 3 in the given list.
+    
+    Args:
+        numbers (list): List of integers to analyze.
+    
+    Returns:
+        tuple: Frequencies of 1 (easy_inc), 2 (medium_inc), and 3 (hard_inc).
+    """
+    # Count frequencies
+    frequency = Counter(numbers)
+    
+    # Save frequencies in variables
+    easy_inc = frequency.get(1, 0)   # Frequency of 1
+    medium_inc = frequency.get(2, 0) # Frequency of 2
+    hard_inc = frequency.get(3, 0)   # Frequency of 3
+    
+    return easy_inc, medium_inc, hard_inc
