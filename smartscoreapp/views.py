@@ -746,9 +746,24 @@ def generate_exam_sets(request, class_id, exam_id):
         generated_sets = []
         csv_rows = []
 
-        # Create a list of all possible sets first
-        all_sets = []
-        for set_no in range(1, num_sets + 1):
+        # Generate the actual unique sets first
+        unique_sets = []
+        exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id
+        
+        # Generate set IDs first - one for each unique set
+        set_ids = []
+        used_set_ids = set()
+        
+        for set_no in range(num_sets):
+            while True:
+                random_part = f"{random.randint(0, 99):02d}"
+                set_id = f"{exam_id_part}{random_part}"
+                
+                if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
+                    used_set_ids.add(set_id)
+                    set_ids.append(set_id)
+                    break
+
             # Shuffle and select questions for each set
             random.shuffle(easy_questions)
             random.shuffle(medium_questions)
@@ -769,39 +784,18 @@ def generate_exam_sets(request, class_id, exam_id):
                 for question in selected_questions
             )
 
-            all_sets.append({
-                'set_no': set_no,
+            unique_sets.append({
+                'set_id': set_ids[set_no],
                 'questions': selected_questions,
                 'answer_key': answer_key,
-                'difficulty_points': difficulty_points
+                'difficulty_points': difficulty_points,
+                'set_no': set_no + 1
             })
 
-        # Generate set IDs based on number of sets
-        exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id
-
-        if num_sets == 1:
-            # For single set, generate one set ID for all students
-            random_part = f"{random.randint(0, 99):02d}"
-            common_set_id = f"{exam_id_part}{random_part}"
-            set_ids = [common_set_id] * len(students)
-        else:
-            # For multiple sets, generate unique set IDs
-            set_ids = []
-            used_set_ids = set()
-            
-            for _ in range(len(students)):
-                while True:
-                    random_part = f"{random.randint(0, 99):02d}"
-                    set_id = f"{exam_id_part}{random_part}"
-                    
-                    if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
-                        used_set_ids.add(set_id)
-                        set_ids.append(set_id)
-                        break
-
-        # Assign sets to students
-        for idx, (student, set_id) in enumerate(zip(students, set_ids)):
-            set_data = all_sets[idx % num_sets]
+        # Distribute sets among students
+        for idx, student in enumerate(students):
+            # Use modulo to cycle through the sets
+            set_data = unique_sets[idx % num_sets]
             
             # Create and save the test set
             test_set = TestSet(
@@ -809,7 +803,7 @@ def generate_exam_sets(request, class_id, exam_id):
                 student=student,
                 set_no=set_data['set_no'],
                 answer_key=set_data['answer_key'],
-                set_id=set_id
+                set_id=set_data['set_id']  # Use the same set_id for students with same questions
             )
             test_set.save()
             test_set.questions.add(*set_data['questions'])
@@ -818,7 +812,7 @@ def generate_exam_sets(request, class_id, exam_id):
             generated_sets.append({
                 'student_id': student.student_id,
                 'student_name': f"{student.first_name} {student.last_name}",
-                'set_id': set_id,
+                'set_id': set_data['set_id'],
                 'answer_key': set_data['answer_key'],
                 'difficulty_points': set_data['difficulty_points']
             })
@@ -829,7 +823,7 @@ def generate_exam_sets(request, class_id, exam_id):
                 student.first_name,
                 student.middle_initial,
                 student.student_id[4:],
-                set_id,
+                set_data['set_id'],
                 set_data['answer_key'],
                 set_data['difficulty_points']
             ])
@@ -859,6 +853,8 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
+
+
 
 def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     """
