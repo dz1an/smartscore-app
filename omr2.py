@@ -7,7 +7,6 @@ from collections import Counter
 
 current_time = datetime.datetime.now()
 
-@background
 def omr(csv_path, images):
     # Define the expected headers
     expected_headers = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points']
