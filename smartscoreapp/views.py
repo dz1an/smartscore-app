@@ -1950,8 +1950,6 @@ def delete_student_view(request, class_id, student_id):
         'class_instance': class_instance,
     })
 
-
-
     # Fetch the class and ensure the student belongs to that class
     class_instance = get_object_or_404(Class, id=class_id, user=request.user)
     student_instance = get_object_or_404(Student, student_id=student_id, assigned_class=class_instance)

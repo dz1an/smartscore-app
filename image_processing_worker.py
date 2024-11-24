@@ -7,7 +7,7 @@ from django.conf import settings
 from omr2 import omr  # Import your existing image processing function
 
 # Set up Django environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mysite.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "smartscoreapp.settings")
 django.setup()
 
 def process_task(task):
