@@ -1,14 +1,16 @@
 # image_processing_worker.py
 import os
 import django
-import time
-from smartscoreapp.models import ImageProcessingTask, Class, Exam
-from django.conf import settings
-from omr2 import omr  # Import your existing image processing function
+
 
 # Set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "smartscoreapp.settings")
 django.setup()
+
+import time
+from smartscoreapp.models import ImageProcessingTask, Class, Exam
+from django.conf import settings
+from omr2 import omr  # Import your existing image processing function
 
 def process_task(task):
     """Process an image processing task."""
