@@ -219,3 +219,12 @@ class TestSet(models.Model):
 # Specify unique related_name attributes for groups and user_permissions fields
 User._meta.get_field('groups').remote_field.related_name = 'custom_user_groups'
 User._meta.get_field('user_permissions').remote_field.related_name = 'custom_user_permissions'
+
+class ImageProcessingTask(models.Model):
+    class_id = models.ForeignKey(Class, on_delete=models.CASCADE)
+    exam_id = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, default='queued')  # 'queued', 'in_progress', 'completed'
+    result_csv = models.FileField(upload_to='csv_results/', null=True, blank=True)
+
+    def __str__(self):
+        return f"Task {self.id} - {self.status}"

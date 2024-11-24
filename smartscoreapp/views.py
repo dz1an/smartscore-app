@@ -510,6 +510,9 @@ def select_questions_view(request, exam_id):
 
 
 
+# views.py
+from .models import ImageProcessingTask
+
 @login_required
 def scan_page(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
@@ -521,7 +524,6 @@ def scan_page(request, class_id, exam_id):
     absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
     base_csv_path = os.path.join('csv', f'class_{current_class.id}')
     
-    # Get all images from the directory instead of session
     def get_uploaded_images():
         if not os.path.exists(absolute_upload_path):
             return []
@@ -541,75 +543,17 @@ def scan_page(request, class_id, exam_id):
     csv_file = ''
 
     if request.method == 'POST':
-        if 'image_upload' in request.FILES:
-            uploaded_files = request.FILES.getlist('image_upload')
-            if uploaded_files:
-                # Ensure upload directory exists
-                os.makedirs(absolute_upload_path, exist_ok=True)
-                
-                for image in uploaded_files:
-                    # Create storage with absolute path
-                    fs = FileSystemStorage(location=absolute_upload_path)
-                    filename = fs.save(image.name, image)
-                
-                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+        if 'scan_images' in request.POST:
+            # Create a task for the background worker
+            image_processing_task = ImageProcessingTask.objects.create(
+                class_id=current_class,
+                exam_id=current_exam,
+                status="queued"
+            )
 
-        elif 'scan_images' in request.POST:
-            csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
-            selected_exam = get_object_or_404(Exam, id=csv_exam_id)
-
-            if selected_exam.id != current_exam.id:
-                messages.error(request, "Selected exam does not match the current exam.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            uploaded_images = get_uploaded_images()
-            if not uploaded_images:
-                messages.error(request, "No images available for scanning.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            # Construct CSV path consistently with generate_exam_sets view
-            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
-                                  f'class_{current_class.id}', 
-                                  f'exam_{selected_exam.id}_sets.csv')
-
-            if not os.path.exists(csv_file):
-                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            try:
-                # Verify upload folder exists and contains files
-                if not os.path.exists(absolute_upload_path):
-                    messages.error(request, "Upload folder not found.")
-                    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-                # Call OMR with absolute paths
-                result_csv = omr(csv_file, absolute_upload_path)
-                
-                if result_csv and os.path.exists(result_csv):
-                    messages.success(request, "Scanning completed. Results saved successfully.")
-                else:
-                    messages.warning(request, "Scanning completed but no results were generated.")
-                    
-            except Exception as e:
-                messages.error(request, f"Scanning failed: {str(e)}")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-        elif 'delete_results' in request.POST:
-            # Delete all images in the directory
-            if os.path.exists(absolute_upload_path):
-                for filename in os.listdir(absolute_upload_path):
-                    file_path = os.path.join(absolute_upload_path, filename)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                messages.success(request, "All images deleted successfully.")
-
-            # Delete results if they exist
-            if result_csv and os.path.exists(result_csv):
-                os.remove(result_csv)
-                result_csv = ''
-                messages.success(request, "Scan result CSV deleted successfully.")
-
+            messages.success(request, f"Scan task queued. Task ID: {image_processing_task.id}")
+            
+            # Redirect to the same page or another page to display task status
             return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
     context = {
@@ -623,6 +567,7 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
+
 
 
 @login_required
