@@ -43,6 +43,7 @@ import re
 from django.core.exceptions import ValidationError
 
 
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -2126,41 +2127,95 @@ def add_class_view(request):
     
     return render(request, 'classes.html', {'form': form})
 
+
 @login_required
 def settings_view(request):
     if request.method == 'POST':
-        password_form = PasswordChangeForm(request.user, request.POST)
-        user_form = UserChangeForm(request.POST, instance=request.user)
+        # Handle password change if any password fields are filled
+        password_changed = False
+        if any(request.POST.get(field) for field in ['old_password', 'new_password1', 'new_password2']):
+            password_form = PasswordChangeForm(request.user, request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                password_changed = True
+            else:
+                for error in password_form.errors.values():
+                    messages.error(request, error[0])
 
-        if password_form.is_valid() and user_form.is_valid():
-            # Update user information
-            user_form.save()
+        # Handle user information update
+        user = request.user
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        
+        # Validate username
+        if username and username != user.username:
+            if User.objects.filter(username=username).exists():
+                messages.error(request, 'Username is already taken.')
+            else:
+                user.username = username
 
-            # Update password
-            user = password_form.save()
-            update_session_auth_hash(request, user)  # Important!
-            messages.success(request, 'Your settings were successfully updated!')
-            return redirect('settings')
-        else:
-            # Capture and display error messages
-            if not password_form.is_valid():
-                for field, errors in password_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field.capitalize()}: {error}')
-            if not user_form.is_valid():
-                for field, errors in user_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field.capitalize()}: {error}')
-    else:
-        password_form = PasswordChangeForm(request.user)
-        user_form = UserChangeForm(instance=request.user)
+        # Validate email
+        if email and email != user.email:
+            if User.objects.filter(email=email).exists():
+                messages.error(request, 'Email is already registered.')
+            else:
+                user.email = email
+
+        # Save user if no errors occurred
+        if not messages.get_messages(request):
+            try:
+                user.save()
+                if password_changed:
+                    messages.success(request, 'Your settings and password were successfully updated!')
+                else:
+                    messages.success(request, 'Your settings were successfully updated!')
+            except Exception as e:
+                messages.error(request, 'An error occurred while saving your settings.')
+
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success' if not messages.get_messages(request) else 'error',
+                'messages': [{
+                    'tags': message.tags,
+                    'message': str(message)
+                } for message in messages.get_messages(request)]
+            })
+
+        return redirect('settings')
 
     context = {
-        'password_form': password_form,
-        'user_form': user_form,
+        'user': request.user,
     }
     return render(request, 'settings.html', context)
 
+@login_required
+@require_http_methods(["POST"])
+def delete_account_view(request):
+    try:
+        # Delete the user account
+        user = request.user
+        user.delete()
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'redirect': '/logout/'
+            })
+        
+        messages.success(request, 'Your account has been successfully deleted.')
+        return redirect('logout')
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to delete account.'
+            }, status=400)
+        
+        messages.error(request, 'Failed to delete account. Please try again.')
+        return redirect('settings')
 
 @login_required
 @require_http_methods(['POST'])
@@ -2169,13 +2224,3 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'first_name', 'last_name', 'student_id', 'short_id')
     data = list(students)
     return JsonResponse(data, safe=False)
-
-
-@login_required
-def delete_account_view(request):
-    if request.method == 'POST':
-        user = request.user
-        user.delete()
-        messages.success(request, "Your account has been deleted.")
-        return redirect('index')
-    return redirect('settings')  # Redirect to settings if not a POST request
