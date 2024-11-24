@@ -2070,3 +2070,10 @@ def delete_account_view(request):
         messages.success(request, "Your account has been deleted.")
         return redirect('index')
     return redirect('settings')  # Redirect to settings if not a POST request
+
+
+@login_required
+def task_status(request, task_id):
+    task = get_object_or_404(ImageProcessingTask, id=task_id)
+    context = {'task': task}
+    return render(request, 'task_status.html', context)
