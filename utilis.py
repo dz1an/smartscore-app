@@ -735,9 +735,11 @@ def create_csv(file_name):
         with open(file_name, 'w', newline='') as file:
             writer = csv.writer(file)
             # Write the header
-            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID","Items",
-                             "Easy","Medium","Hard", "Score", "Invalid Answer", "Incorrect Answer",
-                             "Difficulty per Incorrect","Easy Incorrect","Medium Incorrect","Hard Incorrect"])
+            writer.writerow(["Last Name", "First Name", "Middle Initial", "ID", "Set ID",
+                             "Easy","Medium","Hard", "Items","Max Score","Score", 
+                             "Invalid Ans list", "Incorrect Ans list",
+                             "Easy Incorrect","Medium Incorrect","Hard Incorrect",
+                             "Easy Inc list","Medium Inc list","Hard Inc list"])
         print(f"File '{file_name}' created successfully with headers.")
 
 
@@ -782,3 +784,43 @@ def calculate_frequencies(numbers):
     hard_inc = frequency.get(3, 0)   # Frequency of 3
     
     return easy_inc, medium_inc, hard_inc
+
+
+def sum_of_digits(sequence):
+    """
+    Sums up all the digits in a given sequence.
+
+    Parameters:
+    sequence (str): A string containing numeric digits.
+
+    Returns:
+    int: The sum of the digits.
+    """
+    return sum(int(char) for char in sequence)
+
+def group_by_values(a, b):
+    # Initialize lists to store the groups
+    one = []
+    two = []
+    three = []
+
+    # Iterate through the lists a and b simultaneously
+    for i in range(len(a)):
+        # Get the value from b as the key
+        key = b[i]
+        
+        # Append the corresponding element from a to the appropriate list
+        if key == 1:
+            one.append(a[i])
+        elif key == 2:
+            two.append(a[i])
+        elif key == 3:
+            three.append(a[i])
+
+    # Convert lists to the required string format
+    easy_inc_list = f"[{','.join(map(str, one))}]"
+    medium_inc_list = f"[{','.join(map(str, two))}]"
+    hard_inc_list = f"[{','.join(map(str, three))}]"
+    
+    # Return the results as variables
+    return easy_inc_list, medium_inc_list, hard_inc_list
