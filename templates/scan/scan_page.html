@@ -47,9 +47,9 @@
         {% if uploaded_images %}
         <div class="bg-white rounded-lg shadow">
             <h3 class="text-lg font-medium p-4 border-b">My Uploaded Images for {{ current_exam.name }}</h3>
-            <div class="overflow-x-auto">
+            <div class="overflow-y-auto max-h-96"> <!-- Added max height and vertical scrolling -->
                 <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0"> <!-- Made header sticky -->
                         <tr>
                             <th scope="col" class="px-6 py-3">#</th>
                             <th scope="col" class="px-6 py-3">Image</th>
@@ -76,6 +76,7 @@
                 </table>
             </div>
         </div>
+      
 
 
 <!-- Scan Form -->
