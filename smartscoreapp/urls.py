@@ -94,7 +94,16 @@ urlpatterns = [
 
     path('exams/<int:class_id>/<int:exam_id>/scan-results/', views.scan_results_view, name='scan_results'),
     path('class/<int:class_id>/exam/<int:exam_id>/export/', views.export_results, name='export_results'),
+    path('exams/<int:class_id>/<int:exam_id>/scan/', scan_page, name='scan_page'),
     
+    # Exam Sets and Test Paper Generation
+    path('exams/<int:class_id>/<int:exam_id>/generate-sets/', generate_exam_sets, name='generate_sets'),
+    path('exams/<int:class_id>/<int:exam_id>/download_test_paper/', download_test_paper, name='download_test_paper'),
+    
+    # Scan Results
+    path('exams/<int:class_id>/<int:exam_id>/scan-results/', scan_results_view, name='scan_results'),
+
+
     # Settings
     path('settings/', settings_view, name='settings'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

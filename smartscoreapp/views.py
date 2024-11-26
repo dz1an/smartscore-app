@@ -512,55 +512,179 @@ def select_questions_view(request, exam_id):
         'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
 
-
-
-
 @login_required
-def scan_page(request, class_id, exam_id):
-    current_class = get_object_or_404(Class, id=class_id)
-    current_exam = get_object_or_404(Exam, id=exam_id)
-    exams = current_class.exams.all()
+def remove_image(request, class_id, exam_id, image_name):
+    # Ensure the request is a POST (to avoid issues with unintended GET requests)
+    if request.method == 'POST':
+        current_class = get_object_or_404(Class, id=class_id)
+        current_exam = get_object_or_404(Exam, id=exam_id)
 
-    # Define consistent paths
+        # Get the image file path
+        folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+        file_path = os.path.join(folder_path, image_name)
+
+        try:
+            # Check if the file exists, if so, delete it
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                # Also remove the image from the session
+                uploaded_images = request.session.get('uploaded_images', [])
+                uploaded_images = [img for img in uploaded_images if img['name'] != image_name]
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, "Image deleted successfully.")
+            else:
+                messages.error(request, "File not found.")
+        except Exception as e:
+            messages.error(request, f"Error deleting file: {str(e)}")
+
+        return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+    # If not POST, redirect to scan page with an error message
+    messages.error(request, "Invalid request method.")
+    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+
+
+
+def get_upload_paths(current_class, current_exam):
+    """
+    Generate consistent upload and CSV paths for a given class and exam.
+    
+    Args:
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+    
+    Returns:
+        tuple: Containing base and absolute upload paths, and base CSV path
+    """
     base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
     absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
     base_csv_path = os.path.join('csv', f'class_{current_class.id}')
     
-    # Get all images from the directory instead of session
-    def get_uploaded_images():
-        if not os.path.exists(absolute_upload_path):
-            return []
-            
-        uploaded_images = []
-        for filename in os.listdir(absolute_upload_path):
-            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+    return base_upload_path, absolute_upload_path, base_csv_path
+
+def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
+    """
+    Retrieve uploaded images from a specific directory for the current user.
+    """
+    if not os.path.exists(absolute_upload_path):
+        return []
+    
+    uploaded_images = []
+    for filename in os.listdir(absolute_upload_path):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            # Check if the filename contains the user's identifier
+            if f"user_{current_user.id}_" in filename:
                 file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
                 uploaded_images.append({
                     'name': filename,
                     'url': file_url,
                     'absolute_path': os.path.join(absolute_upload_path, filename)
                 })
-        return uploaded_images
+    return uploaded_images
 
+def handle_image_upload(request, absolute_upload_path, current_user):
+    """
+    Handle image file uploads to a specified directory for the current user.
+    """
+    uploaded_files = request.FILES.getlist('image_upload')
+    if not uploaded_files:
+        return False
+    
+    # Ensure upload directory exists
+    os.makedirs(absolute_upload_path, exist_ok=True)
+    
+    for image in uploaded_files:
+        # Modify filename to include user identifier
+        modified_filename = f"user_{current_user.id}_{image.name}"
+        
+        # Create storage with absolute path
+        fs = FileSystemStorage(location=absolute_upload_path)
+        fs.save(modified_filename, image)
+    
+    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+    return True
+
+
+def handle_image_upload(request, absolute_upload_path, current_user):
+    """
+    Handle image file uploads to a specified directory.
+    
+    Args:
+        request (HttpRequest): The current request object
+        absolute_upload_path (str): The absolute filesystem path to upload images
+        current_user (User): The current user object
+    
+    Returns:
+        bool: True if upload was successful, False otherwise
+    """
+    uploaded_files = request.FILES.getlist('image_upload')
+    if not uploaded_files:
+        return False
+    
+    # Ensure upload directory exists
+    os.makedirs(absolute_upload_path, exist_ok=True)
+    
+    for image in uploaded_files:
+        # Modify filename to include user identifier
+        modified_filename = f"user_{current_user.id}_{image.name}"
+        
+        # Create storage with absolute path
+        fs = FileSystemStorage(location=absolute_upload_path)
+        fs.save(modified_filename, image)
+    
+    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+    return True
+
+def validate_exam_for_scanning(request, current_class, current_exam, csv_file):
+    """
+    Validate the exam and CSV file before scanning.
+    
+    Args:
+        request (HttpRequest): The current request object
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+        csv_file (str): Path to the CSV file
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    # Validate CSV file existence
+    if not os.path.exists(csv_file):
+        return False, "Required CSV file not found. Please generate exam sets first."
+    
+    return True, ""
+
+@login_required
+def scan_page(request, class_id, exam_id):
+    """
+    Main view for the scan page handling image uploads, scanning, and result management.
+    
+    Args:
+        request (HttpRequest): The current request object
+        class_id (int): ID of the current class
+        exam_id (int): ID of the current exam
+    
+    Returns:
+        HttpResponse: Rendered scan page
+    """
+    current_class = get_object_or_404(Class, id=class_id)
+    current_exam = get_object_or_404(Exam, id=exam_id)
+    exams = current_class.exams.all()
+
+    # Get upload paths
+    base_upload_path, absolute_upload_path, base_csv_path = get_upload_paths(current_class, current_exam)
+    
     result_csv = ''
     csv_file = ''
 
     if request.method == 'POST':
         if 'image_upload' in request.FILES:
-            uploaded_files = request.FILES.getlist('image_upload')
-            if uploaded_files:
-                # Ensure upload directory exists
-                os.makedirs(absolute_upload_path, exist_ok=True)
-                
-                for image in uploaded_files:
-                    # Create storage with absolute path
-                    fs = FileSystemStorage(location=absolute_upload_path)
-                    filename = fs.save(image.name, image)
-                
-                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+            if handle_image_upload(request, absolute_upload_path):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'scan_images' in request.POST:
+            # Validate exam and CSV for scanning
             csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
             selected_exam = get_object_or_404(Exam, id=csv_exam_id)
 
@@ -568,18 +692,22 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "Selected exam does not match the current exam.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            uploaded_images = get_uploaded_images()
+            uploaded_images = get_uploaded_images(absolute_upload_path, base_upload_path)
             if not uploaded_images:
                 messages.error(request, "No images available for scanning.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            # Construct CSV path consistently with generate_exam_sets view
+            # Construct CSV path consistently
             csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
                                   f'class_{current_class.id}', 
                                   f'exam_{selected_exam.id}_sets.csv')
 
-            if not os.path.exists(csv_file):
-                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
+            # Validate exam and CSV
+            is_valid, error_message = validate_exam_for_scanning(
+                request, current_class, current_exam, csv_file
+            )
+            if not is_valid:
+                messages.error(request, error_message)
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
             try:
@@ -622,7 +750,7 @@ def scan_page(request, class_id, exam_id):
         'current_exam': current_exam,
         'exams': exams,
         'upload_path': absolute_upload_path,
-        'uploaded_images': get_uploaded_images(),  # Get actual images from directory
+        'uploaded_images': get_uploaded_images(absolute_upload_path, base_upload_path),
         'result_csv': result_csv,
         'csv_file': csv_file
     }
@@ -630,36 +758,6 @@ def scan_page(request, class_id, exam_id):
     return render(request, 'scan_page.html', context)
 
 
-@login_required
-def remove_image(request, class_id, exam_id, image_name):
-    # Ensure the request is a POST (to avoid issues with unintended GET requests)
-    if request.method == 'POST':
-        current_class = get_object_or_404(Class, id=class_id)
-        current_exam = get_object_or_404(Exam, id=exam_id)
-
-        # Get the image file path
-        folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-        file_path = os.path.join(folder_path, image_name)
-
-        try:
-            # Check if the file exists, if so, delete it
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                # Also remove the image from the session
-                uploaded_images = request.session.get('uploaded_images', [])
-                uploaded_images = [img for img in uploaded_images if img['name'] != image_name]
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, "Image deleted successfully.")
-            else:
-                messages.error(request, "File not found.")
-        except Exception as e:
-            messages.error(request, f"Error deleting file: {str(e)}")
-
-        return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-    # If not POST, redirect to scan page with an error message
-    messages.error(request, "Invalid request method.")
-    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
 def scan_exam_view(request):
     folder_path = None
