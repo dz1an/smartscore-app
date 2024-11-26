@@ -37,6 +37,8 @@ from django.http import HttpResponseNotAllowed
 import textwrap
 import shutil
 from django.urls import reverse
+import subprocess
+from .models import ImageProcessingTask, Class, Exam
 
 
 User = get_user_model()
@@ -511,7 +513,6 @@ def select_questions_view(request, exam_id):
 
 
 # views.py
-from .models import ImageProcessingTask
 
 @login_required
 def scan_page(request, class_id, exam_id):
@@ -522,46 +523,87 @@ def scan_page(request, class_id, exam_id):
     # Define consistent paths
     base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
     absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
-    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
     
-    def get_uploaded_images():
-        if not os.path.exists(absolute_upload_path):
-            return []
-            
-        uploaded_images = []
-        for filename in os.listdir(absolute_upload_path):
-            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-                file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
-                uploaded_images.append({
-                    'name': filename,
-                    'url': file_url,
-                    'absolute_path': os.path.join(absolute_upload_path, filename)
-                })
-        return uploaded_images
-
+    uploaded_images = request.session.get('uploaded_images', [])
     result_csv = ''
     csv_file = ''
 
     if request.method == 'POST':
-        if 'scan_images' in request.POST:
-            # Create a task for the background worker
-            image_processing_task = ImageProcessingTask.objects.create(
-                class_id=current_class,
-                exam_id=current_exam,
-                status="queued"
-            )
+        if 'image_upload' in request.FILES:
+            uploaded_files = request.FILES.getlist('image_upload')
+            if uploaded_files:
+                # Ensure upload directory exists
+                os.makedirs(absolute_upload_path, exist_ok=True)
 
-            messages.success(request, f"Scan task queued. Task ID: {image_processing_task.id}")
-            
-            # Redirect to the same page or another page to display task status
-            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+                saved_images = []
+                for image in uploaded_files:
+                    # Create storage with absolute path
+                    fs = FileSystemStorage(location=absolute_upload_path)
+                    filename = fs.save(image.name, image)
+                    
+                    # Store the relative URL path
+                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
+                    saved_images.append({
+                        'name': filename,
+                        'url': file_url,
+                        'absolute_path': os.path.join(absolute_upload_path, filename)
+                    })
+
+                uploaded_images = saved_images
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+        elif 'scan_images' in request.POST:
+            csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
+            selected_exam = get_object_or_404(Exam, id=csv_exam_id)
+
+            if selected_exam.id != current_exam.id:
+                messages.error(request, "Selected exam does not match the current exam.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            if not uploaded_images:
+                messages.error(request, "No images available for scanning.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            # Construct CSV path consistently with generate_exam_sets view
+            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
+                                  f'class_{current_class.id}', 
+                                  f'exam_{selected_exam.id}_sets.csv')
+
+            if not os.path.exists(csv_file):
+                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            try:
+                # Create an ImageProcessingTask and set it as queued
+                task = ImageProcessingTask.objects.create(
+                    class_id=current_class,
+                    exam_id=selected_exam,
+                    result_csv=csv_file,
+                    status='queued'
+                )
+
+                # Trigger the Always-On Task using subprocess
+                subprocess.Popen(['/home/smartmcq/.virtualenvs/venv/bin/python3.10', '/home/smartmcq/smartscore-app/image_processing_worker.py'])
+
+                messages.success(request, "Scanning started in background.")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+            except Exception as e:
+                messages.error(request, f"Scanning failed: {str(e)}")
+                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+        elif 'delete_results' in request.POST:
+            # Handle deletion as per your existing logic
+            pass
 
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
         'exams': exams,
         'upload_path': absolute_upload_path,
-        'uploaded_images': get_uploaded_images(),  # Get actual images from directory
+        'uploaded_images': uploaded_images,
         'result_csv': result_csv,
         'csv_file': csv_file
     }
