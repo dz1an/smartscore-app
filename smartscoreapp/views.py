@@ -544,117 +544,6 @@ def remove_image(request, class_id, exam_id, image_name):
     return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
 
-
-
-def get_upload_paths(current_class, current_exam):
-    """
-    Generate consistent upload and CSV paths for a given class and exam.
-    
-    Args:
-        current_class (Class): The current class object
-        current_exam (Exam): The current exam object
-    
-    Returns:
-        tuple: Containing base and absolute upload paths, and base CSV path
-    """
-    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
-    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
-    
-    return base_upload_path, absolute_upload_path, base_csv_path
-
-def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
-    """
-    Retrieve uploaded images from a specific directory for the current user.
-    """
-    if not os.path.exists(absolute_upload_path):
-        return []
-    
-    uploaded_images = []
-    for filename in os.listdir(absolute_upload_path):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-            # Check if the filename contains the user's identifier
-            if f"user_{current_user.id}_" in filename:
-                file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
-                uploaded_images.append({
-                    'name': filename,
-                    'url': file_url,
-                    'absolute_path': os.path.join(absolute_upload_path, filename)
-                })
-    return uploaded_images
-
-def handle_image_upload(request, absolute_upload_path, current_user):
-    """
-    Handle image file uploads to a specified directory for the current user.
-    """
-    uploaded_files = request.FILES.getlist('image_upload')
-    if not uploaded_files:
-        return False
-    
-    # Ensure upload directory exists
-    os.makedirs(absolute_upload_path, exist_ok=True)
-    
-    for image in uploaded_files:
-        # Modify filename to include user identifier
-        modified_filename = f"user_{current_user.id}_{image.name}"
-        
-        # Create storage with absolute path
-        fs = FileSystemStorage(location=absolute_upload_path)
-        fs.save(modified_filename, image)
-    
-    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
-    return True
-
-
-def handle_image_upload(request, absolute_upload_path, current_user):
-    """
-    Handle image file uploads to a specified directory.
-    
-    Args:
-        request (HttpRequest): The current request object
-        absolute_upload_path (str): The absolute filesystem path to upload images
-        current_user (User): The current user object
-    
-    Returns:
-        bool: True if upload was successful, False otherwise
-    """
-    uploaded_files = request.FILES.getlist('image_upload')
-    if not uploaded_files:
-        return False
-    
-    # Ensure upload directory exists
-    os.makedirs(absolute_upload_path, exist_ok=True)
-    
-    for image in uploaded_files:
-        # Modify filename to include user identifier
-        modified_filename = f"user_{current_user.id}_{image.name}"
-        
-        # Create storage with absolute path
-        fs = FileSystemStorage(location=absolute_upload_path)
-        fs.save(modified_filename, image)
-    
-    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
-    return True
-
-def validate_exam_for_scanning(request, current_class, current_exam, csv_file):
-    """
-    Validate the exam and CSV file before scanning.
-    
-    Args:
-        request (HttpRequest): The current request object
-        current_class (Class): The current class object
-        current_exam (Exam): The current exam object
-        csv_file (str): Path to the CSV file
-    
-    Returns:
-        tuple: (is_valid, error_message)
-    """
-    # Validate CSV file existence
-    if not os.path.exists(csv_file):
-        return False, "Required CSV file not found. Please generate exam sets first."
-    
-    return True, ""
-
 @login_required
 def scan_page(request, class_id, exam_id):
     """
@@ -680,7 +569,7 @@ def scan_page(request, class_id, exam_id):
 
     if request.method == 'POST':
         if 'image_upload' in request.FILES:
-            if handle_image_upload(request, absolute_upload_path):
+            if handle_image_upload(request, absolute_upload_path, request.user):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'scan_images' in request.POST:
@@ -692,7 +581,7 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "Selected exam does not match the current exam.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            uploaded_images = get_uploaded_images(absolute_upload_path, base_upload_path)
+            uploaded_images = get_uploaded_images(absolute_upload_path, base_upload_path, request.user)
             if not uploaded_images:
                 messages.error(request, "No images available for scanning.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
@@ -729,13 +618,14 @@ def scan_page(request, class_id, exam_id):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'delete_results' in request.POST:
-            # Delete all images in the directory
+            # Delete all user-specific images in the directory
             if os.path.exists(absolute_upload_path):
                 for filename in os.listdir(absolute_upload_path):
                     file_path = os.path.join(absolute_upload_path, filename)
-                    if os.path.isfile(file_path):
+                    # Only delete files with the current user's identifier
+                    if os.path.isfile(file_path) and f"user_{request.user.id}_" in filename:
                         os.remove(file_path)
-                messages.success(request, "All images deleted successfully.")
+                messages.success(request, "Your uploaded images deleted successfully.")
 
             # Delete results if they exist
             if result_csv and os.path.exists(result_csv):
@@ -750,12 +640,107 @@ def scan_page(request, class_id, exam_id):
         'current_exam': current_exam,
         'exams': exams,
         'upload_path': absolute_upload_path,
-        'uploaded_images': get_uploaded_images(absolute_upload_path, base_upload_path),
+        'uploaded_images': get_uploaded_images(absolute_upload_path, base_upload_path, request.user),
         'result_csv': result_csv,
         'csv_file': csv_file
     }
 
     return render(request, 'scan_page.html', context)
+
+def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
+    """
+    Retrieve uploaded images from a specific directory for the current user.
+    
+    Args:
+        absolute_upload_path (str): Absolute path to the upload directory
+        base_upload_path (str): Base path for generating file URLs
+        current_user (User): Current user object
+    
+    Returns:
+        list: List of dictionaries containing image details
+    """
+    if not os.path.exists(absolute_upload_path):
+        return []
+    
+    uploaded_images = []
+    for filename in os.listdir(absolute_upload_path):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            # Check if the filename contains the user's identifier
+            if f"user_{current_user.id}_" in filename:
+                file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
+                uploaded_images.append({
+                    'name': filename,
+                    'url': file_url,
+                    'absolute_path': os.path.join(absolute_upload_path, filename)
+                })
+    return uploaded_images
+
+def handle_image_upload(request, absolute_upload_path, current_user):
+    """
+    Handle image file uploads to a specified directory.
+    
+    Args:
+        request (HttpRequest): The current request object
+        absolute_upload_path (str): The absolute filesystem path to upload images
+        current_user (User): The current user object
+    
+    Returns:
+        bool: True if upload was successful, False otherwise
+    """
+    uploaded_files = request.FILES.getlist('image_upload')
+    if not uploaded_files:
+        return False
+    
+    # Ensure upload directory exists
+    os.makedirs(absolute_upload_path, exist_ok=True)
+    
+    for image in uploaded_files:
+        # Modify filename to include user identifier
+        modified_filename = f"user_{current_user.id}_{image.name}"
+        
+        # Create storage with absolute path
+        fs = FileSystemStorage(location=absolute_upload_path)
+        fs.save(modified_filename, image)
+    
+    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+    return True
+
+
+def get_upload_paths(current_class, current_exam):
+    """
+    Generate consistent upload and CSV paths for a given class and exam.
+    
+    Args:
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+    
+    Returns:
+        tuple: Containing base and absolute upload paths, and base CSV path
+    """
+    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
+    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
+    
+    return base_upload_path, absolute_upload_path, base_csv_path
+
+def validate_exam_for_scanning(request, current_class, current_exam, csv_file):
+    """
+    Validate the exam and CSV file before scanning.
+    
+    Args:
+        request (HttpRequest): The current request object
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+        csv_file (str): Path to the CSV file
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    # Validate CSV file existence
+    if not os.path.exists(csv_file):
+        return False, "Required CSV file not found. Please generate exam sets first."
+    
+    return True, ""
 
 
 
@@ -1624,118 +1609,6 @@ def students_view(request):
         'title': 'Students List'  # Add a title for the page
     }
     return render(request, 'students.html', context)
-
-@login_required
-def scan_page(request, class_id, exam_id):
-    current_class = get_object_or_404(Class, id=class_id)
-    current_exam = get_object_or_404(Exam, id=exam_id)
-    exams = current_class.exams.all()
-
-    # Define consistent paths
-    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
-    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
-    
-    uploaded_images = request.session.get('uploaded_images', [])
-    result_csv = ''
-    csv_file = ''
-
-    if request.method == 'POST':
-        if 'image_upload' in request.FILES:
-            uploaded_files = request.FILES.getlist('image_upload')
-            if uploaded_files:
-                # Ensure upload directory exists
-                os.makedirs(absolute_upload_path, exist_ok=True)
-
-                saved_images = []
-                for image in uploaded_files:
-                    # Create storage with absolute path
-                    fs = FileSystemStorage(location=absolute_upload_path)
-                    filename = fs.save(image.name, image)
-                    
-                    # Store the relative URL path
-                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
-                    saved_images.append({
-                        'name': filename,
-                        'url': file_url,
-                        'absolute_path': os.path.join(absolute_upload_path, filename)
-                    })
-
-                uploaded_images = saved_images
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-        elif 'scan_images' in request.POST:
-            csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
-            selected_exam = get_object_or_404(Exam, id=csv_exam_id)
-
-            if selected_exam.id != current_exam.id:
-                messages.error(request, "Selected exam does not match the current exam.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            if not uploaded_images:
-                messages.error(request, "No images available for scanning.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            # Construct CSV path consistently with generate_exam_sets view
-            csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
-                                  f'class_{current_class.id}', 
-                                  f'exam_{selected_exam.id}_sets.csv')
-
-            if not os.path.exists(csv_file):
-                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-            try:
-                # Verify upload folder exists and contains files
-                if not os.path.exists(absolute_upload_path):
-                    messages.error(request, "Upload folder not found.")
-                    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-                # Call OMR with absolute paths
-                result_csv = omr(csv_file, absolute_upload_path)
-                
-                if result_csv and os.path.exists(result_csv):
-                    messages.success(request, "Scanning completed. Results saved successfully.")
-                else:
-                    messages.warning(request, "Scanning completed but no results were generated.")
-                    
-            except Exception as e:
-                messages.error(request, f"Scanning failed: {str(e)}")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-        elif 'delete_results' in request.POST:
-            # Delete uploaded images
-            if uploaded_images:
-                for image in uploaded_images:
-                    image_path = os.path.join(settings.MEDIA_ROOT, 
-                                            image['url'].replace(settings.MEDIA_URL, '').lstrip('/'))
-                    if os.path.exists(image_path):
-                        os.remove(image_path)
-                uploaded_images = []
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, "Uploaded images deleted successfully.")
-
-            # Delete results if they exist
-            if result_csv and os.path.exists(result_csv):
-                os.remove(result_csv)
-                result_csv = ''
-                messages.success(request, "Scan result CSV deleted successfully.")
-
-            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
-    context = {
-        'current_class': current_class,
-        'current_exam': current_exam,
-        'exams': exams,
-        'upload_path': absolute_upload_path,
-        'uploaded_images': uploaded_images,
-        'result_csv': result_csv,
-        'csv_file': csv_file
-    }
-
-    return render(request, 'scan_page.html', context)
 
 
 @login_required
