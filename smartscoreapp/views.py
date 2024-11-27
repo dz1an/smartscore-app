@@ -1674,9 +1674,9 @@ def scan_results_view(request, class_id, exam_id):
         elif percentage >= 80:
             return 'B'
         elif percentage >= 75:
-            return 'C+'
-        elif percentage >= 70:
             return 'C'
+        elif percentage >= 70:
+            return 'C-'
         elif percentage >= 65:
             return 'D+'
         elif percentage >= 60:
@@ -1710,27 +1710,27 @@ def scan_results_view(request, class_id, exam_id):
                         hard_incorrect = row.get('Hard Incorrect', '').strip('[]').split(',')
                         
                         # Calculate correct counts
-                        easy_incorrect_count = len([x for x in easy_incorrect if x.strip()])
-                        medium_incorrect_count = len([x for x in medium_incorrect if x.strip()])
-                        hard_incorrect_count = len([x for x in hard_incorrect if x.strip()])
+                        easy_correct = easy_count - len([x for x in easy_incorrect if x.strip()])
+                        medium_correct = medium_count - len([x for x in medium_incorrect if x.strip()])
+                        hard_correct = hard_count - len([x for x in hard_incorrect if x.strip()])
                         
                         answer_stats = {
                             'Easy': {
                                 'total': easy_count,
-                                'correct': easy_count - easy_incorrect_count,
-                                'incorrect': easy_incorrect_count,
+                                'correct': easy_correct,
+                                'incorrect': len([x for x in easy_incorrect if x.strip()]),
                                 'incorrect_answers': [x.strip() for x in easy_incorrect if x.strip()]
                             },
                             'Medium': {
                                 'total': medium_count,
-                                'correct': medium_count - medium_incorrect_count,
-                                'incorrect': medium_incorrect_count,
+                                'correct': medium_correct,
+                                'incorrect': len([x for x in medium_incorrect if x.strip()]),
                                 'incorrect_answers': [x.strip() for x in medium_incorrect if x.strip()]
                             },
                             'Hard': {
                                 'total': hard_count,
-                                'correct': hard_count - hard_incorrect_count,
-                                'incorrect': hard_incorrect_count,
+                                'correct': hard_correct,
+                                'incorrect': len([x for x in hard_incorrect if x.strip()]),
                                 'incorrect_answers': [x.strip() for x in hard_incorrect if x.strip()]
                             }
                         }
@@ -1766,9 +1766,9 @@ def scan_results_view(request, class_id, exam_id):
     # Calculate overall statistics
     success_count = len([r for r in scan_results if r['status'] == 'success'])
     failed_count = len([r for r in scan_results if r['status'] != 'success'])
-    passing_grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D']
+    passing_grades = ['A+', 'A', 'B+', 'B', 'C']
     passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
-    failing_count = len([r for r in scan_results if r['grade'] == 'F'])
+    failing_count = len([r for r in scan_results if r['grade'] == 'C-' or r['grade'] == 'D+' or r['grade'] == 'D' or r['grade'] == 'F'])
     
     context = {
         'current_class': current_class,
@@ -1783,10 +1783,6 @@ def scan_results_view(request, class_id, exam_id):
     }
     
     return render(request, 'scan_results.html', context)
-
-
-
-
 
 
 def export_results(request, class_id, exam_id):
@@ -1837,8 +1833,8 @@ def export_results(request, class_id, exam_id):
         
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
-        return redirect('scan_results', class_id=class_id, exam_id=exam_id) 
-
+        return redirect('scan_results', class_id=class_id, exam_id=exam_id)
+    
 
 @login_required
 def student_test_papers_view(request, student_id):
