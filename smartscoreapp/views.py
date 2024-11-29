@@ -1684,6 +1684,19 @@ def scan_results_view(request, class_id, exam_id):
         else:
             return 'F'
     
+    def parse_list(list_str):
+        # Handle empty list, bracket-enclosed list, or plain string
+        if not list_str or list_str == '[]':
+            return []
+        
+        # Remove brackets and split
+        cleaned = list_str.strip('[]')
+        if not cleaned:
+            return []
+        
+        # Split and strip each item
+        return [item.strip() for item in cleaned.split(',') if item.strip()]
+    
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
         if csv_files:
@@ -1694,7 +1707,10 @@ def scan_results_view(request, class_id, exam_id):
                     reader = csv.DictReader(file)
                     
                     for row in reader:
-                        answer_stats = {}
+                        # Parse lists correctly
+                        easy_incorrect = parse_list(row.get('Easy Incorrect', ''))
+                        medium_incorrect = parse_list(row.get('Medium Incorrect', ''))
+                        hard_incorrect = parse_list(row.get('Hard Incorrect', ''))
                         
                         # Get the basic counts from the CSV
                         easy_count = int(row.get('Easy', 0))
@@ -1704,34 +1720,33 @@ def scan_results_view(request, class_id, exam_id):
                         max_score = int(row.get('Max Score', 0))
                         score = int(row.get('Score', 0))
                         
-                        # Process incorrect answers by difficulty
-                        easy_incorrect = row.get('Easy Incorrect', '').strip('[]').split(',')
-                        medium_incorrect = row.get('Medium Incorrect', '').strip('[]').split(',')
-                        hard_incorrect = row.get('Hard Incorrect', '').strip('[]').split(',')
+                        # Calculate percentage
+                        percentage = (float(score) / float(max_score)) * 100 if max_score > 0 else 0
                         
                         # Calculate correct counts
-                        easy_correct = easy_count - len([x for x in easy_incorrect if x.strip()])
-                        medium_correct = medium_count - len([x for x in medium_incorrect if x.strip()])
-                        hard_correct = hard_count - len([x for x in hard_incorrect if x.strip()])
+                        easy_correct = easy_count - len(easy_incorrect)
+                        medium_correct = medium_count - len(medium_incorrect)
+                        hard_correct = hard_count - len(hard_incorrect)
                         
+                        # Prepare answer stats
                         answer_stats = {
                             'Easy': {
                                 'total': easy_count,
                                 'correct': easy_correct,
-                                'incorrect': len([x for x in easy_incorrect if x.strip()]),
-                                'incorrect_answers': [x.strip() for x in easy_incorrect if x.strip()]
+                                'incorrect': len(easy_incorrect),
+                                'incorrect_answers': easy_incorrect
                             },
                             'Medium': {
                                 'total': medium_count,
                                 'correct': medium_correct,
-                                'incorrect': len([x for x in medium_incorrect if x.strip()]),
-                                'incorrect_answers': [x.strip() for x in medium_incorrect if x.strip()]
+                                'incorrect': len(medium_incorrect),
+                                'incorrect_answers': medium_incorrect
                             },
                             'Hard': {
                                 'total': hard_count,
                                 'correct': hard_correct,
-                                'incorrect': len([x for x in hard_incorrect if x.strip()]),
-                                'incorrect_answers': [x.strip() for x in hard_incorrect if x.strip()]
+                                'incorrect': len(hard_incorrect),
+                                'incorrect_answers': hard_incorrect
                             }
                         }
                         
@@ -1739,6 +1754,9 @@ def scan_results_view(request, class_id, exam_id):
                         for difficulty in ['Easy', 'Medium', 'Hard']:
                             question_stats[difficulty]['total'] += answer_stats[difficulty]['total']
                             question_stats[difficulty]['correct'] += answer_stats[difficulty]['correct']
+                        
+                        # Parse incorrect answers list
+                        incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
                         
                         scan_results.append({
                             'student_id': row.get('ID', 'N/A'),
@@ -1750,11 +1768,12 @@ def scan_results_view(request, class_id, exam_id):
                             'total_items': total_items,
                             'score': score,
                             'max_score': max_score,
+                            'percentage': percentage,  # Add percentage to the dictionary
                             'grade': calculate_grade(score, max_score),
-                            'formatted_grade': f"{score}/{max_score} ({calculate_grade(score, max_score)})",
+                            'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
                             'status': 'success' if score > 0 else 'failed',
-                            'invalid_answer': row.get('Invalid Answer', ''),
-                            'incorrect_answer': row.get('Incorrect Answer', '')
+                            'invalid_answer': row.get('Invalid Ans list', ''),
+                            'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
                         })
                         
             except Exception as e:
@@ -1783,6 +1802,7 @@ def scan_results_view(request, class_id, exam_id):
     }
     
     return render(request, 'scan_results.html', context)
+
 
 
 def export_results(request, class_id, exam_id):
