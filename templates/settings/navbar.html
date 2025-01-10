@@ -12,10 +12,10 @@
             </a>
             
             <!-- Mobile menu button -->
-            <button data-collapse-toggle="mobile-menu" 
+            <button data-collapse-toggle="mobile-menu-items" 
                     type="button" 
                     class="inline-flex items-center justify-center p-2 text-gray-700 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
-                    aria-controls="mobile-menu" 
+                    aria-controls="mobile-menu-items" 
                     aria-expanded="false">
                 <span class="sr-only">Open main menu</span>
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,7 +24,7 @@
             </button>
 
             <!-- Desktop Navigation -->
-            <div class="hidden md:block" id="mobile-menu">
+            <div class="hidden w-full md:block md:w-auto">
                 <ul class="flex items-center space-x-8">
                     <li>
                         <a href="{% url 'index' %}" 
@@ -71,7 +71,7 @@
 
         <!-- Mobile Navigation -->
         <div class="md:hidden">
-            <div class="px-2 pt-2 pb-3 space-y-1" id="mobile-menu-items" style="display: none;">
+            <div class="px-2 pt-2 pb-3 space-y-1 hidden" id="mobile-menu-items">
                 <a href="{% url 'index' %}" 
                    class="block px-3 py-2 text-base font-medium rounded-md {% if request.path == '/' %}text-blue-600 bg-blue-50{% else %}text-gray-700 hover:text-blue-600 hover:bg-gray-50{% endif %}">
                     Home
@@ -106,13 +106,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const mobileMenuButton = document.querySelector('[data-collapse-toggle="mobile-menu"]');
+    const mobileMenuButton = document.querySelector('[data-collapse-toggle="mobile-menu-items"]');
     const mobileMenuItems = document.getElementById('mobile-menu-items');
     
     mobileMenuButton.addEventListener('click', function() {
         const expanded = this.getAttribute('aria-expanded') === 'true';
         this.setAttribute('aria-expanded', !expanded);
-        mobileMenuItems.style.display = expanded ? 'none' : 'block';
+        mobileMenuItems.classList.toggle('hidden');
     });
 });
 </script>
