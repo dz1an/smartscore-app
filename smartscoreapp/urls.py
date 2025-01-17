@@ -106,4 +106,7 @@ urlpatterns = [
 
     # Settings
     path('settings/', settings_view, name='settings'),
+    path('chat/message/', views.chat_message, name='chat_message'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+

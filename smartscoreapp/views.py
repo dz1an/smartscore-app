@@ -41,7 +41,8 @@ from background_task import background
 from django.http import FileResponse
 import re
 from django.core.exceptions import ValidationError
-
+import json
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 
 User = get_user_model()
@@ -2211,3 +2212,167 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'first_name', 'last_name', 'student_id', 'short_id')
     data = list(students)
     return JsonResponse(data, safe=False)
+FAQ_RESPONSES = {
+    # Authentication & Account
+    'login': {
+        'keywords': ['login', 'signin', 'sign in', 'access', 'cant login', "can't login"],
+        'response': """To log in to your account:
+1. Click the 'Login' button in the top right
+2. Enter your username and password
+3. Click 'Sign In'
+
+If you're having trouble, make sure:
+- Your caps lock is off
+- Your username and password are correct
+- You're using the correct email address"""
+    },
+    
+    'register': {
+        'keywords': ['register', 'signup', 'sign up', 'create account', 'new account'],
+        'response': """To create a new account:
+1. Click 'Register' at the login page
+2. Fill in your details
+3. Create a strong password
+4. Click 'Create Account'"""
+    },
+
+    # Classes
+    'add_class': {
+        'keywords': ['add class', 'create class', 'new class', 'how to add class'],
+        'response': """To add a new class:
+1. Go to 'Classes' in the navigation
+2. Click the 'Add Class' button
+3. Fill in the class details
+4. Click 'Create'"""
+    },
+
+    'delete_class': {
+        'keywords': ['delete class', 'remove class', 'how to delete class'],
+        'response': """To delete a class:
+1. Go to 'Classes'
+2. Open the class you want to delete
+3. Click the 'Delete' button
+4. Confirm deletion
+
+Note: This cannot be undone!"""
+    },
+
+    # Students
+    'add_student': {
+        'keywords': ['add student', 'new student', 'enroll student', 'how to add student'],
+        'response': """To add students to a class:
+1. Go to the class details page
+2. Click 'Add Student'
+3. Enter student information
+4. Click 'Add'
+
+You can also bulk upload students using a CSV file:
+1. Go to class details
+2. Click 'Bulk Upload'
+3. Download the template
+4. Fill and upload the CSV"""
+    },
+
+    # Exams
+    'create_exam': {
+        'keywords': ['create exam', 'add exam', 'new exam', 'make exam', 'how to create exam'],
+        'response': """To create a new exam:
+1. Go to 'Exams'
+2. Click 'Add Exam'
+3. Select the class
+4. Add exam details and questions
+5. Click 'Create'"""
+    },
+
+    'scan_exam': {
+        'keywords': ['scan', 'scanning', 'how to scan', 'scan exam', 'upload scan'],
+        'response': """To scan exam papers:
+1. Go to the exam details
+2. Click 'Scan'
+3. Upload the scanned papers
+4. Wait for processing
+5. Review the results
+
+Tips:
+- Ensure papers are well-lit and flat
+- All corners should be visible
+- Use high contrast settings"""
+    },
+
+    'grade_exam': {
+        'keywords': ['grade', 'grading', 'how to grade', 'view grades'],
+        'response': """To grade exams:
+1. Go to exam details
+2. Click 'Grade'
+3. Review scanned answers
+4. Adjust scores if needed
+5. Save grades
+
+You can also:
+- Export results to CSV
+- View grade statistics
+- Generate reports"""
+    },
+
+    # General Help
+    'help': {
+        'keywords': ['help', 'support', 'guide', 'tutorial', 'how to'],
+        'response': """I can help you with:
+
+Classes:
+- Adding/deleting classes
+- Managing students
+- Bulk uploads
+
+Exams:
+- Creating exams
+- Scanning papers
+- Grading
+- Viewing results
+
+Type keywords related to what you need help with."""
+    },
+}
+
+@require_http_methods(["POST"])
+@ensure_csrf_cookie
+def chat_message(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'response': 'Please login to use the chat feature.'}, status=403)
+        
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '').lower().strip()
+        
+        if not user_message:
+            return JsonResponse({'response': 'Please type a message.'}, status=400)
+            
+        response = find_faq_response(user_message)
+        return JsonResponse({'response': response})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid message format.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': 'An error occurred. Please try again.'}, status=500)
+
+def find_faq_response(message):
+    """Find the most appropriate FAQ response based on keywords."""
+    message = message.lower()
+    
+    # First check for exact matches
+    for faq_item in FAQ_RESPONSES.values():
+        if message in faq_item['keywords']:
+            return faq_item['response']
+    
+    # Then check for keyword containment
+    for faq_item in FAQ_RESPONSES.values():
+        if any(keyword in message for keyword in faq_item['keywords']):
+            return faq_item['response']
+    
+    # Default response if no matching keywords
+    return """I can help you with:
+• Classes - adding, managing students, bulk uploads
+• Exams - creating, scanning, grading
+• Account - login, registration
+
+Try using keywords like 'add class', 'scan exam', or 'grade' to get specific help."""

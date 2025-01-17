@@ -124,15 +124,13 @@
   </button>
 
   <!-- Download Answer Sheet PDF Button -->
-  <button 
-    type="button" 
-    onclick="window.location.href='{% url 'download_answer_sheet' exam.id %}'" 
-    class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center">
+  <a href="{% url 'download_answer_sheet' exam.id %}" 
+   class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center">
     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
     </svg>
     Download Answer Sheet PDF
-  </button>
+</a>
 </div>
       
 </div>
@@ -372,7 +370,7 @@
       document.getElementById('editOptionB').value = b;
       document.getElementById('editOptionC').value = c;
       document.getElementById('editOptionD').value = d;
-      document.getElementById('editOptionD').value = e;
+      document.getElementById('editOptionE').value = e;
       document.getElementById('editQuestionModal').classList.remove('hidden');
     }
 

@@ -102,6 +102,150 @@
             </div>
         </div>
     </div>
+
+<!-- Add this right before the closing </nav> tag -->
+<div class="fixed bottom-4 right-4 z-50">
+    <!-- FAQ Toggle Button -->
+    <button id="chatToggle" class="bg-blue-600 text-white rounded-full p-3 shadow-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="hidden md:inline">FAQ Help</span>
+    </button>
+
+    <!-- FAQ Window -->
+    <div id="chatWindow" class="hidden fixed bottom-20 right-4 w-96 bg-white rounded-lg shadow-xl border">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+            <h3 class="font-medium">FAQ Assistant</h3>
+            <button id="closeChatBtn" class="hover:bg-blue-700 rounded-full p-1 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- FAQ Messages -->
+        <div id="chatMessages" class="h-96 overflow-y-auto p-4 space-y-4">
+            <div class="flex items-start space-x-2">
+                <div class="bg-blue-100 rounded-lg p-3 max-w-[80%]">
+                    <p class="text-sm">Welcome to the FAQ! Try these common topics:</p>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        <li>• How to add a class</li>
+                        <li>• How to create an exam</li>
+                        <li>• How to scan papers</li>
+                    </ul>
+                    <p class="text-sm mt-2">Or type 'help' to see all topics.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Input -->
+        <form id="chatForm" class="border-t p-4">
+            <div class="flex space-x-2">
+                <input type="text" 
+                       id="messageInput" 
+                       class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                       placeholder="Search FAQ..."
+                       autocomplete="off">
+                <button type="submit" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <span class="hidden md:inline">Search</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatToggle = document.getElementById('chatToggle');
+        const chatWindow = document.getElementById('chatWindow');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const chatMessages = document.getElementById('chatMessages');
+    
+        // Toggle chat window
+        chatToggle.addEventListener('click', () => {
+            chatWindow.classList.toggle('hidden');
+        });
+    
+        // Close chat window
+        closeChatBtn.addEventListener('click', () => {
+            chatWindow.classList.add('hidden');
+        });
+    
+        // Handle message submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+    
+            // Add user message to chat
+            addMessageToChat('user', message);
+            messageInput.value = '';
+    
+            try {
+                const response = await fetch('/chat/message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ message })
+                });
+    
+                const data = await response.json();
+                addMessageToChat('assistant', data.response);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessageToChat('assistant', 'Sorry, there was an error processing your request.');
+            }
+        });
+    
+        // Helper function to add messages to chat
+        function addMessageToChat(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-2' + (sender === 'user' ? ' justify-end' : '');
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = sender === 'user' ? 
+                'bg-blue-600 text-white rounded-lg p-3 max-w-[80%]' : 
+                'bg-blue-100 rounded-lg p-3 max-w-[80%]';
+            
+            const messageText = document.createElement('p');
+            messageText.className = 'text-sm';
+            messageText.textContent = message;
+            
+            messageContent.appendChild(messageText);
+            messageDiv.appendChild(messageContent);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+    </script>
 </nav>
 
 <script>
