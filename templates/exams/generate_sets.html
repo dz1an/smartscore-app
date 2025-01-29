@@ -102,7 +102,9 @@
                 <td class="px-6 py-4 text-gray-900 dark:text-white">{{ test_set.set_id }}</td>
                 <td class="px-6 py-4 text-gray-900 dark:text-white">
                   {% if test_set.answer_key %}
-                    {{ test_set.answer_key }}
+                    {% for char in test_set.answer_key %}
+                      {% if char == '0' %}a{% elif char == '1' %}b{% elif char == '2' %}c{% elif char == '3' %}d{% elif char == '4' %}e{% else %}{{ char }}{% endif %}{% if not forloop.last %} {% endif %}
+                    {% endfor %}
                   {% else %}
                     -
                   {% endif %}
