@@ -1122,31 +1122,28 @@ def download_test_paper(request, class_id, exam_id):
     width, height = letter
     pdf_canvas.setTitle(f"Test Paper for {exam.name}")
 
-    # Loop through each test set to generate a test paper
+    # Reduce line height for more compact layout
+    line_height = 14
+    bottom_margin = 40
+
     test_sets = TestSet.objects.filter(
         exam=exam, 
         student__in=current_class.students.all()
     ).prefetch_related('questions').order_by('student__last_name', 'student__first_name')
 
-    line_height = 20
-    bottom_margin = 50
-
     for test_set in test_sets:
         student = test_set.student
         
-        # Get all questions for this test set
+        # Get all questions and order them
         all_questions = list(test_set.questions.all())
-        
-        # Create a mapping of questions based on the answer key
         ordered_questions = []
+        answers = []
+        
         if test_set.answer_key:
-            # Create answer key list for verification
-            answers = []
             for idx, key in enumerate(test_set.answer_key):
                 answer_letter = chr(ord('A') + int(key))
                 answers.append(f"{idx + 1}. {answer_letter}")
                 
-                # Find the question that matches this answer
                 matching_question = next(
                     (q for q in all_questions if ord(q.answer) - ord('A') == int(key)),
                     None
@@ -1155,57 +1152,65 @@ def download_test_paper(request, class_id, exam_id):
                     ordered_questions.append(matching_question)
                     all_questions.remove(matching_question)
         
-        # If any questions remain unmatched, append them at the end
         ordered_questions.extend(all_questions)
+        ordered_questions = ordered_questions[:20]  # Limit to 20 questions
 
         # Create a new page for each test set
         pdf_canvas.showPage()
         
         # Header
-        pdf_canvas.setFont("Helvetica-Bold", 18)
-        pdf_canvas.drawString(50, height - 40, f"{exam.name}")
+        pdf_canvas.setFont("Helvetica-Bold", 14)
+        pdf_canvas.drawString(50, height - 30, f"{exam.name}")
         
         # Student info
-        pdf_canvas.setFont("Helvetica", 14)
-        pdf_canvas.drawString(50, height - 70, f"Name: {student.last_name}, {student.first_name}")
-        pdf_canvas.drawString(50, height - 90, f"Student ID: {student.student_id}")
-        pdf_canvas.drawString(50, height - 110, f"Set ID: {test_set.set_id}")
-
-        # Instructions
-        pdf_canvas.setFont("Helvetica-Bold", 12)
-        pdf_canvas.drawString(50, height - 140, "Instructions:")
-        pdf_canvas.setFont("Helvetica", 12)
-        pdf_canvas.drawString(70, height - 160, "• Choose the best answer for each question")
-        pdf_canvas.drawString(70, height - 180, "• Write your answers on your answer sheet")
+        pdf_canvas.setFont("Helvetica", 10)
+        pdf_canvas.drawString(50, height - 50, f"Name: {student.last_name}, {student.first_name}")
+        pdf_canvas.drawString(50, height - 65, f"Student ID: {student.student_id}")
+        pdf_canvas.drawString(50, height - 80, f"Set ID: {test_set.set_id}")
         
+        # Add time limit if it exists
+        if exam.time_limit:
+            pdf_canvas.drawString(width - 150, height - 50, f"Time Limit: {exam.time_limit} minutes")
+
+        # Add instructions if they exist
+        y_position = height - 110
+        if exam.instructions:
+            pdf_canvas.setFont("Helvetica-Bold", 10)
+            pdf_canvas.drawString(50, y_position, "Instructions:")
+            y_position -= line_height * 1.5
+            
+            pdf_canvas.setFont("Helvetica", 9)
+            wrapped_instructions = textwrap.wrap(exam.instructions, width=90)
+            for line in wrapped_instructions:
+                pdf_canvas.drawString(50, y_position, line)
+                y_position -= line_height
+            
+            y_position -= line_height  # Add extra space after instructions
+
         # Questions
-        y_position = height - 220
         question_number = 1
         
         for question in ordered_questions:
             # Check if we need a new page
-            if y_position < bottom_margin + 100:
+            if y_position < bottom_margin + 50:
                 pdf_canvas.showPage()
-                pdf_canvas.setFont("Helvetica-Bold", 14)
-                pdf_canvas.drawString(50, height - 40, f"Set ID: {test_set.set_id} (continued)")
-                y_position = height - 70
+                # Show set ID and time limit on continuation pages
+                pdf_canvas.setFont("Helvetica-Bold", 10)
+                pdf_canvas.drawString(50, height - 30, f"Set ID: {test_set.set_id}")
+                if exam.time_limit:
+                    pdf_canvas.drawString(width - 150, height - 30, f"Time: {exam.time_limit} min")
+                y_position = height - 50
 
             # Question text
-            pdf_canvas.setFont("Helvetica-Bold", 12)
+            pdf_canvas.setFont("Helvetica-Bold", 9)
             question_text = f"{question_number}. {question.question_text}"
-            text_object = pdf_canvas.beginText(50, y_position)
-            text_object.setFont("Helvetica-Bold", 12)
             
-            # Wrap long question text
-            wrapped_text = textwrap.wrap(question_text, width=80)
+            wrapped_text = textwrap.wrap(question_text, width=90)
             for line in wrapped_text:
-                text_object.textLine(line)
+                pdf_canvas.drawString(50, y_position, line)
                 y_position -= line_height
             
-            pdf_canvas.drawText(text_object)
-            y_position -= line_height
-
-            # Define options with their corresponding letters
+            # Options
             options_data = [
                 ('A', question.option_a),
                 ('B', question.option_b),
@@ -1216,49 +1221,41 @@ def download_test_paper(request, class_id, exam_id):
             if question.option_e:
                 options_data.append(('E', question.option_e))
 
-            # Display options
-            pdf_canvas.setFont("Helvetica", 12)
+            pdf_canvas.setFont("Helvetica", 9)
             for opt_letter, opt_text in options_data:
-                if opt_text:  # Only display non-empty options
-                    text_object = pdf_canvas.beginText(70, y_position)
+                if opt_text:
                     option_line = f"{opt_letter}. {opt_text}"
-                    
-                    # Wrap option text if too long
-                    wrapped_option = textwrap.wrap(option_line, width=75)
+                    wrapped_option = textwrap.wrap(option_line, width=85)
                     for line in wrapped_option:
-                        text_object.textLine(line)
+                        pdf_canvas.drawString(65, y_position, line)
                         y_position -= line_height
-                    
-                    pdf_canvas.drawText(text_object)
 
-            y_position -= line_height * 1.5  # Space between questions
+            y_position -= line_height * 0.5
             question_number += 1
 
-        # Create answer key page (only for teachers/admin)
+        # Answer key page (if user is staff/admin)
         if request.user.is_staff or request.user.is_superuser:
             pdf_canvas.showPage()
-            pdf_canvas.setFont("Helvetica-Bold", 16)
+            pdf_canvas.setFont("Helvetica-Bold", 12)
             pdf_canvas.drawString(50, height - 40, "ANSWER KEY")
-            pdf_canvas.drawString(50, height - 70, f"Student: {student.last_name}, {student.first_name}")
-            pdf_canvas.drawString(50, height - 90, f"Set ID: {test_set.set_id}")
+            pdf_canvas.drawString(50, height - 60, f"Student: {student.last_name}, {student.first_name}")
+            pdf_canvas.drawString(50, height - 80, f"Set ID: {test_set.set_id}")
             
-            # Print answers in a grid format
-            y_pos = height - 120
+            # Compact grid layout for answers
+            y_pos = height - 110
             x_pos = 50
-            items_per_row = 5
+            items_per_row = 10
             
-            for idx, answer in enumerate(answers):
+            pdf_canvas.setFont("Helvetica", 10)
+            for idx, answer in enumerate(answers[:20]):
                 if idx > 0 and idx % items_per_row == 0:
                     y_pos -= line_height
                     x_pos = 50
                 pdf_canvas.drawString(x_pos, y_pos, answer)
-                x_pos += 100
+                x_pos += 50
 
-    # Close the PDF object cleanly
     pdf_canvas.save()
     return response
-
-
 
 @login_required
 def download_exam_sets_csv(request, class_id, exam_id):
@@ -2376,3 +2373,21 @@ def find_faq_response(message):
 • Account - login, registration
 
 Try using keywords like 'add class', 'scan exam', or 'grade' to get specific help."""
+
+
+
+@login_required
+def add_instructions(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    
+    if request.method == 'POST':
+        instructions = request.POST.get('instructions')
+        time_limit = request.POST.get('time_limit')
+        
+        exam.instructions = instructions
+        exam.time_limit = time_limit
+        exam.save()
+        
+        return redirect('exam_detail', exam_id=exam_id)
+    
+    return redirect('exam_detail', exam_id=exam_id)
