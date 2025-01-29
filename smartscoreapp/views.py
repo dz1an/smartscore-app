@@ -1122,12 +1122,17 @@ def download_test_paper(request, class_id, exam_id):
     width, height = letter
     pdf_canvas.setTitle(f"Test Paper for {exam.name}")
 
-
+    # Adjusted dimensions for better text fitting
     line_height = 15 
     bottom_margin = 30 
     font_size_header = 12  
     font_size_normal = 11  
     font_size_question = 11  
+    
+    # Column layout parameters
+    left_margin = 30
+    column_spacing = 20
+    column_width = (width - 2 * left_margin - column_spacing) / 2
 
     test_sets = TestSet.objects.filter(
         exam=exam, 
@@ -1163,11 +1168,11 @@ def download_test_paper(request, class_id, exam_id):
         
         # Compact header section
         pdf_canvas.setFont("Helvetica-Bold", font_size_header)
-        pdf_canvas.drawString(30, height - 20, f"{exam.name}")
+        pdf_canvas.drawString(left_margin, height - 20, f"{exam.name}")
         
         # More compact student info
         pdf_canvas.setFont("Helvetica", font_size_normal)
-        pdf_canvas.drawString(30, height - 32, f"Name: {student.last_name}, {student.first_name}")
+        pdf_canvas.drawString(left_margin, height - 32, f"Name: {student.last_name}, {student.first_name}")
         pdf_canvas.drawString(250, height - 32, f"ID: {student.student_id}")
         pdf_canvas.drawString(400, height - 32, f"Set: {test_set.set_id}")
         
@@ -1178,22 +1183,21 @@ def download_test_paper(request, class_id, exam_id):
         y_position = height - 45
         if exam.instructions:
             pdf_canvas.setFont("Helvetica-Bold", font_size_normal)
-            wrapped_instructions = textwrap.wrap(exam.instructions, width=120)  # Wider text area
+            wrapped_instructions = textwrap.wrap(exam.instructions, width=120)
             for line in wrapped_instructions:
-                pdf_canvas.drawString(30, y_position, line)
+                pdf_canvas.drawString(left_margin, y_position, line)
                 y_position -= line_height
             
-            y_position -= line_height * 0.3  # Minimal spacing after instructions
+            y_position -= line_height * 0.3
 
         # Questions section with two-column layout
         question_number = 1
-        column_width = width / 2 - 45  # Adjust for margins
         original_y = y_position
         
         for idx, question in enumerate(ordered_questions):
             # Determine column position
             is_right_column = idx >= len(ordered_questions) / 2
-            x_position = 30 if not is_right_column else width / 2
+            x_position = left_margin if not is_right_column else left_margin + column_width + column_spacing
             
             if is_right_column and idx == len(ordered_questions) / 2:
                 y_position = original_y  # Reset Y position for right column
@@ -1202,7 +1206,7 @@ def download_test_paper(request, class_id, exam_id):
             if y_position < bottom_margin + 30:
                 pdf_canvas.showPage()
                 pdf_canvas.setFont("Helvetica", font_size_normal)
-                pdf_canvas.drawString(30, height - 20, f"Set ID: {test_set.set_id}")
+                pdf_canvas.drawString(left_margin, height - 20, f"Set ID: {test_set.set_id}")
                 y_position = height - 35
                 original_y = y_position
 
@@ -1210,12 +1214,14 @@ def download_test_paper(request, class_id, exam_id):
             pdf_canvas.setFont("Helvetica-Bold", font_size_question)
             question_text = f"{question_number}. {question.question_text}"
             
-            wrapped_text = textwrap.wrap(question_text, width=int(column_width / 4))
+            # Adjusted width for better text wrapping
+            wrap_width = int((column_width - 20) / (font_size_question / 12))  # Scale based on font size
+            wrapped_text = textwrap.wrap(question_text, width=wrap_width)
             for line in wrapped_text:
                 pdf_canvas.drawString(x_position, y_position, line)
                 y_position -= line_height
             
-            # Options with minimal spacing
+            # Options with consistent spacing
             options_data = [
                 ('A', question.option_a),
                 ('B', question.option_b),
@@ -1225,41 +1231,43 @@ def download_test_paper(request, class_id, exam_id):
             ]
             
             pdf_canvas.setFont("Helvetica", font_size_normal)
+            option_indent = 15
             for opt_letter, opt_text in options_data:
                 if opt_text:
                     option_line = f"{opt_letter}. {opt_text}"
-                    wrapped_option = textwrap.wrap(option_line, width=int(column_width / 4) - 5)
+                    # Slightly narrower width for options to account for indent
+                    wrap_width = int((column_width - 25) / (font_size_normal / 12))
+                    wrapped_option = textwrap.wrap(option_line, width=wrap_width)
                     for line in wrapped_option:
-                        pdf_canvas.drawString(x_position + 10, y_position, line)
+                        pdf_canvas.drawString(x_position + option_indent, y_position, line)
                         y_position -= line_height
 
-            y_position -= line_height * 0.2  # Minimal spacing between questions
+            y_position -= line_height * 0.3  # Spacing between questions
             question_number += 1
 
         # Answer key page with compact layout
         if request.user.is_staff or request.user.is_superuser:
             pdf_canvas.showPage()
             pdf_canvas.setFont("Helvetica-Bold", font_size_header)
-            pdf_canvas.drawString(30, height - 30, "ANSWER KEY")
-            pdf_canvas.drawString(30, height - 45, f"Student: {student.last_name}, {student.first_name}")
-            pdf_canvas.drawString(30, height - 60, f"Set ID: {test_set.set_id}")
+            pdf_canvas.drawString(left_margin, height - 30, "ANSWER KEY")
+            pdf_canvas.drawString(left_margin, height - 45, f"Student: {student.last_name}, {student.first_name}")
+            pdf_canvas.drawString(left_margin, height - 60, f"Set ID: {test_set.set_id}")
             
-            # Compact answer grid with more items per row
+            # Compact answer grid
             y_pos = height - 80
-            x_pos = 30
-            items_per_row = 15  # Increased from 12
+            x_pos = left_margin
+            items_per_row = 15
             
             pdf_canvas.setFont("Helvetica", font_size_normal)
             for idx, answer in enumerate(answers[:20]):
                 if idx > 0 and idx % items_per_row == 0:
                     y_pos -= line_height
-                    x_pos = 30
+                    x_pos = left_margin
                 pdf_canvas.drawString(x_pos, y_pos, answer)
-                x_pos += 35  # Reduced spacing between answers
+                x_pos += 35
 
     pdf_canvas.save()
     return response
-
 
 
 @login_required
