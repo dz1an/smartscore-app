@@ -60,6 +60,7 @@ urlpatterns = [
     path('exams/<int:exam_id>/add_student/', add_student_to_exam_view, name='add_student_to_exam'),
     path('exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
     path('exams/<int:exam_id>/add_question/', views.add_question_view, name='add_question'),
+    path('exams/<int:exam_id>/add_instructions/', views.add_instructions, name='add_instructions'),
 
     path('student_test_papers/<int:student_id>/', views.student_test_papers_view, name='student_test_papers'),
     path('delete_question/<int:question_id>/', delete_question_view, name='delete_question'),

@@ -53,6 +53,8 @@ class Exam(models.Model):
     class_assigned = models.ForeignKey(Class, related_name='exams', on_delete=models.SET_NULL, null=True)  # Set to NULL on class deletion
     questions = models.ManyToManyField(Question, related_name='exams')
     set_id = models.CharField(max_length=6, unique=True, blank=True)  
+    instructions = models.TextField(blank=True, null=True)
+    time_limit = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.name
