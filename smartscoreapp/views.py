@@ -43,8 +43,6 @@ import re
 from django.core.exceptions import ValidationError
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie
-import subprocess
-from .models import ImageProcessingTask, Class, Exam
 
 
 User = get_user_model()
@@ -515,10 +513,37 @@ def select_questions_view(request, exam_id):
         'selected_exam_id': int(selected_exam_id) if selected_exam_id else None,
     })
 
+@login_required
+def remove_image(request, class_id, exam_id, image_name):
+    # Ensure the request is a POST (to avoid issues with unintended GET requests)
+    if request.method == 'POST':
+        current_class = get_object_or_404(Class, id=class_id)
+        current_exam = get_object_or_404(Exam, id=exam_id)
 
+        # Get the image file path
+        folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+        file_path = os.path.join(folder_path, image_name)
 
+        try:
+            # Check if the file exists, if so, delete it
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                # Also remove the image from the session
+                uploaded_images = request.session.get('uploaded_images', [])
+                uploaded_images = [img for img in uploaded_images if img['name'] != image_name]
+                request.session['uploaded_images'] = uploaded_images
+                messages.success(request, "Image deleted successfully.")
+            else:
+                messages.error(request, "File not found.")
+        except Exception as e:
+            messages.error(request, f"Error deleting file: {str(e)}")
 
-# views.py
+        return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+    # If not POST, redirect to scan page with an error message
+    messages.error(request, "Invalid request method.")
+    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
 
 @login_required
 def scan_page(request, class_id, exam_id):
@@ -576,20 +601,19 @@ def scan_page(request, class_id, exam_id):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
             try:
-                # Create an ImageProcessingTask and set it as queued
-                task = ImageProcessingTask.objects.create(
-                    class_id=current_class,
-                    exam_id=selected_exam,
-                    result_csv=csv_file,
-                    status='queued'
-                )
+                # Verify upload folder exists and contains files
+                if not os.path.exists(absolute_upload_path):
+                    messages.error(request, "Upload folder not found.")
+                    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-                # Trigger the Always-On Task using subprocess
-                subprocess.Popen(['/home/smartmcq/.virtualenvs/venv/bin/python3.10', '/home/smartmcq/smartscore-app/image_processing_worker.py'])
-
-                messages.success(request, "Scanning started in background.")
-                return redirect('scan_page', class_id=class_id, exam_id=exam_id)
-
+                # Call OMR with absolute paths
+                result_csv = omr(csv_file, absolute_upload_path)
+                
+                if result_csv and os.path.exists(result_csv):
+                    messages.success(request, "Scanning completed. Results saved successfully.")
+                else:
+                    messages.warning(request, "Scanning completed but no results were generated.")
+                    
             except Exception as e:
                 messages.error(request, f"Scanning failed: {str(e)}")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
@@ -623,7 +647,6 @@ def scan_page(request, class_id, exam_id):
     }
 
     return render(request, 'scan_page.html', context)
-
 
 def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
     """
@@ -2034,6 +2057,8 @@ def delete_student_view(request, class_id, student_id):
         'student': student,
         'class_instance': class_instance,
     })
+
+
 
     # Fetch the class and ensure the student belongs to that class
     class_instance = get_object_or_404(Class, id=class_id, user=request.user)

@@ -1,5 +1,5 @@
 node_modules
-
+smartscoreapp/__pycache__
 
 db.sqlite3
 venv
