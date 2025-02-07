@@ -1,41 +1,262 @@
 {% load static %}
 
-<nav class="bg-gray-300 border-gray-200 px-2 sm:px-4 py-6 rounded dark:bg-gray-500">
-    <div class="container flex flex-wrap items-center justify-between mx-auto">
-        <a href="{% url 'index' %}" class="flex items-center"> 
-            <img src="{% static 'src/img/\Smartscore_logo.png' %}" class="h-10 w-30" id="sphinx-landing" alt="Logo" />
-        </a>
-        
-        <button data-collapse-toggle="mobile-menu" type="button" class="inline-flex items-center p-2 ml-3 text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="mobile-menu" aria-expanded="false">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
-            <svg class="hidden w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-        </button>
-        <div class="hidden w-full md:block md:w-auto" id="mobile-menu">
-            <ul class="flex flex-col mt-4 md:flex-row md:space-x-8 md:mt-0 md:text-sm md:font-medium">
-                <li>
-                    <a href="{% url 'index' %}" class="block py-2 pl-3 pr-4 text-lg {% if request.path == '/' %}text-blue-700{% else %}text-black{% endif %}border-b border-gray-100 hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Home</a>
-                </li>
-                {% if user.is_authenticated %}
-                <li>
-                    <a href="{% url 'classes' %}" class="block py-2 pl-3 pr-4 text-lg {% if request.path == '/classes/' %}text-blue-700{% else %}text-black{% endif %} border-b border-gray-100 hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Classes</a>
-                </li>
-                <li>
-                    <a href="{% url 'exams' %}" class="block py-2 pl-3 pr-4 text-lg {% if request.path == '/exams/' %}text-blue-700{% else %}text-black{% endif %} border-b border-gray-100 hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Exams</a>
-                </li>
+<nav class="sticky top-0 z-50 bg-white border-b shadow-sm">
+    <div class="container px-4 mx-auto">
+        <div class="flex items-center justify-between h-16">
+            <!-- Logo -->
+            <a href="{% url 'index' %}" class="flex items-center space-x-3"> 
+                <img src="{% static 'src/img/Smartscore_logo.png' %}" 
+                     class="h-8 w-auto transition-transform hover:scale-105" 
+                     id="sphinx-landing" 
+                     alt="Logo" />
+            </a>
+            
+            <!-- Mobile menu button -->
+            <button data-collapse-toggle="mobile-menu-items" 
+                    type="button" 
+                    class="inline-flex items-center justify-center p-2 text-gray-700 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                    aria-controls="mobile-menu-items" 
+                    aria-expanded="false">
+                <span class="sr-only">Open main menu</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path class="block" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
 
-                
-                <li>
-                    <a href="{% url 'settings' %}" class="block py-2 pl-3 pr-4 text-lg {% if request.path == '/settings/' %}text-blue-700{% else %}text-black{% endif %} border-b border-gray-100 hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Settings</a>
-                </li>
-                <li>
-                    <a href="{% url 'logout' %}" class="block py-2 pl-3 pr-4 text-lg text-black hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Logout</a>
-                </li>
+            <!-- Desktop Navigation -->
+            <div class="hidden w-full md:block md:w-auto">
+                <ul class="flex items-center space-x-8">
+                    <li>
+                        <a href="{% url 'index' %}" 
+                           class="text-sm font-medium transition-colors {% if request.path == '/' %}text-black-600{% else %}text-gray-700 hover:text-blue-600{% endif %}">
+                            Home
+                        </a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li>
+                        <a href="{% url 'classes' %}" 
+                           class="text-sm font-medium transition-colors {% if request.path == '/classes/' %}text-blue-600{% else %}text-gray-700 hover:text-blue-600{% endif %}">
+                            Classes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'exams' %}" 
+                           class="text-sm font-medium transition-colors {% if request.path == '/exams/' %}text-blue-600{% else %}text-gray-700 hover:text-blue-600{% endif %}">
+                            Exams
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'settings' %}" 
+                           class="text-sm font-medium transition-colors {% if request.path == '/settings/' %}text-blue-600{% else %}text-gray-700 hover:text-blue-600{% endif %}">
+                            Settings
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'logout' %}" 
+                           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                            Logout
+                        </a>
+                    </li>
+                    {% else %}
+                    <li>
+                        <a href="{% url 'login' %}" 
+                           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                            Login
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div class="md:hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 hidden" id="mobile-menu-items">
+                <a href="{% url 'index' %}" 
+                   class="block px-3 py-2 text-base font-medium rounded-md {% if request.path == '/' %}text-blue-600 bg-blue-50{% else %}text-gray-700 hover:text-blue-600 hover:bg-gray-50{% endif %}">
+                    Home
+                </a>
+                {% if user.is_authenticated %}
+                <a href="{% url 'classes' %}" 
+                   class="block px-3 py-2 text-base font-medium rounded-md {% if request.path == '/classes/' %}text-blue-600 bg-blue-50{% else %}text-gray-700 hover:text-blue-600 hover:bg-gray-50{% endif %}">
+                    Classes
+                </a>
+                <a href="{% url 'exams' %}" 
+                   class="block px-3 py-2 text-base font-medium rounded-md {% if request.path == '/exams/' %}text-blue-600 bg-blue-50{% else %}text-gray-700 hover:text-blue-600 hover:bg-gray-50{% endif %}">
+                    Exams
+                </a>
+                <a href="{% url 'settings' %}" 
+                   class="block px-3 py-2 text-base font-medium rounded-md {% if request.path == '/settings/' %}text-blue-600 bg-blue-50{% else %}text-gray-700 hover:text-blue-600 hover:bg-gray-50{% endif %}">
+                    Settings
+                </a>
+                <a href="{% url 'logout' %}" 
+                   class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-blue-600 hover:bg-gray-50">
+                    Logout
+                </a>
                 {% else %}
-                <li>
-                    <a href="{% url 'login' %}" class="block py-2 pl-3 pr-4 text-lg text-black hover:bg-gray-50 md:hover:bg-transparent md:border-0 md:hover:text-blue-600 md:p-0 dark:text-gray-400 md:dark:hover:text-white dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Login</a>
-                </li>
+                <a href="{% url 'login' %}" 
+                   class="block px-3 py-2 text-base font-medium text-gray-700 rounded-md hover:text-blue-600 hover:bg-gray-50">
+                    Login
+                </a>
                 {% endif %}
-            </ul>
+            </div>
         </div>
     </div>
+
+<!-- Add this right before the closing </nav> tag -->
+<div class="fixed bottom-4 right-4 z-50">
+    <!-- FAQ Toggle Button -->
+    <button id="chatToggle" class="bg-blue-600 text-white rounded-full p-3 shadow-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="hidden md:inline">FAQ Help</span>
+    </button>
+
+    <!-- FAQ Window -->
+    <div id="chatWindow" class="hidden fixed bottom-20 right-4 w-96 bg-white rounded-lg shadow-xl border">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+            <h3 class="font-medium">FAQ Assistant</h3>
+            <button id="closeChatBtn" class="hover:bg-blue-700 rounded-full p-1 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- FAQ Messages -->
+        <div id="chatMessages" class="h-96 overflow-y-auto p-4 space-y-4">
+            <div class="flex items-start space-x-2">
+                <div class="bg-blue-100 rounded-lg p-3 max-w-[80%]">
+                    <p class="text-sm">Welcome to the FAQ! Try these common topics:</p>
+                    <ul class="mt-2 space-y-1 text-sm">
+                        <li>• How to add a class</li>
+                        <li>• How to create an exam</li>
+                        <li>• How to scan papers</li>
+                    </ul>
+                    <p class="text-sm mt-2">Or type 'help' to see all topics.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Input -->
+        <form id="chatForm" class="border-t p-4">
+            <div class="flex space-x-2">
+                <input type="text" 
+                       id="messageInput" 
+                       class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                       placeholder="Search FAQ..."
+                       autocomplete="off">
+                <button type="submit" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <span class="hidden md:inline">Search</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatToggle = document.getElementById('chatToggle');
+        const chatWindow = document.getElementById('chatWindow');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const chatMessages = document.getElementById('chatMessages');
+    
+        // Toggle chat window
+        chatToggle.addEventListener('click', () => {
+            chatWindow.classList.toggle('hidden');
+        });
+    
+        // Close chat window
+        closeChatBtn.addEventListener('click', () => {
+            chatWindow.classList.add('hidden');
+        });
+    
+        // Handle message submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+    
+            // Add user message to chat
+            addMessageToChat('user', message);
+            messageInput.value = '';
+    
+            try {
+                const response = await fetch('/chat/message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ message })
+                });
+    
+                const data = await response.json();
+                addMessageToChat('assistant', data.response);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessageToChat('assistant', 'Sorry, there was an error processing your request.');
+            }
+        });
+    
+        // Helper function to add messages to chat
+        function addMessageToChat(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-2' + (sender === 'user' ? ' justify-end' : '');
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = sender === 'user' ? 
+                'bg-blue-600 text-white rounded-lg p-3 max-w-[80%]' : 
+                'bg-blue-100 rounded-lg p-3 max-w-[80%]';
+            
+            const messageText = document.createElement('p');
+            messageText.className = 'text-sm';
+            messageText.textContent = message;
+            
+            messageContent.appendChild(messageText);
+            messageDiv.appendChild(messageContent);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+    </script>
 </nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuButton = document.querySelector('[data-collapse-toggle="mobile-menu-items"]');
+    const mobileMenuItems = document.getElementById('mobile-menu-items');
+    
+    mobileMenuButton.addEventListener('click', function() {
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        this.setAttribute('aria-expanded', !expanded);
+        mobileMenuItems.classList.toggle('hidden');
+    });
+});
+</script>

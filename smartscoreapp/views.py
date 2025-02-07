@@ -37,6 +37,12 @@ from django.http import HttpResponseNotAllowed
 import textwrap
 import shutil
 from django.urls import reverse
+from background_task import background
+from django.http import FileResponse
+import re
+from django.core.exceptions import ValidationError
+import json
+from django.views.decorators.csrf import ensure_csrf_cookie
 import subprocess
 from .models import ImageProcessingTask, Class, Exam
 
@@ -516,45 +522,34 @@ def select_questions_view(request, exam_id):
 
 @login_required
 def scan_page(request, class_id, exam_id):
+    """
+    Main view for the scan page handling image uploads, scanning, and result management.
+    
+    Args:
+        request (HttpRequest): The current request object
+        class_id (int): ID of the current class
+        exam_id (int): ID of the current exam
+    
+    Returns:
+        HttpResponse: Rendered scan page
+    """
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     exams = current_class.exams.all()
 
-    # Define consistent paths
-    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
+    # Get upload paths
+    base_upload_path, absolute_upload_path, base_csv_path = get_upload_paths(current_class, current_exam)
     
-    uploaded_images = request.session.get('uploaded_images', [])
     result_csv = ''
     csv_file = ''
 
     if request.method == 'POST':
         if 'image_upload' in request.FILES:
-            uploaded_files = request.FILES.getlist('image_upload')
-            if uploaded_files:
-                # Ensure upload directory exists
-                os.makedirs(absolute_upload_path, exist_ok=True)
-
-                saved_images = []
-                for image in uploaded_files:
-                    # Create storage with absolute path
-                    fs = FileSystemStorage(location=absolute_upload_path)
-                    filename = fs.save(image.name, image)
-                    
-                    # Store the relative URL path
-                    file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
-                    saved_images.append({
-                        'name': filename,
-                        'url': file_url,
-                        'absolute_path': os.path.join(absolute_upload_path, filename)
-                    })
-
-                uploaded_images = saved_images
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+            if handle_image_upload(request, absolute_upload_path, request.user):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'scan_images' in request.POST:
+            # Validate exam and CSV for scanning
             csv_exam_id = request.POST.get('csv_indicator', current_exam.id)
             selected_exam = get_object_or_404(Exam, id=csv_exam_id)
 
@@ -562,17 +557,22 @@ def scan_page(request, class_id, exam_id):
                 messages.error(request, "Selected exam does not match the current exam.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
+            uploaded_images = get_uploaded_images(absolute_upload_path, base_upload_path, request.user)
             if not uploaded_images:
                 messages.error(request, "No images available for scanning.")
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
-            # Construct CSV path consistently with generate_exam_sets view
+            # Construct CSV path consistently
             csv_file = os.path.join(settings.MEDIA_ROOT, 'csv', 
                                   f'class_{current_class.id}', 
                                   f'exam_{selected_exam.id}_sets.csv')
 
-            if not os.path.exists(csv_file):
-                messages.error(request, "Required CSV file not found. Please generate exam sets first.")
+            # Validate exam and CSV
+            is_valid, error_message = validate_exam_for_scanning(
+                request, current_class, current_exam, csv_file
+            )
+            if not is_valid:
+                messages.error(request, error_message)
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
             try:
@@ -595,15 +595,29 @@ def scan_page(request, class_id, exam_id):
                 return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
         elif 'delete_results' in request.POST:
-            # Handle deletion as per your existing logic
-            pass
+            # Delete all user-specific images in the directory
+            if os.path.exists(absolute_upload_path):
+                for filename in os.listdir(absolute_upload_path):
+                    file_path = os.path.join(absolute_upload_path, filename)
+                    # Only delete files with the current user's identifier
+                    if os.path.isfile(file_path) and f"user_{request.user.id}_" in filename:
+                        os.remove(file_path)
+                messages.success(request, "Your uploaded images deleted successfully.")
+
+            # Delete results if they exist
+            if result_csv and os.path.exists(result_csv):
+                os.remove(result_csv)
+                result_csv = ''
+                messages.success(request, "Scan result CSV deleted successfully.")
+
+            return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
     context = {
         'current_class': current_class,
         'current_exam': current_exam,
         'exams': exams,
         'upload_path': absolute_upload_path,
-        'uploaded_images': uploaded_images,
+        'uploaded_images': get_uploaded_images(absolute_upload_path, base_upload_path, request.user),
         'result_csv': result_csv,
         'csv_file': csv_file
     }
@@ -611,37 +625,102 @@ def scan_page(request, class_id, exam_id):
     return render(request, 'scan_page.html', context)
 
 
+def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
+    """
+    Retrieve uploaded images from a specific directory for the current user.
+    
+    Args:
+        absolute_upload_path (str): Absolute path to the upload directory
+        base_upload_path (str): Base path for generating file URLs
+        current_user (User): Current user object
+    
+    Returns:
+        list: List of dictionaries containing image details
+    """
+    if not os.path.exists(absolute_upload_path):
+        return []
+    
+    uploaded_images = []
+    for filename in os.listdir(absolute_upload_path):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            # Check if the filename contains the user's identifier
+            if f"user_{current_user.id}_" in filename:
+                file_url = os.path.join(settings.MEDIA_URL, base_upload_path, filename)
+                uploaded_images.append({
+                    'name': filename,
+                    'url': file_url,
+                    'absolute_path': os.path.join(absolute_upload_path, filename)
+                })
+    return uploaded_images
 
-@login_required
-def remove_image(request, class_id, exam_id, image_name):
-    # Ensure the request is a POST (to avoid issues with unintended GET requests)
-    if request.method == 'POST':
-        current_class = get_object_or_404(Class, id=class_id)
-        current_exam = get_object_or_404(Exam, id=exam_id)
+def handle_image_upload(request, absolute_upload_path, current_user):
+    """
+    Handle image file uploads to a specified directory.
+    
+    Args:
+        request (HttpRequest): The current request object
+        absolute_upload_path (str): The absolute filesystem path to upload images
+        current_user (User): The current user object
+    
+    Returns:
+        bool: True if upload was successful, False otherwise
+    """
+    uploaded_files = request.FILES.getlist('image_upload')
+    if not uploaded_files:
+        return False
+    
+    # Ensure upload directory exists
+    os.makedirs(absolute_upload_path, exist_ok=True)
+    
+    for image in uploaded_files:
+        # Modify filename to include user identifier
+        modified_filename = f"user_{current_user.id}_{image.name}"
+        
+        # Create storage with absolute path
+        fs = FileSystemStorage(location=absolute_upload_path)
+        fs.save(modified_filename, image)
+    
+    messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
+    return True
 
-        # Get the image file path
-        folder_path = os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
-        file_path = os.path.join(folder_path, image_name)
 
-        try:
-            # Check if the file exists, if so, delete it
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                # Also remove the image from the session
-                uploaded_images = request.session.get('uploaded_images', [])
-                uploaded_images = [img for img in uploaded_images if img['name'] != image_name]
-                request.session['uploaded_images'] = uploaded_images
-                messages.success(request, "Image deleted successfully.")
-            else:
-                messages.error(request, "File not found.")
-        except Exception as e:
-            messages.error(request, f"Error deleting file: {str(e)}")
+def get_upload_paths(current_class, current_exam):
+    """
+    Generate consistent upload and CSV paths for a given class and exam.
+    
+    Args:
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+    
+    Returns:
+        tuple: Containing base and absolute upload paths, and base CSV path
+    """
+    base_upload_path = os.path.join('uploads', f'class_{current_class.id}', f'exam_{current_exam.id}')
+    absolute_upload_path = os.path.join(settings.MEDIA_ROOT, base_upload_path)
+    base_csv_path = os.path.join('csv', f'class_{current_class.id}')
+    
+    return base_upload_path, absolute_upload_path, base_csv_path
 
-        return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+def validate_exam_for_scanning(request, current_class, current_exam, csv_file):
+    """
+    Validate the exam and CSV file before scanning.
+    
+    Args:
+        request (HttpRequest): The current request object
+        current_class (Class): The current class object
+        current_exam (Exam): The current exam object
+        csv_file (str): Path to the CSV file
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    # Validate CSV file existence
+    if not os.path.exists(csv_file):
+        return False, "Required CSV file not found. Please generate exam sets first."
+    
+    return True, ""
 
-    # If not POST, redirect to scan page with an error message
-    messages.error(request, "Invalid request method.")
-    return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
 
 def scan_exam_view(request):
     folder_path = None
@@ -829,7 +908,7 @@ def generate_exam_sets(request, class_id, exam_id):
         else:
             messages.warning(request, "No sets were generated.")
 
-        return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
+        return redirect('exam_detail', exam_id=exam_id)  # Changed from 'exam_details' to 'exam_detail'
 
     context = {
         'exam': exam,
@@ -1015,36 +1094,41 @@ def download_test_paper(request, class_id, exam_id):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="test_paper_class_{current_class.id}_exam_{exam.id}.pdf"'
 
-    # Create the PDF object, using the response object as its "file."
+    # Create the PDF object
     pdf_canvas = canvas.Canvas(response, pagesize=letter)
     width, height = letter
     pdf_canvas.setTitle(f"Test Paper for {exam.name}")
 
-    # Loop through each test set to generate a test paper
+    # Adjusted dimensions for better text fitting
+    line_height = 15 
+    bottom_margin = 30 
+    font_size_header = 12  
+    font_size_normal = 11  
+    font_size_question = 11  
+    
+    # Column layout parameters
+    left_margin = 30
+    column_spacing = 20
+    column_width = (width - 2 * left_margin - column_spacing) / 2
+
     test_sets = TestSet.objects.filter(
         exam=exam, 
         student__in=current_class.students.all()
     ).prefetch_related('questions').order_by('student__last_name', 'student__first_name')
 
-    line_height = 20
-    bottom_margin = 50
-
     for test_set in test_sets:
         student = test_set.student
         
-        # Get all questions for this test set
+        # Process questions and answers
         all_questions = list(test_set.questions.all())
-        
-        # Create a mapping of questions based on the answer key
         ordered_questions = []
+        answers = []
+        
         if test_set.answer_key:
-            # Create answer key list for verification
-            answers = []
             for idx, key in enumerate(test_set.answer_key):
                 answer_letter = chr(ord('A') + int(key))
                 answers.append(f"{idx + 1}. {answer_letter}")
                 
-                # Find the question that matches this answer
                 matching_question = next(
                     (q for q in all_questions if ord(q.answer) - ord('A') == int(key)),
                     None
@@ -1053,109 +1137,114 @@ def download_test_paper(request, class_id, exam_id):
                     ordered_questions.append(matching_question)
                     all_questions.remove(matching_question)
         
-        # If any questions remain unmatched, append them at the end
         ordered_questions.extend(all_questions)
+        ordered_questions = ordered_questions[:20]
 
-        # Create a new page for each test set
+        # New page for each test set
         pdf_canvas.showPage()
         
-        # Header
-        pdf_canvas.setFont("Helvetica-Bold", 18)
-        pdf_canvas.drawString(50, height - 40, f"{exam.name}")
+        # Compact header section
+        pdf_canvas.setFont("Helvetica-Bold", font_size_header)
+        pdf_canvas.drawString(left_margin, height - 20, f"{exam.name}")
         
-        # Student info
-        pdf_canvas.setFont("Helvetica", 14)
-        pdf_canvas.drawString(50, height - 70, f"Name: {student.last_name}, {student.first_name}")
-        pdf_canvas.drawString(50, height - 90, f"Student ID: {student.student_id}")
-        pdf_canvas.drawString(50, height - 110, f"Set ID: {test_set.set_id}")
+        # More compact student info
+        pdf_canvas.setFont("Helvetica", font_size_normal)
+        pdf_canvas.drawString(left_margin, height - 32, f"Name: {student.last_name}, {student.first_name}")
+        pdf_canvas.drawString(250, height - 32, f"ID: {student.student_id}")
+        pdf_canvas.drawString(400, height - 32, f"Set: {test_set.set_id}")
+        
+        if exam.time_limit:
+            pdf_canvas.drawString(width - 100, height - 32, f"Time: {exam.time_limit} min")
 
-        # Instructions
-        pdf_canvas.setFont("Helvetica-Bold", 12)
-        pdf_canvas.drawString(50, height - 140, "Instructions:")
-        pdf_canvas.setFont("Helvetica", 12)
-        pdf_canvas.drawString(70, height - 160, "• Choose the best answer for each question")
-        pdf_canvas.drawString(70, height - 180, "• Write your answers on your answer sheet")
-        
-        # Questions
-        y_position = height - 220
-        question_number = 1
-        
-        for question in ordered_questions:
-            # Check if we need a new page
-            if y_position < bottom_margin + 100:
-                pdf_canvas.showPage()
-                pdf_canvas.setFont("Helvetica-Bold", 14)
-                pdf_canvas.drawString(50, height - 40, f"Set ID: {test_set.set_id} (continued)")
-                y_position = height - 70
-
-            # Question text
-            pdf_canvas.setFont("Helvetica-Bold", 12)
-            question_text = f"{question_number}. {question.question_text}"
-            text_object = pdf_canvas.beginText(50, y_position)
-            text_object.setFont("Helvetica-Bold", 12)
-            
-            # Wrap long question text
-            wrapped_text = textwrap.wrap(question_text, width=80)
-            for line in wrapped_text:
-                text_object.textLine(line)
+        # Compact instructions
+        y_position = height - 45
+        if exam.instructions:
+            pdf_canvas.setFont("Helvetica-Bold", font_size_normal)
+            wrapped_instructions = textwrap.wrap(exam.instructions, width=120)
+            for line in wrapped_instructions:
+                pdf_canvas.drawString(left_margin, y_position, line)
                 y_position -= line_height
             
-            pdf_canvas.drawText(text_object)
-            y_position -= line_height
+            y_position -= line_height * 0.3
 
-            # Define options with their corresponding letters
+        # Questions section with two-column layout
+        question_number = 1
+        original_y = y_position
+        
+        for idx, question in enumerate(ordered_questions):
+            # Determine column position
+            is_right_column = idx >= len(ordered_questions) / 2
+            x_position = left_margin if not is_right_column else left_margin + column_width + column_spacing
+            
+            if is_right_column and idx == len(ordered_questions) / 2:
+                y_position = original_y  # Reset Y position for right column
+
+            # New page check
+            if y_position < bottom_margin + 30:
+                pdf_canvas.showPage()
+                pdf_canvas.setFont("Helvetica", font_size_normal)
+                pdf_canvas.drawString(left_margin, height - 20, f"Set ID: {test_set.set_id}")
+                y_position = height - 35
+                original_y = y_position
+
+            # Question text
+            pdf_canvas.setFont("Helvetica-Bold", font_size_question)
+            question_text = f"{question_number}. {question.question_text}"
+            
+            # Adjusted width for better text wrapping
+            wrap_width = int((column_width - 20) / (font_size_question / 12))  # Scale based on font size
+            wrapped_text = textwrap.wrap(question_text, width=wrap_width)
+            for line in wrapped_text:
+                pdf_canvas.drawString(x_position, y_position, line)
+                y_position -= line_height
+            
+            # Options with consistent spacing
             options_data = [
                 ('A', question.option_a),
                 ('B', question.option_b),
                 ('C', question.option_c),
-                ('D', question.option_d)
+                ('D', question.option_d),
+                ('E', question.option_e)
             ]
             
-            if question.option_e:
-                options_data.append(('E', question.option_e))
-
-            # Display options
-            pdf_canvas.setFont("Helvetica", 12)
+            pdf_canvas.setFont("Helvetica", font_size_normal)
+            option_indent = 15
             for opt_letter, opt_text in options_data:
-                if opt_text:  # Only display non-empty options
-                    text_object = pdf_canvas.beginText(70, y_position)
+                if opt_text:
                     option_line = f"{opt_letter}. {opt_text}"
-                    
-                    # Wrap option text if too long
-                    wrapped_option = textwrap.wrap(option_line, width=75)
+                    # Slightly narrower width for options to account for indent
+                    wrap_width = int((column_width - 25) / (font_size_normal / 12))
+                    wrapped_option = textwrap.wrap(option_line, width=wrap_width)
                     for line in wrapped_option:
-                        text_object.textLine(line)
+                        pdf_canvas.drawString(x_position + option_indent, y_position, line)
                         y_position -= line_height
-                    
-                    pdf_canvas.drawText(text_object)
 
-            y_position -= line_height * 1.5  # Space between questions
+            y_position -= line_height * 0.3  # Spacing between questions
             question_number += 1
 
-        # Create answer key page (only for teachers/admin)
+        # Answer key page with compact layout
         if request.user.is_staff or request.user.is_superuser:
             pdf_canvas.showPage()
-            pdf_canvas.setFont("Helvetica-Bold", 16)
-            pdf_canvas.drawString(50, height - 40, "ANSWER KEY")
-            pdf_canvas.drawString(50, height - 70, f"Student: {student.last_name}, {student.first_name}")
-            pdf_canvas.drawString(50, height - 90, f"Set ID: {test_set.set_id}")
+            pdf_canvas.setFont("Helvetica-Bold", font_size_header)
+            pdf_canvas.drawString(left_margin, height - 30, "ANSWER KEY")
+            pdf_canvas.drawString(left_margin, height - 45, f"Student: {student.last_name}, {student.first_name}")
+            pdf_canvas.drawString(left_margin, height - 60, f"Set ID: {test_set.set_id}")
             
-            # Print answers in a grid format
-            y_pos = height - 120
-            x_pos = 50
-            items_per_row = 5
+            # Compact answer grid
+            y_pos = height - 80
+            x_pos = left_margin
+            items_per_row = 15
             
-            for idx, answer in enumerate(answers):
+            pdf_canvas.setFont("Helvetica", font_size_normal)
+            for idx, answer in enumerate(answers[:20]):
                 if idx > 0 and idx % items_per_row == 0:
                     y_pos -= line_height
-                    x_pos = 50
+                    x_pos = left_margin
                 pdf_canvas.drawString(x_pos, y_pos, answer)
-                x_pos += 100
+                x_pos += 35
 
-    # Close the PDF object cleanly
     pdf_canvas.save()
     return response
-
 
 
 @login_required
@@ -1355,6 +1444,19 @@ def exam_detail_view(request, exam_id):
         'sort_by': sort_by  # Pass the sort option to the template
     })
 
+@login_required
+def download_answer_sheet(request, exam_id):
+   exam = get_object_or_404(Exam, id=exam_id)
+   
+   pdf_path = os.path.join(settings.BASE_DIR, 'static', 'pdf', 'SmartScore_AnswerSheet_Template.pdf')
+   
+   if os.path.exists(pdf_path):
+       response = FileResponse(open(pdf_path, 'rb'), as_attachment=True, filename=f'exam_{exam_id}_answer_sheet.pdf')
+       return response
+   else:
+       from django.http import HttpResponseNotFound
+       return HttpResponseNotFound(f'Answer sheet PDF not found at {pdf_path}')
+
 
 @login_required
 def grade_exam_view(request, exam_id, student_id):
@@ -1497,7 +1599,6 @@ def students_view(request):
     return render(request, 'students.html', context)
 
 
-
 @login_required
 def delete_scan_results(request, class_id, exam_id):
     """Delete scan results for a specific exam"""
@@ -1545,7 +1646,6 @@ def scan_results_view(request, class_id, exam_id):
         'Medium': {'correct': 0, 'total': 0},
         'Hard': {'correct': 0, 'total': 0}
     }
-    csv_path = None
     
     def calculate_grade(score, max_score):
         if not score or not max_score:
@@ -1562,9 +1662,9 @@ def scan_results_view(request, class_id, exam_id):
         elif percentage >= 80:
             return 'B'
         elif percentage >= 75:
-            return 'C+'
-        elif percentage >= 70:
             return 'C'
+        elif percentage >= 70:
+            return 'C-'
         elif percentage >= 65:
             return 'D+'
         elif percentage >= 60:
@@ -1572,85 +1672,110 @@ def scan_results_view(request, class_id, exam_id):
         else:
             return 'F'
     
-    def format_grade(score, max_score):
-        if not score or not max_score:
-            return 'N/A'
+    def parse_list(list_str):
+        # Handle empty list, bracket-enclosed list, or plain string
+        if not list_str or list_str == '[]':
+            return []
         
-        try:
-            percentage = (float(score) / float(max_score)) * 100
-            letter_grade = calculate_grade(score, max_score)
-            return f"{percentage:.1f}% ({letter_grade})"
-        except (ValueError, ZeroDivisionError):
-            return 'N/A'
+        # Remove brackets and split
+        cleaned = list_str.strip('[]')
+        if not cleaned:
+            return []
+        
+        # Split and strip each item
+        return [item.strip() for item in cleaned.split(',') if item.strip()]
     
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
         if csv_files:
             csv_path = os.path.join(upload_dir, sorted(csv_files)[-1])
-    
-    if csv_path:
-        try:
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                reader = csv.DictReader(file)
-                
-                for row in reader:
-                    # Process answers based on difficulty
-                    easy_answers = [int(x) for x in row.get('Easy', '').strip('[]').split(',') if x.strip()]
-                    medium_answers = [int(x) for x in row.get('Medium', '').strip('[]').split(',') if x.strip()]
-                    hard_answers = [int(x) for x in row.get('Hard', '').strip('[]').split(',') if x.strip()]
+            
+            try:
+                with open(csv_path, 'r', encoding='utf-8') as file:
+                    reader = csv.DictReader(file)
                     
-                    # Calculate scores by difficulty
-                    answers_by_difficulty = {
-                        'Easy': easy_answers,
-                        'Medium': medium_answers,
-                        'Hard': hard_answers
-                    }
-                    
-                    # Update statistics
-                    for difficulty, answers in answers_by_difficulty.items():
-                        question_stats[difficulty]['total'] += len(answers)
-                        question_stats[difficulty]['correct'] += len(answers)
-                    
-                    score = row.get('Score', 'N/A')
-                    max_score = sum(len(answers) for answers in answers_by_difficulty.values())
-                    
-                    scan_results.append({
-                        'student_id': row.get('ID', 'N/A'),
-                        'last_name': row.get('Last Name', ''),
-                        'first_name': row.get('First Name', ''),
-                        'middle_initial': row.get('Middle Initial', ''),
-                        'set_id': row.get('Set ID', 'N/A'),
-                        'answers_by_difficulty': answers_by_difficulty,
-                        'score': score,
-                        'max_score': max_score,
-                        'grade': calculate_grade(score, max_score),
-                        'formatted_grade': format_grade(score, max_score),
-                        'status': 'failed' if row.get('Invalid Answer') or row.get('Incorrect Answer') else 'success',
-                        'invalid_answer': row.get('Invalid Answer', ''),
-                        'incorrect_answer': row.get('Incorrect Answer', '')
-                    })
-                    
-                # Calculate success rates
-                for difficulty in question_stats:
-                    total = question_stats[difficulty]['total']
-                    if total > 0:
-                        question_stats[difficulty]['success_rate'] = (question_stats[difficulty]['correct'] / total) * 100
-                    else:
-                        question_stats[difficulty]['success_rate'] = 0
+                    for row in reader:
+                        # Parse lists correctly
+                        easy_incorrect = parse_list(row.get('Easy Incorrect', ''))
+                        medium_incorrect = parse_list(row.get('Medium Incorrect', ''))
+                        hard_incorrect = parse_list(row.get('Hard Incorrect', ''))
                         
-        except Exception as e:
-            messages.error(request, f"Error reading results file: {str(e)}")
-            print(f"Error details: {str(e)}")
+                        # Get the basic counts from the CSV
+                        easy_count = int(row.get('Easy', 0))
+                        medium_count = int(row.get('Medium', 0))
+                        hard_count = int(row.get('Hard', 0))
+                        total_items = int(row.get('Items', 0))
+                        max_score = int(row.get('Max Score', 0))
+                        score = int(row.get('Score', 0))
+                        
+                        # Calculate percentage
+                        percentage = (float(score) / float(max_score)) * 100 if max_score > 0 else 0
+                        
+                        # Calculate correct counts
+                        easy_correct = easy_count - len(easy_incorrect)
+                        medium_correct = medium_count - len(medium_incorrect)
+                        hard_correct = hard_count - len(hard_incorrect)
+                        
+                        # Prepare answer stats
+                        answer_stats = {
+                            'Easy': {
+                                'total': easy_count,
+                                'correct': easy_correct,
+                                'incorrect': len(easy_incorrect),
+                                'incorrect_answers': easy_incorrect
+                            },
+                            'Medium': {
+                                'total': medium_count,
+                                'correct': medium_correct,
+                                'incorrect': len(medium_incorrect),
+                                'incorrect_answers': medium_incorrect
+                            },
+                            'Hard': {
+                                'total': hard_count,
+                                'correct': hard_correct,
+                                'incorrect': len(hard_incorrect),
+                                'incorrect_answers': hard_incorrect
+                            }
+                        }
+                        
+                        # Update overall statistics
+                        for difficulty in ['Easy', 'Medium', 'Hard']:
+                            question_stats[difficulty]['total'] += answer_stats[difficulty]['total']
+                            question_stats[difficulty]['correct'] += answer_stats[difficulty]['correct']
+                        
+                        # Parse incorrect answers list
+                        incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
+                        
+                        scan_results.append({
+                            'student_id': row.get('ID', 'N/A'),
+                            'last_name': row.get('Last Name', ''),
+                            'first_name': row.get('First Name', ''),
+                            'middle_initial': row.get('Middle Initial', ''),
+                            'set_id': row.get('Set ID', 'N/A'),
+                            'answer_stats': answer_stats,
+                            'total_items': total_items,
+                            'score': score,
+                            'max_score': max_score,
+                            'percentage': percentage,  # Add percentage to the dictionary
+                            'grade': calculate_grade(score, max_score),
+                            'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
+                            'status': 'success' if score > 0 else 'failed',
+                            'invalid_answer': row.get('Invalid Ans list', ''),
+                            'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
+                        })
+                        
+            except Exception as e:
+                messages.error(request, f"Error reading results file: {str(e)}")
+                print(f"Error details: {str(e)}")
     else:
         messages.warning(request, "No results file found. Please scan the exam papers first.")
     
+    # Calculate overall statistics
     success_count = len([r for r in scan_results if r['status'] == 'success'])
     failed_count = len([r for r in scan_results if r['status'] != 'success'])
-    
-    # Calculate class statistics
-    passing_grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D']
+    passing_grades = ['A+', 'A', 'B+', 'B', 'C']
     passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
-    failing_count = len([r for r in scan_results if r['grade'] == 'F'])
+    failing_count = len([r for r in scan_results if r['grade'] == 'C-' or r['grade'] == 'D+' or r['grade'] == 'D' or r['grade'] == 'F'])
     
     context = {
         'current_class': current_class,
@@ -1716,8 +1841,8 @@ def export_results(request, class_id, exam_id):
         
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
-        return redirect('scan_results', class_id=class_id, exam_id=exam_id) 
-
+        return redirect('scan_results', class_id=class_id, exam_id=exam_id)
+    
 
 @login_required
 def student_test_papers_view(request, student_id):
@@ -1727,6 +1852,20 @@ def student_test_papers_view(request, student_id):
     return render(request, 'student_test_papers.html', {'student': student, 'test_sets': test_sets})
 
 
+
+def validate_student_id(student_id):
+    """
+    Validate student ID to ensure it contains only alphanumeric characters.
+    
+    Args:
+        student_id (str): The student ID to validate
+    
+    Raises:
+        ValidationError: If the student ID contains spaces or special characters
+    """
+    if not re.match(r'^[a-zA-Z0-9]+$', student_id):
+        raise ValidationError("Student ID must contain only letters and numbers, with no spaces or special characters.")
+
 @login_required
 def add_student_view(request, class_id):
     class_instance = get_object_or_404(Class, id=class_id)
@@ -1735,24 +1874,30 @@ def add_student_view(request, class_id):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         middle_initial = request.POST.get('middle_initial', '')
-        student_id = request.POST.get('student_id')
-
-        # Allow adding the same student ID to different classes
-        # Check if the student ID already exists in the same class
-        if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
-            messages.warning(request, f"Student with ID {student_id} already exists in this class.")
-            return redirect('class_detail', class_id=class_id)
+        student_id = request.POST.get('student_id').strip()  # Remove leading/trailing whitespace
 
         try:
+            # Validate student ID before creating the record
+            validate_student_id(student_id)
+
+            # Check if the student ID already exists in the same class
+            if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                messages.warning(request, f"Student with ID {student_id} already exists in this class.")
+                return redirect('class_detail', class_id=class_id)
+
             # Create the new student record with assigned_class
             Student.objects.create(
                 student_id=student_id,
                 first_name=first_name,
                 last_name=last_name,
                 middle_initial=middle_initial,
-                assigned_class=class_instance  # Ensure the class is assigned here
+                assigned_class=class_instance
             )
             messages.success(request, f"Student {first_name} {last_name} added successfully!")
+            return redirect('class_detail', class_id=class_id)
+        
+        except ValidationError as ve:
+            messages.error(request, str(ve))
             return redirect('class_detail', class_id=class_id)
         except IntegrityError as e:
             messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
@@ -1761,7 +1906,6 @@ def add_student_view(request, class_id):
     return render(request, 'add_student.html', {
         'class_instance': class_instance,
     })
-
 
 @login_required
 def bulk_upload_students_view(request, class_id):
@@ -1777,24 +1921,27 @@ def bulk_upload_students_view(request, class_id):
             decoded_file = csv_file.read().decode('utf-8').splitlines()
             reader = csv.DictReader(decoded_file)
 
-            # Initialize a counter for successfully added students
+            # Initialize counters and lists
             successful_additions = 0
-            existing_student_ids = []  # To keep track of existing student IDs
+            existing_student_ids = []
+            invalid_student_ids = []
             
             for row in reader:
-                student_id = row.get('ID')  # Ensure this matches your CSV header
+                student_id = row.get('ID', '').strip()  # Ensure no leading/trailing whitespace
                 first_name = row.get('First Name')
                 last_name = row.get('Last Name')
                 middle_initial = row.get('Middle Initial', '')
 
-                # Check if the student already exists in the same class
-                if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
-                    existing_student_ids.append(student_id)
-                    messages.warning(request, f"Student with ID {student_id} already exists in this class. Skipping.")
-                    continue  # Skip this student and move to the next one
-                
-                # Create the new student record
                 try:
+                    # Validate student ID
+                    validate_student_id(student_id)
+
+                    # Check if the student already exists in the same class
+                    if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                        existing_student_ids.append(student_id)
+                        continue  # Skip this student
+                    
+                    # Create the new student record
                     Student.objects.create(
                         student_id=student_id,
                         first_name=first_name,
@@ -1802,21 +1949,25 @@ def bulk_upload_students_view(request, class_id):
                         middle_initial=middle_initial,
                         assigned_class=class_instance
                     )
-                    successful_additions += 1  # Increment the counter
+                    successful_additions += 1
+
+                except ValidationError:
+                    invalid_student_ids.append(student_id)
                 except IntegrityError as e:
                     messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
-                    continue  # Skip to next row on error
             
-            # Success message for total added students
+            # Success and info messages
             if successful_additions > 0:
                 messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
             else:
                 messages.info(request, 'No new students were added during the bulk upload.')
             
-            # Info alert with the list of skipped students (if any)
+            # Alert for existing and invalid student IDs
             if existing_student_ids:
-                skipped_ids = ', '.join(existing_student_ids)
-                messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {skipped_ids}')
+                messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {", ".join(existing_student_ids)}')
+            
+            if invalid_student_ids:
+                messages.warning(request, f'Skipped {len(invalid_student_ids)} invalid student IDs: {", ".join(invalid_student_ids)}')
                 
             return redirect('class_detail', class_id=class_id)
     
@@ -1828,7 +1979,6 @@ def bulk_upload_students_view(request, class_id):
         'class_instance': class_instance,
     })
 
-
 @login_required
 @require_http_methods(["GET", "POST"])
 def edit_student(request, student_id):
@@ -1838,19 +1988,24 @@ def edit_student(request, student_id):
         student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
 
         if request.method == "POST":
-            student_id = request.POST.get('student_id', student.student_id)  # Fetch the student ID
-            first_name = request.POST.get('first_name', student.first_name)
-            last_name = request.POST.get('last_name', student.last_name)
-            middle_initial = request.POST.get('middle_initial', student.middle_initial)
+            # Validate the new student ID
+            new_student_id = request.POST.get('student_id', student.student_id).strip()
+            
+            try:
+                validate_student_id(new_student_id)
+                
+                # Update student details
+                student.student_id = new_student_id
+                student.first_name = request.POST.get('first_name', student.first_name)
+                student.last_name = request.POST.get('last_name', student.last_name)
+                student.middle_initial = request.POST.get('middle_initial', student.middle_initial)
+                student.save()
 
-            # Update the student details
-            student.student_id = student_id  # Update student ID
-            student.first_name = first_name
-            student.last_name = last_name
-            student.middle_initial = middle_initial
-            student.save()
-
-            return redirect('class_detail', class_id=class_instance)
+                return redirect('class_detail', class_id=class_instance)
+            
+            except ValidationError as ve:
+                messages.error(request, str(ve))
+                return redirect('edit_student', student_id=student_id, class_id=class_instance)
 
         return render(request, 'edit_student.html', {
             'student': student,
@@ -1861,7 +2016,6 @@ def edit_student(request, student_id):
         return redirect('class_detail', class_id=class_instance)
     except Exception as e:
         return redirect('class_detail', class_id=class_instance)
-
 @login_required
 def delete_student_view(request, class_id, student_id):
     # Retrieve the class instance
@@ -1946,41 +2100,95 @@ def add_class_view(request):
     
     return render(request, 'classes.html', {'form': form})
 
+
 @login_required
 def settings_view(request):
     if request.method == 'POST':
-        password_form = PasswordChangeForm(request.user, request.POST)
-        user_form = UserChangeForm(request.POST, instance=request.user)
+        # Handle password change if any password fields are filled
+        password_changed = False
+        if any(request.POST.get(field) for field in ['old_password', 'new_password1', 'new_password2']):
+            password_form = PasswordChangeForm(request.user, request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                password_changed = True
+            else:
+                for error in password_form.errors.values():
+                    messages.error(request, error[0])
 
-        if password_form.is_valid() and user_form.is_valid():
-            # Update user information
-            user_form.save()
+        # Handle user information update
+        user = request.user
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        
+        # Validate username
+        if username and username != user.username:
+            if User.objects.filter(username=username).exists():
+                messages.error(request, 'Username is already taken.')
+            else:
+                user.username = username
 
-            # Update password
-            user = password_form.save()
-            update_session_auth_hash(request, user)  # Important!
-            messages.success(request, 'Your settings were successfully updated!')
-            return redirect('settings')
-        else:
-            # Capture and display error messages
-            if not password_form.is_valid():
-                for field, errors in password_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field.capitalize()}: {error}')
-            if not user_form.is_valid():
-                for field, errors in user_form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'{field.capitalize()}: {error}')
-    else:
-        password_form = PasswordChangeForm(request.user)
-        user_form = UserChangeForm(instance=request.user)
+        # Validate email
+        if email and email != user.email:
+            if User.objects.filter(email=email).exists():
+                messages.error(request, 'Email is already registered.')
+            else:
+                user.email = email
+
+        # Save user if no errors occurred
+        if not messages.get_messages(request):
+            try:
+                user.save()
+                if password_changed:
+                    messages.success(request, 'Your settings and password were successfully updated!')
+                else:
+                    messages.success(request, 'Your settings were successfully updated!')
+            except Exception as e:
+                messages.error(request, 'An error occurred while saving your settings.')
+
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success' if not messages.get_messages(request) else 'error',
+                'messages': [{
+                    'tags': message.tags,
+                    'message': str(message)
+                } for message in messages.get_messages(request)]
+            })
+
+        return redirect('settings')
 
     context = {
-        'password_form': password_form,
-        'user_form': user_form,
+        'user': request.user,
     }
     return render(request, 'settings.html', context)
 
+@login_required
+@require_http_methods(["POST"])
+def delete_account_view(request):
+    try:
+        # Delete the user account
+        user = request.user
+        user.delete()
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'redirect': '/logout/'
+            })
+        
+        messages.success(request, 'Your account has been successfully deleted.')
+        return redirect('logout')
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to delete account.'
+            }, status=400)
+        
+        messages.error(request, 'Failed to delete account. Please try again.')
+        return redirect('settings')
 
 @login_required
 @require_http_methods(['POST'])
@@ -1989,20 +2197,185 @@ def ajax_get_students(request):
     students = Student.objects.filter(assigned_class_id=class_id).values('id', 'first_name', 'last_name', 'student_id', 'short_id')
     data = list(students)
     return JsonResponse(data, safe=False)
+FAQ_RESPONSES = {
+    # Authentication & Account
+    'login': {
+        'keywords': ['login', 'signin', 'sign in', 'access', 'cant login', "can't login"],
+        'response': """To log in to your account:
+1. Click the 'Login' button in the top right
+2. Enter your username and password
+3. Click 'Sign In'
+
+If you're having trouble, make sure:
+- Your caps lock is off
+- Your username and password are correct
+- You're using the correct email address"""
+    },
+    
+    'register': {
+        'keywords': ['register', 'signup', 'sign up', 'create account', 'new account'],
+        'response': """To create a new account:
+1. Click 'Register' at the login page
+2. Fill in your details
+3. Create a strong password
+4. Click 'Create Account'"""
+    },
+
+    # Classes
+    'add_class': {
+        'keywords': ['add class', 'create class', 'new class', 'how to add class'],
+        'response': """To add a new class:
+1. Go to 'Classes' in the navigation
+2. Click the 'Add Class' button
+3. Fill in the class details
+4. Click 'Create'"""
+    },
+
+    'delete_class': {
+        'keywords': ['delete class', 'remove class', 'how to delete class'],
+        'response': """To delete a class:
+1. Go to 'Classes'
+2. Open the class you want to delete
+3. Click the 'Delete' button
+4. Confirm deletion
+
+Note: This cannot be undone!"""
+    },
+
+    # Students
+    'add_student': {
+        'keywords': ['add student', 'new student', 'enroll student', 'how to add student'],
+        'response': """To add students to a class:
+1. Go to the class details page
+2. Click 'Add Student'
+3. Enter student information
+4. Click 'Add'
+
+You can also bulk upload students using a CSV file:
+1. Go to class details
+2. Click 'Bulk Upload'
+3. Download the template
+4. Fill and upload the CSV"""
+    },
+
+    # Exams
+    'create_exam': {
+        'keywords': ['create exam', 'add exam', 'new exam', 'make exam', 'how to create exam'],
+        'response': """To create a new exam:
+1. Go to 'Exams'
+2. Click 'Add Exam'
+3. Select the class
+4. Add exam details and questions
+5. Click 'Create'"""
+    },
+
+    'scan_exam': {
+        'keywords': ['scan', 'scanning', 'how to scan', 'scan exam', 'upload scan'],
+        'response': """To scan exam papers:
+1. Go to the exam details
+2. Click 'Scan'
+3. Upload the scanned papers
+4. Wait for processing
+5. Review the results
+
+Tips:
+- Ensure papers are well-lit and flat
+- All corners should be visible
+- Use high contrast settings"""
+    },
+
+    'grade_exam': {
+        'keywords': ['grade', 'grading', 'how to grade', 'view grades'],
+        'response': """To grade exams:
+1. Go to exam details
+2. Click 'Grade'
+3. Review scanned answers
+4. Adjust scores if needed
+5. Save grades
+
+You can also:
+- Export results to CSV
+- View grade statistics
+- Generate reports"""
+    },
+
+    # General Help
+    'help': {
+        'keywords': ['help', 'support', 'guide', 'tutorial', 'how to'],
+        'response': """I can help you with:
+
+Classes:
+- Adding/deleting classes
+- Managing students
+- Bulk uploads
+
+Exams:
+- Creating exams
+- Scanning papers
+- Grading
+- Viewing results
+
+Type keywords related to what you need help with."""
+    },
+}
+
+@require_http_methods(["POST"])
+@ensure_csrf_cookie
+def chat_message(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'response': 'Please login to use the chat feature.'}, status=403)
+        
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '').lower().strip()
+        
+        if not user_message:
+            return JsonResponse({'response': 'Please type a message.'}, status=400)
+            
+        response = find_faq_response(user_message)
+        return JsonResponse({'response': response})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid message format.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': 'An error occurred. Please try again.'}, status=500)
+
+def find_faq_response(message):
+    """Find the most appropriate FAQ response based on keywords."""
+    message = message.lower()
+    
+    # First check for exact matches
+    for faq_item in FAQ_RESPONSES.values():
+        if message in faq_item['keywords']:
+            return faq_item['response']
+    
+    # Then check for keyword containment
+    for faq_item in FAQ_RESPONSES.values():
+        if any(keyword in message for keyword in faq_item['keywords']):
+            return faq_item['response']
+    
+    # Default response if no matching keywords
+    return """I can help you with:
+• Classes - adding, managing students, bulk uploads
+• Exams - creating, scanning, grading
+• Account - login, registration
+
+Try using keywords like 'add class', 'scan exam', or 'grade' to get specific help."""
+
 
 
 @login_required
-def delete_account_view(request):
+def add_instructions(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    
     if request.method == 'POST':
-        user = request.user
-        user.delete()
-        messages.success(request, "Your account has been deleted.")
-        return redirect('index')
-    return redirect('settings')  # Redirect to settings if not a POST request
-
-
-@login_required
-def task_status(request, task_id):
-    task = get_object_or_404(ImageProcessingTask, id=task_id)
-    context = {'task': task}
-    return render(request, 'task_status.html', context)
+        instructions = request.POST.get('instructions')
+        time_limit = request.POST.get('time_limit')
+        
+        exam.instructions = instructions
+        exam.time_limit = time_limit
+        exam.save()
+        
+        return redirect('exam_detail', exam_id=exam_id)
+    
+    return redirect('exam_detail', exam_id=exam_id)

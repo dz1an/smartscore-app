@@ -103,24 +103,35 @@
 
 
 
-      <!-- Add a button to open the Answer Key Modal -->
-       
-       <!-- Add Question Button with Icon -->
-       <button 
-       class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200"
-       onclick="openAddQuestionModal()">
-       <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-       </svg>
-       Add Question
-     </button>
-     <!-- Button to open the Answer Key Modal -->
-    <button 
-    type="button" 
-    onclick="openAnswerKeyModal()" 
-    class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200">
-    View Answer Key
+<!-- Container for Action Buttons -->
+<div class="flex space-x-2 mb-4">
+  <!-- Add Question Button with Icon -->
+  <button 
+    class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center"
+    onclick="openAddQuestionModal()">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+    </svg>
+    Add Question
   </button>
+
+  <!-- View Answer Key Button -->
+  <button 
+    type="button" 
+    onclick="openInstructionsModal()" 
+    class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200">
+    Add Instructions
+  </button>
+
+  <!-- Download Answer Sheet PDF Button -->
+  <a href="{% url 'download_answer_sheet' exam.id %}" 
+   class="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg shadow-md transition duration-200 inline-flex items-center">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+    </svg>
+    Download Answer Sheet PDF
+</a>
+</div>
       
 </div>
 </div>
@@ -278,58 +289,55 @@
     </div>
   </div>
 
-  <!-- Answer Key Modal -->
-  <div id="answer-key-modal" class="fixed inset-0 z-10 overflow-y-auto hidden">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-      <div class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="sm:flex sm:items-start">
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white" id="answer-key-title">
-                Answer Key
-              </h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Below is the answer key for the exam questions:
-                </p>
-                <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 mb-4">
-                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                    <tr>
-                      <th scope="col" class="px-6 py-3">Question</th>
-                      <th scope="col" class="px-6 py-3">Answer</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for question in exam.questions.all %}
-                      <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
-                        <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.get_answer_display }}</td>
-                      </tr>
-                    {% empty %}
-                      <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                        <td colspan="2" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No questions added yet.</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+<!-- Instructions Modal -->
+<div id="instructions-modal" class="hidden fixed z-10 inset-0 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6">
+      <form method="post" action="{% url 'add_instructions' exam.id %}">
+        {% csrf_token %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add Exam Instructions</h2>
+        
+        <div class="mb-4">
+          <label for="examInstructions" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Instructions:</label>
+          <textarea 
+            name="instructions" 
+            id="examInstructions" 
+            rows="6"
+            class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            placeholder="Enter exam instructions here..."></textarea>
         </div>
-        <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button type="button" onclick="closeAnswerKeyModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-500 text-base font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-            Close
+
+        <div class="mb-4">
+          <label for="timeLimit" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Time Limit (minutes):</label>
+          <input 
+            type="number" 
+            name="time_limit" 
+            id="timeLimit"
+            min="0"
+            class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-end">
+          <button 
+            type="button" 
+            onclick="closeInstructionsModal()" 
+            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg mr-2">
+            Cancel
           </button>
-          
+          <button 
+            type="submit" 
+            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">
+            Save Instructions
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </div>
+
+
+
 
 
   <script>
@@ -356,7 +364,7 @@
       document.getElementById('editOptionB').value = b;
       document.getElementById('editOptionC').value = c;
       document.getElementById('editOptionD').value = d;
-      document.getElementById('editOptionD').value = e;
+      document.getElementById('editOptionE').value = e;
       document.getElementById('editQuestionModal').classList.remove('hidden');
     }
 
@@ -372,6 +380,14 @@
 
     function closeDeleteQuestionModal() {
       document.getElementById('deleteQuestionModal').classList.add('hidden');
+    }
+
+    function openInstructionsModal() {
+  document.getElementById('instructions-modal').classList.remove('hidden');
+}
+
+    function closeInstructionsModal() {
+      document.getElementById('instructions-modal').classList.add('hidden');
     }
   </script>
 

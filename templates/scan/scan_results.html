@@ -1,104 +1,203 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto p-6 bg-white shadow-md rounded-lg">
-    <h2 class="text-xl font-semibold mb-4 text-center">Scan Results - {{ current_exam.name }}</h2>
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ current_exam.name }}</h1>
+                    <p class="mt-1 text-sm text-gray-500">Exam Results Summary</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Export Results
+                    </button>
+                </div>
+            </div>
+        </div>
 
-    <!-- Breadcrumb remains the same -->
-    
-    {% if messages %}
-        {% include 'message_display.html' %}
-    {% endif %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-6 p-4 rounded-md {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-yellow-50 text-yellow-700{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
 
-<!-- Previous content remains the same until the Results Summary section -->
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="bg-white overflow-hidden rounded-lg shadow-sm">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Total Scanned</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900">{{ scanned_count }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<!-- Results Summary -->
-<div class="mb-6 p-4 bg-gray-50 rounded-lg">
-    <h3 class="text-lg font-medium mb-2">Summary</h3>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div class="p-3 bg-white rounded shadow">
-            <p class="text-sm text-gray-600">Total Scanned</p>
-            <p class="text-xl font-semibold">{{ scanned_count }}</p>
+            <div class="bg-white overflow-hidden rounded-lg shadow-sm">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Successfully Processed</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-green-600">{{ success_count }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden rounded-lg shadow-sm">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Failed Processing</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-red-600">{{ failed_count }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden rounded-lg shadow-sm">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Passing</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-green-600">{{ passing_count }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white overflow-hidden rounded-lg shadow-sm">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Failing</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-red-600">{{ failing_count }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="p-3 bg-white rounded shadow">
-            <p class="text-sm text-gray-600">Successfully Processed</p>
-            <p class="text-xl font-semibold text-green-600">{{ success_count }}</p>
-        </div>
-        <div class="p-3 bg-white rounded shadow">
-            <p class="text-sm text-gray-600">Failed Processing</p>
-            <p class="text-xl font-semibold text-red-600">{{ failed_count }}</p>
-        </div>
-        <div class="p-3 bg-white rounded shadow">
-            <p class="text-sm text-gray-600">Passing</p>
-            <p class="text-xl font-semibold text-green-600">{{ passing_count }}</p>
-        </div>
-        <div class="p-3 bg-white rounded shadow">
-            <p class="text-sm text-gray-600">Failing</p>
-            <p class="text-xl font-semibold text-red-600">{{ failing_count }}</p>
-        </div>
-    </div>
-</div>
 
 <!-- Results Table -->
-<div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="p-4 border-b">
-        <h3 class="text-lg font-medium">Detailed Results</h3>
+<div class="bg-white rounded-lg shadow-sm">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Detailed Results</h3>
     </div>
     <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
                 <tr>
-                    <th scope="col" class="px-4 py-3">Student ID</th>
-                    <th scope="col" class="px-4 py-3">Name</th>
-                    <th scope="col" class="px-4 py-3">Set</th>
-                    <th scope="col" class="px-4 py-3">Score</th>
-                    <th scope="col" class="px-4 py-3">Grade</th>
-                    <th scope="col" class="px-4 py-3">Status</th>
-                    <th scope="col" class="px-4 py-3">Actions</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Set ID</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Easy Questions</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium Questions</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hard Questions</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="bg-white divide-y divide-gray-200">
                 {% for result in scan_results %}
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="px-4 py-3">{{ result.student_id }}</td>
-                    <td class="px-4 py-3">
-                        {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</div>
                     </td>
-                    <td class="px-4 py-3">{{ result.set_id }}</td>
-                    <td class="px-4 py-3">{{ result.score }}/{{ result.max_score }}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full
-                            {% if result.grade == 'F' %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.set_id }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</div>
+                        {% if result.answer_stats.Easy.incorrect_answers %}
+                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Easy.incorrect_answers|join:", " }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</div>
+                        {% if result.answer_stats.Medium.incorrect_answers %}
+                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Medium.incorrect_answers|join:", " }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</div>
+                        {% if result.answer_stats.Hard.incorrect_answers %}
+                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Hard.incorrect_answers|join:", " }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ result.score }}/{{ result.max_score }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if result.percentage < 60 %}
                                 bg-red-100 text-red-800
-                            {% elif result.grade == 'N/A' %}
-                                bg-gray-100 text-gray-800
+                            {% elif result.percentage >= 60 and result.percentage < 75 %}
+                                bg-yellow-100 text-yellow-800
                             {% else %}
                                 bg-green-100 text-green-800
                             {% endif %}">
-                            {{ result.formatted_grade }}
+                            {{ result.percentage|floatformat:1 }}%
                         </span>
                     </td>
-                    <td class="px-4 py-3">
-                        {% if result.status == 'success' %}
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                Success
-                            </span>
-                        {% else %}
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                Failed
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td class="px-4 py-3">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <button onclick="showDetails('{{ forloop.counter }}')" 
-                                class="text-blue-600 hover:underline">
+                                class="text-indigo-600 hover:text-indigo-900 font-medium">
                             View Details
                         </button>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="px-4 py-3 text-center text-gray-500">
+                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
                         No results found
                     </td>
                 </tr>
@@ -108,42 +207,124 @@
     </div>
 </div>
 
-<!-- Update the Result Details Modal content -->
-<div id="modalContent" class="mt-2 px-4 py-3">
-    {% for result in scan_results %}
-    <div id="details-{{ forloop.counter }}" class="hidden">
-        <div class="space-y-4">
-            <div>
-                <h4 class="font-medium">Student Information</h4>
-                <p>Name: {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</p>
-                <p>ID: {{ result.student_id }}</p>
-                <p>Set: {{ result.set_id }}</p>
-                <p>Score: {{ result.score }}/{{ result.max_score }}</p>
-                <p>Grade: {{ result.formatted_grade }}</p>
+        <!-- Modal -->
+        <div id="detailsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 class="text-xl font-semibold text-gray-900">Student Details</h3>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div id="modalContent" class="mt-4">
+                    {% for result in scan_results %}
+                    <div id="details-{{ forloop.counter }}" class="hidden space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-900 mb-2">Student Information</h4>
+                                <div class="space-y-2 text-sm">
+                                    <p><span class="text-gray-500">Name:</span> {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</p>
+                                    <p><span class="text-gray-500">ID:</span> {{ result.student_id }}</p>
+                                    <p><span class="text-gray-500">Set:</span> {{ result.set_id }}</p>
+                                    <p><span class="text-gray-500">Score:</span> {{ result.score }}/{{ result.max_score }}</p>
+                                    <p><span class="text-gray-500">Grade:</span> 
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if result.grade == 'F' %}
+                                                bg-red-100 text-red-800
+                                            {% elif result.grade == 'N/A' %}
+                                                bg-gray-100 text-gray-800
+                                            {% else %}
+                                                bg-green-100 text-green-800
+                                            {% endif %}">
+                                            {{ result.formatted_grade }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-900 mb-2">Performance Summary</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1">
+                                            <span class="text-gray-500">Easy Questions</span>
+                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Easy.correct result.answer_stats.Easy.total 100 %}%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1">
+                                            <span class="text-gray-500">Medium Questions</span>
+                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Medium.correct result.answer_stats.Medium.total 100 %}%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1">
+                                            <span class="text-gray-500">Hard Questions</span>
+                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Hard.correct result.answer_stats.Hard.total 100 %}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-lg mt-4">
+                            <h4 class="font-medium text-gray-900 mb-2">Detailed Analysis</h4>
+                            <div class="space-y-3">
+                                {% if result.answer_stats.Easy.incorrect_answers %}
+                                <div class="text-sm">
+                                    <span class="text-gray-500">Easy Questions Missed:</span>
+                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Easy.incorrect_answers|join:", " }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if result.answer_stats.Medium.incorrect_answers %}
+                                <div class="text-sm">
+                                    <span class="text-gray-500">Medium Questions Missed:</span>
+                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Medium.incorrect_answers|join:", " }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if result.answer_stats.Hard.incorrect_answers %}
+                                <div class="text-sm">
+                                    <span class="text-gray-500">Hard Questions Missed:</span>
+                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Hard.incorrect_answers|join:", " }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if result.invalid_answer or result.incorrect_answer %}
+                                <div class="mt-4 p-3 bg-red-50 rounded-md">
+                                    {% if result.invalid_answer %}
+                                    <div class="text-sm text-red-700">
+                                        <span class="font-medium">Invalid Answer:</span> {{ result.invalid_answer }}
+                                    </div>
+                                    {% endif %}
+                                    {% if result.incorrect_answer %}
+                                    <div class="text-sm text-red-700">
+                                        <span class="font-medium">Incorrect Answer:</span> {{ result.incorrect_answer }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
-            
-            <div>
-                <h4 class="font-medium">Answers by Difficulty</h4>
-                {% for difficulty, answers in result.answers_by_difficulty.items %}
-                <p>{{ difficulty }}: {{ answers|join:", " }}</p>
-                {% endfor %}
-            </div>
-            
-            {% if result.invalid_answer or result.incorrect_answer %}
-            <div class="text-red-600">
-                {% if result.invalid_answer %}
-                <p>Invalid Answer: {{ result.invalid_answer }}</p>
-                {% endif %}
-                {% if result.incorrect_answer %}
-                <p>Incorrect Answer: {{ result.incorrect_answer }}</p>
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
     </div>
-    {% endfor %}
-</div>
-    <!-- Export Options remain the same -->
 </div>
 
 <script>
@@ -162,6 +343,20 @@
 
     document.getElementById('closeModal').addEventListener('click', function() {
         document.getElementById('detailsModal').classList.add('hidden');
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('detailsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
+
+    // Close modal with escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.getElementById('detailsModal').classList.add('hidden');
+        }
     });
 </script>
 {% endblock %}

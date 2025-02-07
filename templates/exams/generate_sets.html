@@ -78,22 +78,46 @@
 
   <div class="mt-4">
     {% if generated_sets %}
-      <h2 class="text-xl font-bold mb-2">Generated Sets:</h2>
-      <ul id="generated-sets-list" class="list-disc pl-5">
-        {% for test_set in generated_sets %}
-          <li class="mb-1">
-            Student: {{ test_set.student.first_name }} {{ test_set.student.last_name }} - 
-            Set Number: {{ test_set.set_no }} - 
-            Set ID: {{ test_set.set_id }}
-            {% if test_set.answer_key %}
-              - Answer Key: {{ test_set.answer_key }}
-            {% endif %}
-            
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-gray-500">No sets generated yet. Please ensure you have enough questions and sets specified.</p>
+      <h2 class="text-xl font-bold mb-4">Generated Sets:</h2>
+      <!-- Table -->
+      <div class="relative overflow-x-auto max-h-80 mb-6">
+        <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th scope="col" class="px-6 py-3 sticky left-0 bg-white dark:bg-gray-800 z-10">
+                Student Name
+              </th>
+              <th scope="col" class="px-6 py-3">Set Number</th>
+              <th scope="col" class="px-6 py-3">Set ID</th>
+              <th scope="col" class="px-6 py-3">Answer Key</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for test_set in generated_sets %}
+              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800">
+                  {{ test_set.student.first_name }} {{ test_set.student.last_name }}
+                </td>
+                <td class="px-6 py-4 text-gray-900 dark:text-white">{{ test_set.set_no }}</td>
+                <td class="px-6 py-4 text-gray-900 dark:text-white">{{ test_set.set_id }}</td>
+                <td class="px-6 py-4 text-gray-900 dark:text-white">
+                  {% if test_set.answer_key %}
+                    {% for char in test_set.answer_key %}
+                      {% if char == '0' %}a{% elif char == '1' %}b{% elif char == '2' %}c{% elif char == '3' %}d{% elif char == '4' %}e{% else %}{{ char }}{% endif %}{% if not forloop.last %} {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No sets generated yet. Please ensure you have enough questions and sets specified.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% endif %}
   </div>
   
