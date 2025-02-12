@@ -8,8 +8,8 @@
     <div class="w-full max-w-lg">
         <form class="max-w-sm mx-auto" method="post" action="{% url 'login' %}">
             {% csrf_token %}
-            <div class="flex justify-center mb-5">
-                <img src="{% static 'src/img/\new_logo.png' %}" class="h-24 md:h-32 w-auto" alt="Logo" />
+            <div class="flex justify-center mb-10">
+                <img src="{% static 'src/img/\new_logo.png' %}" class="h-42 md:h-32 w-auto" alt="Logo" />
             </div>
             
             {% if messages %}
