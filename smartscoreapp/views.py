@@ -1190,17 +1190,23 @@ def download_test_paper(request, class_id, exam_id):
             
             y_position -= line_height * 0.3
 
-        # Questions section with two-column layout
+        # Questions section with dynamic layout
         question_number = 1
         original_y = y_position
         
+        # Determine if we should use two columns (only if more than 10 questions)
+        use_two_columns = len(ordered_questions) > 10
+        
         for idx, question in enumerate(ordered_questions):
-            # Determine column position
-            is_right_column = idx >= len(ordered_questions) / 2
-            x_position = left_margin if not is_right_column else left_margin + column_width + column_spacing
-            
-            if is_right_column and idx == len(ordered_questions) / 2:
-                y_position = original_y  # Reset Y position for right column
+            # Calculate column position only if using two columns
+            if use_two_columns:
+                is_right_column = idx >= len(ordered_questions) / 2
+                x_position = left_margin if not is_right_column else left_margin + column_width + column_spacing
+                
+                if is_right_column and idx == len(ordered_questions) / 2:
+                    y_position = original_y  # Reset Y position for right column
+            else:
+                x_position = left_margin  # Single column layout
 
             # New page check
             if y_position < bottom_margin + 30:

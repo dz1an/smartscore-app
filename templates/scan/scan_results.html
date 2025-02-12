@@ -254,7 +254,7 @@
                                             <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Easy.correct result.answer_stats.Easy.total 100 %}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Easy.percentage }}%"></div>
                                         </div>
                                     </div>
                                     <div>
@@ -263,7 +263,7 @@
                                             <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Medium.correct result.answer_stats.Medium.total 100 %}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Medium.percentage }}%"></div>
                                         </div>
                                     </div>
                                     <div>
@@ -272,7 +272,7 @@
                                             <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {% widthratio result.answer_stats.Hard.correct result.answer_stats.Hard.total 100 %}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Hard.percentage }}%"></div>
                                         </div>
                                     </div>
                                 </div>

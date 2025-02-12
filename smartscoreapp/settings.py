@@ -105,6 +105,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+USERNAME_VALIDATOR = 'django.contrib.auth.validators.UnicodeUsernameValidator'
+
 AUTHENTICATION_BACKENDS = (
     'smartscoreapp.backends.EmailOrUsernameModelBackend',  
     'django.contrib.auth.backends.ModelBackend',  
