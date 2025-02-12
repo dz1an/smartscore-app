@@ -56,27 +56,29 @@
     <!-- Display the Questions from the Selected Exam -->
     {% if questions %}
       <div class="relative overflow-x-auto mb-6">
-        <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-              <th scope="col" class="px-6 py-3">
-                <input type="checkbox" id="select_all" class="mr-2" onchange="toggleAll(this)">
-                <label for="select_all" class="text-sm font-medium text-gray-900 dark:text-white">Select All</label>
-              </th>
-              <th scope="col" class="px-6 py-3">Question</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for question in questions %}
-              <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                <td class="px-6 py-4">
-                  <input type="checkbox" name="questions" value="{{ question.id }}" class="mr-4">
-                </td>
-                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th scope="col" class="px-6 py-3">
+          <input type="checkbox" id="select_all" class="mr-2" onchange="toggleAll(this)">
+          <label for="select_all" class="text-sm font-medium text-gray-900 dark:text-white">Select All</label>
+          </th>
+          <th scope="col" class="px-6 py-3">Question</th>
+          <th scope="col" class="px-6 py-3">Difficulty</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for question in questions %}
+          <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+          <td class="px-6 py-4">
+            <input type="checkbox" name="questions" value="{{ question.id }}" class="mr-4">
+          </td>
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.question_text }}</td>
+          <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ question.difficulty }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
       </div>
     {% else %}
       <p class="text-center text-gray-500 dark:text-gray-400">No questions available from the selected class or exam.</p>
