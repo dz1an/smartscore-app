@@ -8,6 +8,12 @@ class ClassForm(forms.ModelForm):
         model = Class
         fields = ['name', 'description']
 
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        if Class.objects.filter(name=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("A class with this name already exists.")
+        return name
+
 class StudentBulkUploadForm(forms.Form):
     csv_file = forms.FileField(label="Upload CSV")
 

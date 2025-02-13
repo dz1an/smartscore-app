@@ -1,39 +1,101 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Register{% endblock %}
-
 {% block content %}
 <div class="flex items-center justify-center h-screen">
-    <div class="w-full max-w-lg">
-        <form class="max-w-sm mx-auto" method="post" action="{% url 'register' %}">
-            {% csrf_token %}
-            <div class="flex justify-center mb-5">
-                <img src="{% static 'src/img/\new_logo.png' %}" class="h-24 md:h-32 w-auto" alt="Logo" />
-            </div>
-            {% include 'message_display.html' %}
-            <div class="mb-5">
-                <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
-                <input type="email" id="email" name="email" class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light" placeholder="name@gmail.com" required />
-            </div>
-            <div class="mb-5">
-                <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Username</label>
-                <input type="text" id="name" name="username" class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light" placeholder="e.g. John" required />
-            </div>
-            <div class="mb-5">
-                <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
-                <input type="password" id="password" name="password1" class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light" required />
-            </div>
-            <div class="mb-5">
-                <label for="repeat-password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Repeat Password</label>
-                <input type="password" id="repeat-password" name="password2" class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light" required />
-            </div>
-            <div class="flex items-start mb-5">
-                <input id="terms" type="checkbox" value="" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800" required />
-                <label for="terms" class="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">I agree with the <a href="#" class="text-blue-600 hover:underline dark:text-blue-500">terms and conditions</a></label>
-            </div>
-            <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Register</button>
-        </form>
-    </div>   
+  <div class="w-full max-w-lg">
+    <form class="max-w-sm mx-auto" method="post" action="{% url 'register' %}">
+      {% csrf_token %}
+      <div class="flex justify-center mb-5">
+        <img
+          src="{% static 'src/img/new_logo.png' %}"
+          class="h-24 md:h-32 w-auto"
+          alt="Logo"
+        />
+      </div>
+      {% include 'message_display.html' %}
+      <div class="mb-5">
+        <label
+          for="email"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >Email</label
+        >
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light"
+          placeholder="name@gmail.com"
+          required
+        />
+      </div>
+      <div class="mb-5">
+        <label
+          for="name"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >Username</label
+        >
+        <input
+          type="text"
+          id="name"
+          name="username"
+          class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light"
+          placeholder="e.g. John"
+          required
+        />
+      </div>
+      <div class="mb-5">
+        <label
+          for="password"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >Password</label
+        >
+        <input
+          type="password"
+          id="password"
+          name="password1"
+          class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light"
+          required
+        />
+      </div>
+      <div class="mb-5">
+        <label
+          for="repeat-password"
+          class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+          >Repeat Password</label
+        >
+        <input
+          type="password"
+          id="repeat-password"
+          name="password2"
+          class="shadow-sm bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 dark:shadow-sm-light"
+          required
+        />
+      </div>
+      <div class="flex items-start mb-5">
+        <input
+          id="terms"
+          type="checkbox"
+          value=""
+          class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800"
+          required
+        />
+        <label
+          for="terms"
+          class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+          >I agree with the
+          <a href="#" class="text-blue-600 hover:underline dark:text-blue-500"
+            >terms and conditions</a
+          ></label
+        >
+      </div>
+      <button
+        type="submit"
+        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      >
+        Register
+      </button>
+    </form>
+  </div>
 </div>
 {% endblock %}
