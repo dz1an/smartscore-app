@@ -699,6 +699,8 @@ def scan_page(request, class_id, exam_id):
 
     return render(request, 'scan_page.html', context)
 
+
+
 def get_uploaded_images(absolute_upload_path, base_upload_path, current_user):
     """
     Retrieve uploaded images from a specific directory for the current user.
@@ -998,7 +1000,8 @@ def generate_exam_sets(request, class_id, exam_id):
 
 def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     """
-    Grade a student's exam based on the answer key and difficulty points
+    Grade a student's exam based on the answer key and difficulty points with improved difficulty tally
+    and zero correct answer detection
     
     Parameters:
     student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
@@ -1006,14 +1009,16 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     difficulty_points (str): String indicating point value for each question (e.g., "11123")
     
     Returns:
-    tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers)
+    tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers, failed_status)
     """
     total_score = 0
     max_possible_score = 0
+    total_correct_answers = 0
+    total_questions = 0
     breakdown = {
-        'Easy': {'correct': 0, 'total': 0, 'points': 0},
-        'Medium': {'correct': 0, 'total': 0, 'points': 0},
-        'Hard': {'correct': 0, 'total': 0, 'points': 0}
+        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
+        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
+        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []}
     }
     incorrect_answers = []
     
@@ -1034,30 +1039,28 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         'Hard': difficulty_points.count('3')
     }
     
-    # Validate number of answers provided
+    # Validate number of answers provided for each difficulty
     for difficulty, expected in expected_counts.items():
         student_ans = student_answers_by_difficulty.get(difficulty, [])
         if len(student_ans) != expected:
             return 0, sum(int(p) for p in difficulty_points), breakdown, [
                 f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
-            ]
+            ], True  # Failed status
     
-    # Grade each answer
-    current_index_by_difficulty = {
-        'Easy': 0,
-        'Medium': 0,
-        'Hard': 0
-    }
+    # Grade each answer with improved difficulty tracking
+    current_index_by_difficulty = {'Easy': 0, 'Medium': 0, 'Hard': 0}
     
     for i, (correct_ans, points) in enumerate(zip(correct_answers, difficulty_points)):
         difficulty = difficulty_map[points]
         points = int(points)
         max_possible_score += points
+        total_questions += 1
         
-        # Get the student's answer for this difficulty level
+        # Get student's answer for this difficulty level
         student_ans_index = current_index_by_difficulty[difficulty]
         if student_ans_index >= len(student_answers_by_difficulty[difficulty]):
-            incorrect_answers.append(f"Missing {difficulty} answer at position {i}")
+            incorrect_answers.append(f"Missing {difficulty} answer at question {i+1}")
+            breakdown[difficulty]['incorrect'].append(i+1)
             continue
             
         student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
@@ -1071,13 +1074,16 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             breakdown[difficulty]['correct'] += 1
             breakdown[difficulty]['points'] += points
             total_score += points
+            total_correct_answers += 1
         else:
             incorrect_answers.append(
-                f"Incorrect {difficulty} answer at position {i}: "
-                f"answered {student_ans}, correct was {correct_ans}"
+                f"Question {i+1} ({difficulty}): answered {student_ans}, correct was {correct_ans}"
             )
+            breakdown[difficulty]['incorrect'].append(i+1)
     
-    # Calculate percentages for the breakdown
+    # Calculate percentages and check for complete failure
+    failed_status = total_correct_answers == 0
+    
     for difficulty in breakdown:
         if breakdown[difficulty]['total'] > 0:
             breakdown[difficulty]['percentage'] = (
@@ -1086,17 +1092,21 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         else:
             breakdown[difficulty]['percentage'] = 0
     
-    return total_score, max_possible_score, breakdown, incorrect_answers
+    return total_score, max_possible_score, breakdown, incorrect_answers, failed_status
 
-def format_grade_report(student_id, student_name, score, max_score, breakdown, errors, set_id=None):
+def format_grade_report(student_id, student_name, score, max_score, breakdown, errors, set_id=None, failed=False):
     """
-    Format a readable grade report for a student
+    Format a readable grade report with improved difficulty breakdown and failure status
     """
     percentage = (score / max_score * 100) if max_score > 0 else 0
     
     report = f"Grade Report for {student_name} (ID: {student_id})"
     if set_id:
         report += f" - Set {set_id}"
+    
+    if failed:
+        report += "\nSTATUS: FAILED - No correct answers"
+        
     report += f"\nTotal Score: {score}/{max_score} ({percentage:.1f}%)\n\n"
     
     report += "Breakdown by Difficulty:\n"
@@ -1104,6 +1114,8 @@ def format_grade_report(student_id, student_name, score, max_score, breakdown, e
         if results['total'] > 0:
             report += (f"{difficulty}: {results['correct']}/{results['total']} correct "
                       f"({results['percentage']:.1f}%) - {results['points']} points\n")
+            if results['incorrect']:
+                report += f"    Incorrect questions: {', '.join(map(str, results['incorrect']))}\n"
     
     if errors:
         report += "\nErrors:\n"
@@ -1111,27 +1123,26 @@ def format_grade_report(student_id, student_name, score, max_score, breakdown, e
             report += f"- {error}\n"
             
     return report
+
 # Example usage:
 if __name__ == "__main__":
-    # Example data based on your exam generation system
-    answer_key = "01230"  # Example answer key
-    difficulty_points = "11123"  # 3 Easy questions, 1 Medium question, 1 Hard question
+    # Example data
+    answer_key = "01230"
+    difficulty_points = "11123"
     
-    # Student answers grouped by difficulty
+    # Test case 1: Some correct answers
     student_answers = {
-        'Easy': [0, 1, 2],  # 3 Easy answers
-        'Medium': [3],      # 1 Medium answer
-        'Hard': [0]         # 1 Hard answer
+        'Easy': [0, 1, 2],
+        'Medium': [3],
+        'Hard': [0]
     }
     
-    # Grade the exam
-    score, max_score, breakdown, errors = grade_exam(
+    score, max_score, breakdown, errors, failed = grade_exam(
         student_answers,
         answer_key,
         difficulty_points
     )
     
-    # Generate report
     report = format_grade_report(
         student_id="2001234",
         student_name="John Doe",
@@ -1139,10 +1150,37 @@ if __name__ == "__main__":
         max_score=max_score,
         breakdown=breakdown,
         errors=errors,
-        set_id="001A"
+        set_id="001A",
+        failed=failed
     )
+    print("Test Case 1 - Normal:")
     print(report)
-
+    
+    # Test case 2: All wrong answers
+    student_answers = {
+        'Easy': [1, 2, 3],
+        'Medium': [0],
+        'Hard': [1]
+    }
+    
+    score, max_score, breakdown, errors, failed = grade_exam(
+        student_answers,
+        answer_key,
+        difficulty_points
+    )
+    
+    report = format_grade_report(
+        student_id="2001235",
+        student_name="Jane Doe",
+        score=score,
+        max_score=max_score,
+        breakdown=breakdown,
+        errors=errors,
+        set_id="001B",
+        failed=failed
+    )
+    print("\nTest Case 2 - All Wrong:")
+    print(report)
 
 
 
@@ -1160,10 +1198,20 @@ def delete_test_set(request, test_set_id):
 
     return redirect('generate_exam_sets', class_id=exam.class_assigned.id, exam_id=exam.id)
 
-@login_required
+@login_required 
 def download_test_paper(request, class_id, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = get_object_or_404(Class, id=class_id)
+
+    # Check if there are any test sets generated
+    test_sets = TestSet.objects.filter(
+        exam=exam,
+        student__in=current_class.students.all()
+    )
+
+    if not test_sets.exists():
+        messages.error(request, "No test sets have been generated yet. Please generate test sets first.")
+        return redirect('generate_exam_sets', class_id=current_class.id, exam_id=exam_id)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="test_paper_class_{current_class.id}_exam_{exam.id}.pdf"'
@@ -1173,6 +1221,7 @@ def download_test_paper(request, class_id, exam_id):
     width, height = letter
     pdf_canvas.setTitle(f"Test Paper for {exam.name}")
 
+    # [Rest of the code remains unchanged...]
     # Adjusted dimensions for better text fitting
     line_height = 15 
     bottom_margin = 30 
@@ -1185,10 +1234,7 @@ def download_test_paper(request, class_id, exam_id):
     column_spacing = 20
     column_width = (width - 2 * left_margin - column_spacing) / 2
 
-    test_sets = TestSet.objects.filter(
-        exam=exam, 
-        student__in=current_class.students.all()
-    ).prefetch_related('questions').order_by('student__last_name', 'student__first_name')
+    test_sets = test_sets.prefetch_related('questions').order_by('student__last_name', 'student__first_name')
 
     for test_set in test_sets:
         student = test_set.student
@@ -1447,22 +1493,32 @@ def add_exam_view(request):
         form = ExamForm(request.POST, user=request.user)
         if form.is_valid():
             try:
-                # Save the exam instance, which triggers the `save` method in the Exam model
-                exam = form.save(commit=False)  # Create an instance but don't save it yet
-                exam.save()  # This will generate exam_id and set_id
-                messages.success(request, 'Exam added successfully!')
-                return redirect('exams')
+                exam_name = form.cleaned_data.get('name')
+                # Check if exam name already exists for this user's classes
+                if Exam.objects.filter(
+                    class_assigned__user=request.user, 
+                    name__iexact=exam_name
+                ).exists():
+                    form.add_error('name', 'An exam with this name already exists.')
+                    messages.error(request, 'Exam name must be unique.')
+                else:
+                    # Save the exam instance
+                    exam = form.save(commit=False)
+                    exam.save()
+                    messages.success(request, 'Exam added successfully!')
+                    return redirect('exams')
             except IntegrityError:
                 form.add_error('exam_id', 'Exam ID must be unique.')
-                messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
+                messages.error(request, 'There was an error adding the exam.')
         else:
-            messages.error(request, 'There was an error adding the exam. Please check the form for errors.')
+            messages.error(request, 'Please check the form for errors.')
     else:
         form = ExamForm(user=request.user)
 
     user_classes = Class.objects.filter(user=request.user)
     context = {'form': form, 'classes': user_classes}
     return render(request, 'exams.html', context)
+
 
 @login_required
 def exam_detail_view(request, exam_id):

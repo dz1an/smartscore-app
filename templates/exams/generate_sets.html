@@ -53,17 +53,17 @@
     <!-- Inputs for easy, medium, and hard questions -->
     <div class="mb-4">
       <label for="easy_questions" class="block mb-2 text-sm font-medium text-gray-700">Easy Questions:</label>
-      <input type="number" id="easy_questions" name="easy_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
+      <input type="number" id="easy_questions" name="easy_questions" min="0" value="{{ easy_count }}" class="block w-full p-2 border border-gray-300 rounded-lg">
     </div>
 
     <div class="mb-4">
       <label for="medium_questions" class="block mb-2 text-sm font-medium text-gray-700">Medium Questions:</label>
-      <input type="number" id="medium_questions" name="medium_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
+      <input type="number" id="medium_questions" name="medium_questions" min="0" value="{{ medium_count }}" class="block w-full p-2 border border-gray-300 rounded-lg">
     </div>
 
     <div class="mb-4">
       <label for="hard_questions" class="block mb-2 text-sm font-medium text-gray-700">Hard Questions:</label>
-      <input type="number" id="hard_questions" name="hard_questions" min="0" value="0" class="block w-full p-2 border border-gray-300 rounded-lg">
+      <input type="number" id="hard_questions" name="hard_questions" min="0" value="{{ hard_count }}" class="block w-full p-2 border border-gray-300 rounded-lg">
     </div>
 
     <!-- Dynamic total questions -->
