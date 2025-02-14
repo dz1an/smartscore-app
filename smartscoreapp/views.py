@@ -2070,11 +2070,13 @@ def bulk_upload_students_view(request, class_id):
                 middle_initial = row.get('Middle Initial', '')
 
                 try:
-                    # Validate student ID
-                    validate_student_id(student_id)
+                    # Validate student ID format: 2 letters followed by 9 digits
+                    if not student_id or not re.match(r'^[a-zA-Z]{2}\d{9}$', student_id):
+                        invalid_student_ids.append(student_id)
+                        continue
 
                     # Check if the student already exists in the same class
-                    if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+                    if Student.objects.filter(student_id=student_id.lower(), assigned_class=class_instance).exists():
                         existing_student_ids.append(student_id)
                         continue  # Skip this student
                     
@@ -2115,6 +2117,7 @@ def bulk_upload_students_view(request, class_id):
         'form': form,
         'class_instance': class_instance,
     })
+
 
 @login_required
 @require_http_methods(["GET", "POST"])
