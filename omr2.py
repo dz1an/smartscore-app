@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import datetime
 from collections import Counter
+import cv2
 
 current_time = datetime.datetime.now()
 
@@ -87,7 +88,15 @@ def load_image_files(image_folder_path):
 def process_image(image_path, id_to_info, filename):
     """Process a single image and append results to the CSV."""
     try:
-        cropStud, cropExam, cropAns = scan.rect_locator(image_path)
+        result = scan.rect_locator(image_path)
+    
+        # Check if the result has exactly 3 values
+        if len(result) != 3:
+            raise ValueError("scan.rect_locator returned an unexpected number of values.")
+        
+        # Unpack the values
+        cropStud, cropExam, cropAns = result
+
         
         # Student ID
         stud_id = utilis.int_list_to_string(scan.id_check(scan.id_scan(cropStud)))
@@ -145,29 +154,58 @@ def process_image(image_path, id_to_info, filename):
         utilis.append_to_csv(additional_content, filename)
         print(f"Processed {stud_id}: Score = {score}, Invalid = {invAns}, Incorrect = {incAns}")
         print("-" * 40)
-        
-    except Exception as e:
-        # Output student info and exam results
-        additional_content = [
-            "Invalid Last Name",
-            "Invalid First Name",
-            "Invalid Middle Initial",
-            "Invalid Student ID",
-            "Invalid Set ID",
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            None,
-            None,
-            0,
-            0,
-            0,
-            None,
-            None,
-            None
-        ]       
-        utilis.append_to_csv(additional_content, filename)
-        print(f"Failed to process image {image_path}: {e}")
+
+    except ValueError as e:
+        # Handle the specific ValueError for scan.rect_locator
+        if str(e) == "scan.rect_locator returned an unexpected number of values.":
+            print("Handling scan.rect_locator ValueError: Too many or too few values returned.")
+            # Output student info and exam results
+            additional_content = [
+                "Invalid Photo",
+                "Invalid Photo",
+                "Invalid Photo",
+                "Invalid Photo",
+                "Invalid Photo",
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                None,
+                None,
+                0,
+                0,
+                0,
+                None,
+                None,
+                None
+            ]       
+            utilis.append_to_csv(additional_content, filename)
+            print(f"Failed to process image {image_path}: {e}")
+        else:
+            # Handle other ValueErrors
+            # Output student info and exam results
+            additional_content = [
+                "Invalid Student ID",
+                "Invalid Student ID",
+                "Invalid Student ID",
+                "Invalid Student ID",
+                "Invalid Student ID",
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                None,
+                None,
+                0,
+                0,
+                0,
+                None,
+                None,
+                None
+            ]       
+            utilis.append_to_csv(additional_content, filename)
+            print(f"Failed to process image {image_path}: {e}")

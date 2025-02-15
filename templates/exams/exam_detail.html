@@ -36,7 +36,7 @@
 
    <!-- Buttons Section -->
 <div class="mb-4 flex flex-wrap justify-end space-x-2">
-  <a href="{% url 'select_questions' exam.id %}" class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg shadow-md transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50">Select Questions</a>
+  <a href="{% url 'select_questions' exam.id %}" class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg shadow-md transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50">Import Questions</a>
   
   <a href="{% url 'scan_page' current_class.id exam.id %}" class="text-sm text-white bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg shadow-md transition duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-opacity-50">Scan Page</a>
   
@@ -64,7 +64,7 @@
         <th scope="col" class="px-6 py-3">Options</th>
         <th scope="col" class="px-6 py-3">Answer</th>
         <th scope="col" class="px-6 py-3">Difficulty</th>
-        <th scope="col" class="px-6 py-3 text-center">Actions</th> <!-- Added text-center -->
+        <th scope="col" class="px-6 py-3 text-center">Actions</th> 
       </tr>
     </thead>
     <tbody>
@@ -75,17 +75,27 @@
           </td>
           <td class="px-6 py-4">
             <ul>
-              <li>A: {{ question.option_a }}</li>
-              <li>B: {{ question.option_b }}</li>
-              <li>C: {{ question.option_c }}</li>
-              <li>D: {{ question.option_d }}</li>
-              <li>E: {{ question.option_e }}</li>
+              {% if question.option_a %}
+                <li>A: {{ question.option_a }}</li>
+              {% endif %}
+              {% if question.option_b %}
+                <li>B: {{ question.option_b }}</li>
+              {% endif %}
+              {% if question.option_c %}
+                <li>C: {{ question.option_c }}</li>
+              {% endif %}
+              {% if question.option_d %}
+                <li>D: {{ question.option_d }}</li>
+              {% endif %}
+              {% if question.option_e %}
+                <li>E: {{ question.option_e }}</li>
+              {% endif %}
             </ul>
           </td>
           <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.get_answer_display }}</td>
           <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.difficulty }}</td>
           <td class="px-6 py-4">
-            <div class="flex justify-center gap-4"> <!-- Added flex container with centering -->
+            <div class="flex justify-center gap-4"> 
               <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue
               onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}','{{ question.option_e }}')">Edit</button>
             <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
@@ -157,9 +167,9 @@
         <div class="mb-4">
           <label for="difficulty" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Difficulty:</label>
           <select name="difficulty" id="difficulty" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="Easy">Easy</option>
-            <option value="Medium">Medium</option>
-            <option value="Hard">Hard</option>
+            <option value="Easy">Easy (1 pt)</option>
+            <option value="Medium">Medium (2 pts)</option>
+            <option value="Hard">Hard (3 pts)</option>
           </select>
         </div>
   
