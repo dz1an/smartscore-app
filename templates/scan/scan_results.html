@@ -149,59 +149,36 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                {% for result in scan_results %}
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">{{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</div>
+                        <div class="text-sm font-medium text-gray-900">Deoric, Angelica E</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.set_id }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">invalid exam id</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</div>
-                        {% if result.answer_stats.Easy.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Easy.incorrect_answers|join:", " }}</div>
-                        {% endif %}
+                        <div class="text-sm text-gray-900">3/5</div>
+                        <div class="text-xs text-red-600 mt-1">Wrong: 3, 4</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</div>
-                        {% if result.answer_stats.Medium.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Medium.incorrect_answers|join:", " }}</div>
-                        {% endif %}
+                        <div class="text-sm text-gray-900">2/2</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</div>
-                        {% if result.answer_stats.Hard.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Hard.incorrect_answers|join:", " }}</div>
-                        {% endif %}
+                        <div class="text-sm text-gray-900">2/4</div>
+                        <div class="text-xs text-red-600 mt-1">Wrong: 1, 6</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {{ result.score }}/{{ result.max_score }}
+                        5/13
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if result.percentage < 60 %}
-                                bg-red-100 text-red-800
-                            {% elif result.percentage >= 60 and result.percentage < 75 %}
-                                bg-yellow-100 text-yellow-800
-                            {% else %}
-                                bg-green-100 text-green-800
-                            {% endif %}">
-                            {{ result.percentage|floatformat:1 }}%
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            38.5%
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button onclick="showDetails('{{ forloop.counter }}')" 
-                                class="text-indigo-600 hover:text-indigo-900 font-medium">
+                        <button onclick="showDetails('1')" class="text-indigo-600 hover:text-indigo-900 font-medium">
                             View Details
                         </button>
                     </td>
                 </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
-                        No results found
-                    </td>
-                </tr>
-                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -218,28 +195,20 @@
                         </svg>
                     </button>
                 </div>
-
+        
                 <div id="modalContent" class="mt-4">
-                    {% for result in scan_results %}
-                    <div id="details-{{ forloop.counter }}" class="hidden space-y-4">
+                    <div id="details-1" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-gray-50 p-4 rounded-lg">
                                 <h4 class="font-medium text-gray-900 mb-2">Student Information</h4>
                                 <div class="space-y-2 text-sm">
-                                    <p><span class="text-gray-500">Name:</span> {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</p>
-                                    <p><span class="text-gray-500">ID:</span> {{ result.student_id }}</p>
-                                    <p><span class="text-gray-500">Set:</span> {{ result.set_id }}</p>
-                                    <p><span class="text-gray-500">Score:</span> {{ result.score }}/{{ result.max_score }}</p>
+                                    <p><span class="text-gray-500">Name:</span> Deoric, Angelica E</p>
+                                    <p><span class="text-gray-500">ID:</span> 2001238</p>
+                                    <p><span class="text-gray-500">Set:</span> invalid exam id</p>
+                                    <p><span class="text-gray-500">Score:</span> 5/13</p>
                                     <p><span class="text-gray-500">Grade:</span> 
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            {% if result.grade == 'F' %}
-                                                bg-red-100 text-red-800
-                                            {% elif result.grade == 'N/A' %}
-                                                bg-gray-100 text-gray-800
-                                            {% else %}
-                                                bg-green-100 text-green-800
-                                            {% endif %}">
-                                            {{ result.formatted_grade }}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            38.5%
                                         </span>
                                     </p>
                                 </div>
@@ -251,81 +220,52 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Easy Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</span>
+                                            <span class="font-medium">3/5</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Easy.percentage }}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: 60%"></div>
                                         </div>
                                     </div>
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Medium Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</span>
+                                            <span class="font-medium">2/2</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Medium.percentage }}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: 100%"></div>
                                         </div>
                                     </div>
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Hard Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</span>
+                                            <span class="font-medium">2/4</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Hard.percentage }}%"></div>
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: 50%"></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
+        
                         <div class="bg-gray-50 p-4 rounded-lg mt-4">
                             <h4 class="font-medium text-gray-900 mb-2">Detailed Analysis</h4>
                             <div class="space-y-3">
-                                {% if result.answer_stats.Easy.incorrect_answers %}
                                 <div class="text-sm">
                                     <span class="text-gray-500">Easy Questions Missed:</span>
-                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Easy.incorrect_answers|join:", " }}</span>
+                                    <span class="text-red-600 ml-2">3, 4</span>
                                 </div>
-                                {% endif %}
                                 
-                                {% if result.answer_stats.Medium.incorrect_answers %}
-                                <div class="text-sm">
-                                    <span class="text-gray-500">Medium Questions Missed:</span>
-                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Medium.incorrect_answers|join:", " }}</span>
-                                </div>
-                                {% endif %}
-                                
-                                {% if result.answer_stats.Hard.incorrect_answers %}
                                 <div class="text-sm">
                                     <span class="text-gray-500">Hard Questions Missed:</span>
-                                    <span class="text-red-600 ml-2">{{ result.answer_stats.Hard.incorrect_answers|join:", " }}</span>
+                                    <span class="text-red-600 ml-2">1, 6</span>
                                 </div>
-                                {% endif %}
-                                
-                                {% if result.invalid_answer or result.incorrect_answer %}
-                                <div class="mt-4 p-3 bg-red-50 rounded-md">
-                                    {% if result.invalid_answer %}
-                                    <div class="text-sm text-red-700">
-                                        <span class="font-medium">Invalid Answer:</span> {{ result.invalid_answer }}
-                                    </div>
-                                    {% endif %}
-                                    {% if result.incorrect_answer %}
-                                    <div class="text-sm text-red-700">
-                                        <span class="font-medium">Incorrect Answer:</span> {{ result.incorrect_answer }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
 <script>
     function showDetails(resultId) {
@@ -359,4 +299,6 @@
         }
     });
 </script>
+    </div>
+</div>
 {% endblock %}

@@ -1613,6 +1613,13 @@ def grade_exam_view(request, exam_id, student_id):
     exam = get_object_or_404(Exam, id=exam_id)
     student_questions = StudentQuestion.objects.filter(student=student, exam=exam)
 
+    # Define point values for each difficulty
+    difficulty_points = {
+        'Easy': 1,
+        'Medium': 2,
+        'Hard': 3
+    }
+
     # Find the most recent OMR results file
     results_dir = os.path.join(
         settings.MEDIA_ROOT,
@@ -1625,7 +1632,6 @@ def grade_exam_view(request, exam_id, student_id):
     if os.path.exists(results_dir):
         result_files = [f for f in os.listdir(results_dir) if f.startswith('Results_exam_') and f.endswith('.csv')]
         if result_files:
-            # Get the most recent results file
             latest_result = max(result_files, key=lambda x: os.path.getctime(os.path.join(results_dir, x)))
             result_path = os.path.join(results_dir, latest_result)
             
@@ -1633,7 +1639,6 @@ def grade_exam_view(request, exam_id, student_id):
                 with open(result_path, 'r') as file:
                     csv_reader = csv.DictReader(file)
                     for row in csv_reader:
-                        # Match student by their ID
                         if str(row.get('ID')) == str(student.student_id):
                             omr_results = row
                             break
@@ -1643,16 +1648,25 @@ def grade_exam_view(request, exam_id, student_id):
     # If we found OMR results and grades haven't been set yet
     if omr_results and not any(q.marks for q in student_questions):
         try:
-            # Parse incorrect answers
-            incorrect_answers = eval(omr_results.get('Incorrect Answer', '[]'))
-            invalid_answers = eval(omr_results.get('Invalid Answer', '[]'))
+            # Parse different difficulty level incorrect answers
+            easy_incorrect = eval(omr_results.get('Easy Inc list', '[]'))
+            medium_incorrect = eval(omr_results.get('Medium Inc list', '[]'))
+            hard_incorrect = eval(omr_results.get('Hard Inc list', '[]'))
             
-            # Update marks for each question
+            # Update marks for each question based on difficulty
             for student_question in student_questions:
                 question_num = student_question.question.number
-                # Mark as correct (1) if not in incorrect or invalid answers
-                is_correct = question_num not in incorrect_answers and question_num not in invalid_answers
-                student_question.marks = 1 if is_correct else 0
+                difficulty = student_question.question.difficulty
+                
+                # Check if question is in the corresponding incorrect list
+                is_incorrect = (
+                    (difficulty == 'Easy' and question_num in easy_incorrect) or
+                    (difficulty == 'Medium' and question_num in medium_incorrect) or
+                    (difficulty == 'Hard' and question_num in hard_incorrect)
+                )
+                
+                # Assign points based on difficulty if correct
+                student_question.marks = 0 if is_incorrect else difficulty_points[difficulty]
                 student_question.save()
             
             messages.success(request, 'OMR results loaded successfully!')
@@ -1664,12 +1678,17 @@ def grade_exam_view(request, exam_id, student_id):
         if 'save_grades' in request.POST:
             for student_question in student_questions:
                 try:
+                    difficulty = student_question.question.difficulty
+                    max_marks = difficulty_points[difficulty]
                     marks = int(request.POST.get(f"marks_{student_question.id}", 0))
-                    if 0 <= marks <= 1:
+                    
+                    if 0 <= marks <= max_marks:
                         student_question.marks = marks
                         student_question.save()
                     else:
-                        messages.error(request, f"Invalid marks for question {student_question.question.number}. Must be 0 or 1.")
+                        messages.error(request, 
+                            f"Invalid marks for question {student_question.question.number}. "
+                            f"Must be between 0 and {max_marks} for {difficulty} difficulty.")
                         return redirect('grade_exam', exam_id=exam_id, student_id=student_id)
                 except ValueError:
                     messages.error(request, f"Invalid marks for question {student_question.question.number}.")
@@ -1697,19 +1716,35 @@ def grade_exam_view(request, exam_id, student_id):
                 )
                 scanned_images.append(image_url)
 
-    # Calculate statistics
-    total_questions = len(student_questions)
-    graded_questions = sum(1 for q in student_questions if q.marks is not None)
+    # Calculate statistics with weighted scores
+    total_possible = sum(difficulty_points[q.question.difficulty] for q in student_questions)
     total_score = sum(q.marks or 0 for q in student_questions)
-    score_percentage = (total_score / total_questions * 100) if total_questions > 0 else 0
+    graded_questions = sum(1 for q in student_questions if q.marks is not None)
+    score_percentage = (total_score / total_possible * 100) if total_possible > 0 else 0
+
+    # Group questions by difficulty for detailed statistics
+    difficulty_stats = {
+        'Easy': {'total': 0, 'correct': 0, 'points': 0, 'possible_points': 0},
+        'Medium': {'total': 0, 'correct': 0, 'points': 0, 'possible_points': 0},
+        'Hard': {'total': 0, 'correct': 0, 'points': 0, 'possible_points': 0}
+    }
+
+    for q in student_questions:
+        diff = q.question.difficulty
+        difficulty_stats[diff]['total'] += 1
+        difficulty_stats[diff]['possible_points'] += difficulty_points[diff]
+        if q.marks:
+            difficulty_stats[diff]['correct'] += 1 if q.marks == difficulty_points[diff] else 0
+            difficulty_stats[diff]['points'] += q.marks
 
     # Add OMR results to context if available
     omr_info = None
     if omr_results:
         omr_info = {
             'score': omr_results.get('Score', 'N/A'),
-            'invalid_answers': eval(omr_results.get('Invalid Answer', '[]')),
-            'incorrect_answers': eval(omr_results.get('Incorrect Answer', '[]')),
+            'easy_incorrect': eval(omr_results.get('Easy Inc list', '[]')),
+            'medium_incorrect': eval(omr_results.get('Medium Inc list', '[]')),
+            'hard_incorrect': eval(omr_results.get('Hard Inc list', '[]')),
             'set_id': omr_results.get('Set ID', 'N/A')
         }
 
@@ -1718,14 +1753,17 @@ def grade_exam_view(request, exam_id, student_id):
         'exam': exam,
         'student_questions': student_questions,
         'total_score': total_score,
-        'total_questions': total_questions,
+        'total_possible': total_possible,
         'graded_questions': graded_questions,
         'score_percentage': score_percentage,
+        'difficulty_stats': difficulty_stats,
         'scanned_images': scanned_images,
-        'omr_results': omr_info
+        'omr_results': omr_info,
+        'difficulty_points': difficulty_points  # Add to context for template use
     }
 
     return render(request, 'grade_exam.html', context)
+
 
 
 @login_required
@@ -1789,9 +1827,9 @@ def scan_results_view(request, class_id, exam_id):
     
     scan_results = []
     question_stats = {
-        'Easy': {'correct': 0, 'total': 0},
-        'Medium': {'correct': 0, 'total': 0},
-        'Hard': {'correct': 0, 'total': 0}
+        'Easy': {'correct': 0, 'total': 0, 'points': 1},
+        'Medium': {'correct': 0, 'total': 0, 'points': 2},
+        'Hard': {'correct': 0, 'total': 0, 'points': 3}
     }
     
     def calculate_grade(score, max_score):
@@ -1820,17 +1858,22 @@ def scan_results_view(request, class_id, exam_id):
             return 'F'
     
     def parse_list(list_str):
-        # Handle empty list, bracket-enclosed list, or plain string
         if not list_str or list_str == '[]':
             return []
-        
-        # Remove brackets and split
         cleaned = list_str.strip('[]')
         if not cleaned:
             return []
-        
-        # Split and strip each item
         return [item.strip() for item in cleaned.split(',') if item.strip()]
+    
+    def calculate_max_score(easy_count, medium_count, hard_count):
+        return (easy_count * question_stats['Easy']['points'] +
+                medium_count * question_stats['Medium']['points'] +
+                hard_count * question_stats['Hard']['points'])
+    
+    def calculate_actual_score(easy_correct, medium_correct, hard_correct):
+        return (easy_correct * question_stats['Easy']['points'] +
+                medium_correct * question_stats['Medium']['points'] +
+                hard_correct * question_stats['Hard']['points'])
     
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
@@ -1842,46 +1885,54 @@ def scan_results_view(request, class_id, exam_id):
                     reader = csv.DictReader(file)
                     
                     for row in reader:
-                        # Parse lists correctly
                         easy_incorrect = parse_list(row.get('Easy Incorrect', ''))
                         medium_incorrect = parse_list(row.get('Medium Incorrect', ''))
                         hard_incorrect = parse_list(row.get('Hard Incorrect', ''))
                         
-                        # Get the basic counts from the CSV
                         easy_count = int(row.get('Easy', 0))
                         medium_count = int(row.get('Medium', 0))
                         hard_count = int(row.get('Hard', 0))
-                        total_items = int(row.get('Items', 0))
-                        max_score = int(row.get('Max Score', 0))
-                        score = int(row.get('Score', 0))
                         
-                        # Calculate percentage
-                        percentage = (float(score) / float(max_score)) * 100 if max_score > 0 else 0
-                        
-                        # Calculate correct counts
+                        # Calculate correct answers
                         easy_correct = easy_count - len(easy_incorrect)
                         medium_correct = medium_count - len(medium_incorrect)
                         hard_correct = hard_count - len(hard_incorrect)
                         
-                        # Prepare answer stats
+                        # Calculate scores with point values
+                        max_score = calculate_max_score(easy_count, medium_count, hard_count)
+                        actual_score = calculate_actual_score(easy_correct, medium_correct, hard_correct)
+                        
+                        # Calculate percentage
+                        percentage = (float(actual_score) / float(max_score)) * 100 if max_score > 0 else 0
+                        
+                        # Prepare answer stats with percentages
                         answer_stats = {
                             'Easy': {
                                 'total': easy_count,
                                 'correct': easy_correct,
                                 'incorrect': len(easy_incorrect),
-                                'incorrect_answers': easy_incorrect
+                                'incorrect_answers': easy_incorrect,
+                                'percentage': (easy_correct / easy_count * 100) if easy_count > 0 else 0,
+                                'points_earned': easy_correct * question_stats['Easy']['points'],
+                                'points_possible': easy_count * question_stats['Easy']['points']
                             },
                             'Medium': {
                                 'total': medium_count,
                                 'correct': medium_correct,
                                 'incorrect': len(medium_incorrect),
-                                'incorrect_answers': medium_incorrect
+                                'incorrect_answers': medium_incorrect,
+                                'percentage': (medium_correct / medium_count * 100) if medium_count > 0 else 0,
+                                'points_earned': medium_correct * question_stats['Medium']['points'],
+                                'points_possible': medium_count * question_stats['Medium']['points']
                             },
                             'Hard': {
                                 'total': hard_count,
                                 'correct': hard_correct,
                                 'incorrect': len(hard_incorrect),
-                                'incorrect_answers': hard_incorrect
+                                'incorrect_answers': hard_incorrect,
+                                'percentage': (hard_correct / hard_count * 100) if hard_count > 0 else 0,
+                                'points_earned': hard_correct * question_stats['Hard']['points'],
+                                'points_possible': hard_count * question_stats['Hard']['points']
                             }
                         }
                         
@@ -1890,7 +1941,6 @@ def scan_results_view(request, class_id, exam_id):
                             question_stats[difficulty]['total'] += answer_stats[difficulty]['total']
                             question_stats[difficulty]['correct'] += answer_stats[difficulty]['correct']
                         
-                        # Parse incorrect answers list
                         incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
                         
                         scan_results.append({
@@ -1900,13 +1950,13 @@ def scan_results_view(request, class_id, exam_id):
                             'middle_initial': row.get('Middle Initial', ''),
                             'set_id': row.get('Set ID', 'N/A'),
                             'answer_stats': answer_stats,
-                            'total_items': total_items,
-                            'score': score,
+                            'total_items': easy_count + medium_count + hard_count,
+                            'score': actual_score,
                             'max_score': max_score,
-                            'percentage': percentage,  # Add percentage to the dictionary
-                            'grade': calculate_grade(score, max_score),
-                            'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
-                            'status': 'success' if score > 0 else 'failed',
+                            'percentage': percentage,
+                            'grade': calculate_grade(actual_score, max_score),
+                            'formatted_grade': f"{actual_score}/{max_score} ({percentage:.1f}%) - {calculate_grade(actual_score, max_score)}",
+                            'status': 'success' if actual_score > 0 else 'failed',
                             'invalid_answer': row.get('Invalid Ans list', ''),
                             'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
                         })
@@ -1937,7 +1987,6 @@ def scan_results_view(request, class_id, exam_id):
     }
     
     return render(request, 'scan_results.html', context)
-
 
 def export_results(request, class_id, exam_id):
     """
