@@ -315,8 +315,11 @@ def exams_view(request):
     else:
         form = ExamForm(user=user_instance)
 
-    # Fetch exams and annotate with the number of questions
-    exams = Exam.objects.filter(class_assigned__user=user_instance).annotate(num_questions=Count('questions'))
+    # Fetch exams, annotate with number of questions, and order by name
+    exams = Exam.objects.filter(class_assigned__user=user_instance)\
+        .annotate(num_questions=Count('questions'))\
+        .order_by('name')  # Add this line to sort alphabetically
+    
     classes = Class.objects.filter(user=user_instance)
 
     context = {
@@ -600,6 +603,7 @@ def remove_image(request, class_id, exam_id, image_name):
 def scan_page(request, class_id, exam_id):
     """
     Main view for the scan page handling image uploads, scanning, and result management.
+    Allows for rescanning of exam papers.
     
     Args:
         request (HttpRequest): The current request object
@@ -616,8 +620,10 @@ def scan_page(request, class_id, exam_id):
     # Get upload paths
     base_upload_path, absolute_upload_path, base_csv_path = get_upload_paths(current_class, current_exam)
     
+    # Initialize result paths
     result_csv = ''
     csv_file = ''
+    results_folder = os.path.join(absolute_upload_path)
 
     if request.method == 'POST':
         if 'image_upload' in request.FILES:
@@ -657,10 +663,18 @@ def scan_page(request, class_id, exam_id):
                     messages.error(request, "Upload folder not found.")
                     return redirect('scan_page', class_id=class_id, exam_id=exam_id)
 
+                # Generate unique timestamp for this scan
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                
                 # Call OMR with absolute paths
                 result_csv = omr(csv_file, absolute_upload_path)
                 
                 if result_csv and os.path.exists(result_csv):
+                    # Rename the result file to include timestamp
+                    new_result_csv = os.path.join(os.path.dirname(result_csv), 
+                                                f'Results_exam_{exam_id}_{timestamp}.csv')
+                    os.rename(result_csv, new_result_csv)
+                    result_csv = new_result_csv
                     messages.success(request, "Scanning completed. Results saved successfully.")
                 else:
                     messages.warning(request, "Scanning completed but no results were generated.")
@@ -679,13 +693,13 @@ def scan_page(request, class_id, exam_id):
                         os.remove(file_path)
                 messages.success(request, "Your uploaded images deleted successfully.")
 
-            # Delete results if they exist
-            if result_csv and os.path.exists(result_csv):
-                os.remove(result_csv)
-                result_csv = ''
-                messages.success(request, "Scan result CSV deleted successfully.")
-
             return redirect('scan_page', class_id=class_id, exam_id=exam_id)
+
+    # Get existing results if any
+    existing_results = []
+    if os.path.exists(results_folder):
+        existing_results = [f for f in os.listdir(results_folder) 
+                          if f.startswith('Results_exam_') and f.endswith('.csv')]
 
     context = {
         'current_class': current_class,
@@ -694,7 +708,9 @@ def scan_page(request, class_id, exam_id):
         'upload_path': absolute_upload_path,
         'uploaded_images': get_uploaded_images(absolute_upload_path, base_upload_path, request.user),
         'result_csv': result_csv,
-        'csv_file': csv_file
+        'csv_file': csv_file,
+        'existing_results': existing_results,
+        'can_scan': True  # Always allow scanning
     }
 
     return render(request, 'scan_page.html', context)
@@ -759,7 +775,6 @@ def handle_image_upload(request, absolute_upload_path, current_user):
     messages.success(request, f"{len(uploaded_files)} image(s) uploaded successfully.")
     return True
 
-
 def get_upload_paths(current_class, current_exam):
     """
     Generate consistent upload and CSV paths for a given class and exam.
@@ -795,8 +810,6 @@ def validate_exam_for_scanning(request, current_class, current_exam, csv_file):
         return False, "Required CSV file not found. Please generate exam sets first."
     
     return True, ""
-
-
 
 def scan_exam_view(request):
     folder_path = None
@@ -1000,13 +1013,12 @@ def generate_exam_sets(request, class_id, exam_id):
 
 def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     """
-    Grade a student's exam based on the answer key and difficulty points with improved difficulty tally
-    and zero correct answer detection
+    Grade a student's exam based on the answer key and difficulty points
     
     Parameters:
     student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
     answer_key (str): String of correct answers (0-based indices, e.g., "01230")
-    difficulty_points (str): String indicating point value for each question (e.g., "11123")
+    difficulty_points (str): String indicating difficulty for each question (e.g., "11223")
     
     Returns:
     tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers, failed_status)
@@ -1015,17 +1027,20 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     max_possible_score = 0
     total_correct_answers = 0
     total_questions = 0
+    
+    # Initialize breakdown with points per difficulty
     breakdown = {
-        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
-        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
-        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []}
+        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 1},
+        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 2},
+        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 3}
     }
+    
     incorrect_answers = []
     
     # Convert answer key to list of integers
     correct_answers = [int(ans) for ans in answer_key]
     
-    # Create a map of question indices to difficulties
+    # Create difficulty map
     difficulty_map = {
         '1': 'Easy',
         '2': 'Medium',
@@ -1039,21 +1054,25 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         'Hard': difficulty_points.count('3')
     }
     
-    # Validate number of answers provided for each difficulty
+    # Calculate maximum possible score
+    for difficulty in difficulty_points:
+        diff_type = difficulty_map[difficulty]
+        max_possible_score += breakdown[diff_type]['point_value']
+    
+    # Validate answers count
     for difficulty, expected in expected_counts.items():
         student_ans = student_answers_by_difficulty.get(difficulty, [])
         if len(student_ans) != expected:
-            return 0, sum(int(p) for p in difficulty_points), breakdown, [
+            return 0, max_possible_score, breakdown, [
                 f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
-            ], True  # Failed status
+            ], True
     
-    # Grade each answer with improved difficulty tracking
+    # Grade each answer
     current_index_by_difficulty = {'Easy': 0, 'Medium': 0, 'Hard': 0}
     
-    for i, (correct_ans, points) in enumerate(zip(correct_answers, difficulty_points)):
-        difficulty = difficulty_map[points]
-        points = int(points)
-        max_possible_score += points
+    for i, (correct_ans, diff) in enumerate(zip(correct_answers, difficulty_points)):
+        difficulty = difficulty_map[diff]
+        point_value = breakdown[difficulty]['point_value']
         total_questions += 1
         
         # Get student's answer for this difficulty level
@@ -1062,7 +1081,7 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             incorrect_answers.append(f"Missing {difficulty} answer at question {i+1}")
             breakdown[difficulty]['incorrect'].append(i+1)
             continue
-            
+        
         student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
         current_index_by_difficulty[difficulty] += 1
         
@@ -1072,8 +1091,8 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         # Check if answer is correct
         if student_ans == correct_ans:
             breakdown[difficulty]['correct'] += 1
-            breakdown[difficulty]['points'] += points
-            total_score += points
+            breakdown[difficulty]['points'] += point_value
+            total_score += point_value
             total_correct_answers += 1
         else:
             incorrect_answers.append(
@@ -1081,9 +1100,7 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             )
             breakdown[difficulty]['incorrect'].append(i+1)
     
-    # Calculate percentages and check for complete failure
-    failed_status = total_correct_answers == 0
-    
+    # Calculate percentages
     for difficulty in breakdown:
         if breakdown[difficulty]['total'] > 0:
             breakdown[difficulty]['percentage'] = (
@@ -1091,6 +1108,9 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             )
         else:
             breakdown[difficulty]['percentage'] = 0
+    
+    # Determine failed status (zero correct answers)
+    failed_status = total_correct_answers == 0
     
     return total_score, max_possible_score, breakdown, incorrect_answers, failed_status
 
@@ -1715,7 +1735,6 @@ def grade_exam_view(request, exam_id, student_id):
     return render(request, 'grade_exam.html', context)
 
 
-
 @login_required
 def students_view(request):
     """
@@ -1764,7 +1783,6 @@ def delete_scan_results(request, class_id, exam_id):
     
     # Redirect back to scan results page
     return redirect(reverse('scan_results', kwargs={'class_id': class_id, 'exam_id': exam_id}))
-
 
 
 @login_required
@@ -1926,7 +1944,6 @@ def scan_results_view(request, class_id, exam_id):
     }
     
     return render(request, 'scan_results.html', context)
-
 
 
 def export_results(request, class_id, exam_id):
@@ -2358,128 +2375,230 @@ FAQ_RESPONSES = {
     # Authentication & Account
     'login': {
         'keywords': ['login', 'signin', 'sign in', 'access', 'cant login', "can't login"],
-        'response': """To log in to your account:
-1. Click the 'Login' button in the top right
-2. Enter your username and password
-3. Click 'Sign In'
+        'response': """To log in to your account:  
+• Click the 'Login' button in the top right  
+• Enter your username and password  
+• Click 'Sign In'  
 
-If you're having trouble, make sure:
-- Your caps lock is off
-- Your username and password are correct
-- You're using the correct email address"""
+If you're having trouble:  
+✔ Ensure caps lock is off  
+✔ Check your username and password  
+✔ Use the correct email address"""
     },
-    
+
     'register': {
         'keywords': ['register', 'signup', 'sign up', 'create account', 'new account'],
-        'response': """To create a new account:
-1. Click 'Register' at the login page
-2. Fill in your details
-3. Create a strong password
-4. Click 'Create Account'"""
+        'response': """To create a new account:  
+• Click 'Register' on the login page  
+• Fill in your details  
+• Create a strong password  
+• Click 'Create Account'"""
     },
 
     # Classes
     'add_class': {
         'keywords': ['add class', 'create class', 'new class', 'how to add class', 'class name', 'unique class'],
-        'response': """To add a new class:
-1. Go to 'Classes' in the navigation
-2. Click the 'Add Class' button
-3. Fill in the class details
-4. Click 'Create'
+        'response': """To add a new class:  
+• Go to 'Classes' in the navigation  
+• Click 'Add Class'  
+• Fill in class details  
+• Click 'Create'  
 
-Important: To keep class names unique and organized:
-- Include the school year (e.g., "Math 101 2023-2024")
-- Add section identifiers if needed (e.g., "Physics 1A 2024")
-- Include semester/term if applicable (e.g., "Chemistry 1st Sem 2024")"""
+Tips for class names:  
+✔ Include the school year (e.g., "Math 101 2023-2024")  
+✔ Add section identifiers (e.g., "Physics 1A 2024")  
+✔ Include semester/term if needed (e.g., "Chemistry 1st Sem 2024")"""
     },
 
     'delete_class': {
         'keywords': ['delete class', 'remove class', 'how to delete class'],
-        'response': """To delete a class:
-1. Go to 'Classes'
-2. Open the class you want to delete
-3. Click the 'Delete' button
-4. Confirm deletion
+        'response': """To delete a class:  
+• Go to 'Classes'  
+• Open the class you want to delete  
+• Click 'Delete'  
+• Confirm deletion  
 
-Note: This cannot be undone!"""
+⚠ Warning: This action cannot be undone!"""
     },
 
     # Students
     'add_student': {
         'keywords': ['add student', 'new student', 'enroll student', 'how to add student', 'csv', 'student data', 'excel'],
-        'response': """To add students using StudentDataEntry.csv:
+        'response': """To add students using StudentDataEntry.csv:  
 
-1. Download the StudentDataEntry.csv template
-2. Open in Excel and enable Data Form entry:
-   - Press Alt + D + O to open the Data Form
-   - If not working, add Data Form to Quick Access Toolbar:
-     a. Right-click ribbon > Customize Quick Access Toolbar
-     b. Choose Commands Not in Ribbon
-     c. Find and add "Form"
+1. Download & Open CSV File  
+• Download the StudentDataEntry.csv template  
+• Open in Excel  
 
-3. Using the Data Form:
-   - Click "New" for each student
-   - Fill in required fields
-   - Click "OK" or press Enter
+2. Enable Data Form Entry  
+• Press **Alt + D, then O** to open the Data Form  
+• If not working, add Data Form to Quick Access Toolbar:  
+  ✔ Right-click ribbon → Customize Quick Access Toolbar  
+  ✔ Choose "Commands Not in Ribbon"  
+  ✔ Find and add "Form"  
 
-4. Save the file and upload:
-   - Go to class details
-   - Click 'Bulk Upload'
-   - Select your saved CSV file
-   - Click 'Upload'
+3. Enter Student Data  
+• Click "New" for each student  
+• Fill in required fields  
+• Click "OK" or press Enter  
 
-CSV Format:
-- ID: Student ID number
-- First Name: Student's first name
-- Last Name: Student's last name
-- Middle Initial: Student's middle initial (optional)"""
+4. Upload CSV File  
+• Go to class details  
+• Click 'Bulk Upload'  
+• Select your saved CSV file  
+• Click 'Upload'  
+
+CSV Format:  
+✔ ID: Student ID number  
+✔ First Name: Student's first name  
+✔ Last Name: Student's last name  
+✔ Middle Initial: (optional)"""
     },
 
     # Exams
     'create_exam': {
         'keywords': ['create exam', 'add exam', 'new exam', 'make exam', 'how to create exam', 'exam name', 'unique exam'],
-        'response': """To create a new exam:
-1. Go to 'Exams'
-2. Click 'Add Exam'
-3. Select the class
-4. Add exam details and questions
-5. Click 'Create'
+        'response': """To create a new exam:  
+• Go to 'Exams'  
+• Click 'Add Exam'  
+• Select the class  
+• Add exam details and questions  
+• Click 'Create'  
 
-For unique and organized exam names, include:
-- School year (e.g., "2023-2024")
-- Exam type (Midterm, Finals, Quiz)
-- Term/Quarter (Q1, Q2, etc.)
+Tips for unique exam names:  
+✔ Include school year (e.g., "2023-2024")  
+✔ Mention exam type (Midterm, Finals, Quiz)  
+✔ Specify term/quarter (Q1, Q2, etc.)  
 
-Example formats:
-- "Midterm_Math101_2024Q1"
-- "Finals_Physics_2024S1"
-- "Quiz1_Chemistry_2024Q2"
-"""
+Example formats:  
+- "Midterm_Math101_2024Q1"  
+- "Finals_Physics_2024S1"  
+- "Quiz1_Chemistry_2024Q2" """
     },
-
-    # [Previous FAQ entries remain the same...]
 
     # General Help
     'help': {
         'keywords': ['help', 'support', 'guide', 'tutorial', 'how to'],
-        'response': """I can help you with:
+        'response': """I can help you with:  
 
-Classes:
-- Adding/deleting classes
-- Managing students
-- Bulk uploads
-- Naming conventions
+📌 Classes:  
+• Adding/deleting classes  
+• Managing students  
+• Bulk uploads  
+• Naming conventions  
 
-Exams:
-- Creating exams
-- Scanning papers
-- Grading
-- Viewing results
-- Naming conventions
+📌 Exams:  
+• Creating exams  
+• Scanning papers  
+• Grading  
+• Viewing results  
+• Naming conventions  
 
-Type keywords related to what you need help with."""
+🔎 Try searching keywords like:  
+- "Add class"  
+- "Scan exam"  
+- "Grade test" """
     },
+     # Exam Management
+    'delete_exam': {
+        'keywords': ['delete exam', 'remove exam', 'how to delete exam'],
+        'response': """To delete an exam:  
+• Go to 'Exams'  
+• Select the exam you want to delete  
+• Click 'Delete' and confirm  
+
+⚠ Warning: This action cannot be undone!"""
+    },
+    
+    'edit_exam': {
+        'keywords': ['edit exam', 'update exam', 'modify exam'],
+        'response': """To edit an existing exam:  
+• Go to 'Exams'  
+• Click on the exam you want to edit  
+• Make changes to details or questions  
+• Click 'Save Changes'"""
+    },
+
+    'add_question': {
+        'keywords': ['add question', 'new question', 'how to add question'],
+        'response': """To add a question to an exam:  
+• Go to 'Exam Details'  
+• Click 'Add Question'  
+• Enter the question and answer choices  
+• Select the correct answer  
+• Click 'Save'"""
+    },
+
+    'edit_question': {
+        'keywords': ['edit question', 'modify question', 'update question'],
+        'response': """To edit a question:  
+• Go to 'Exam Details'  
+• Click 'Edit' next to the question  
+• Make the necessary changes  
+• Click 'Save Changes'"""
+    },
+
+    'delete_question': {
+        'keywords': ['delete question', 'remove question', 'how to delete question'],
+        'response': """To delete a question:  
+• Go to 'Exam Details'  
+• Click 'Delete' next to the question  
+• Confirm deletion  
+
+⚠ Warning: This action cannot be undone!"""
+    },
+
+    # Scanning & Grading
+    'scan_exam': {
+        'keywords': ['scan exam', 'scan answer sheet', 'grading', 'how to scan exam'],
+        'response': """To scan answer sheets:  
+• Go to 'Scan Exam'  
+• Upload the scanned image or PDF  
+• Click 'Process'  
+• View results in the 'Grading' section"""
+    },
+
+    'grade_exam': {
+        'keywords': ['grade exam', 'check answers', 'grading system'],
+        'response': """To grade an exam:  
+• Scan answer sheets  
+• The system will automatically match responses  
+• View the graded results in 'Exam Reports'"""
+    },
+
+    # User & Settings
+    'settings': {
+        'keywords': ['settings', 'profile settings', 'account settings'],
+        'response': """To update your account settings:  
+• Go to 'Settings'  
+• Edit your username, email, or password  
+• Click 'Save Changes'"""
+    },
+
+    'delete_account': {
+        'keywords': ['delete account', 'remove account', 'how to delete account'],
+        'response': """To delete your account:  
+• Go to 'Settings'  
+• Click 'Delete Account'  
+• Confirm deletion  
+
+⚠ Warning: This action is irreversible!"""
+    },
+        'about_creators': {
+        'keywords': ['creator', 'developer', 'who made this', 'about the creators'],
+        'response': """This system was created by:  
+
+👨‍💻 John Kent Evangelista  
+👨‍💻 Joevincent Maderal  
+
+They developed and designed this platform to help manage classes, exams, and automated grading efficiently.  
+
+For inquiries or collaborations, feel free to reach out!"""
+    }
+
 }
+
+
 
 @require_http_methods(["POST"])
 @ensure_csrf_cookie
