@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <!-- Header Section -->
+        <div class="col-12">
+            <h2>Scan Results</h2>
+            <h4>{{ current_class.name }} - {{ current_exam.name }}</h4>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="col-12 mt-3">
+            <div class="row g-3">
+                <!-- Overall Statistics -->
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Scanned</h5>
+                            <p class="card-text display-6">{{ scanned_count }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pass/Fail Statistics -->
+                <div class="col-md-3">
+                    <div class="card {% if passing_count > failing_count %}bg-success{% else %}bg-danger{% endif %} text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Passing/Failing</h5>
+                            <p class="card-text">
+                                <span class="text-success">✓ {{ passing_count }}</span> / 
+                                <span class="text-danger">✗ {{ failing_count }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Statistics by Difficulty -->
+                {% for difficulty, stats in question_stats.items %}
+                <div class="col-md-2">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ difficulty }}</h5>
+                            <p class="card-text">
+                                Correct: {{ stats.correct }}/{{ stats.total }}
+                                {% if stats.total > 0 %}
+                                    ({{ stats.correct|multiply:100|divide:stats.total|floatformat:1 }}%)
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="col-12 mt-4">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Set ID</th>
+                            <th class="text-center">Easy</th>
+                            <th class="text-center">Medium</th>
+                            <th class="text-center">Hard</th>
+                            <th class="text-center">Score</th>
+                            <th class="text-center">Grade</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in scan_results %}
+                        <tr class="{% if result.status == 'failed' %}table-danger{% endif %}">
+                            <td>{{ result.student_id }}</td>
+                            <td>{{ result.last_name }}, {{ result.first_name }}</td>
+                            <td>{{ result.set_id }}</td>
+                            <td class="text-center">
+                                {{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}
+                                <small>({{ result.answer_stats.Easy.correct|multiply:1 }} pts)</small>
+                            </td>
+                            <td class="text-center">
+                                {{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}
+                                <small>({{ result.answer_stats.Medium.correct|multiply:2 }} pts)</small>
+                            </td>
+                            <td class="text-center">
+                                {{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}
+                                <small>({{ result.answer_stats.Hard.correct|multiply:3 }} pts)</small>
+                            </td>
+                            <td class="text-center">
+                                {{ result.score }}/{{ result.max_score }}
+                                ({{ result.percentage|floatformat:1 }}%)
+                            </td>
+                            <td class="text-center">
+                                <span class="badge {% if result.grade == 'F' %}bg-danger{% elif result.grade == 'A+' or result.grade == 'A' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ result.grade }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if result.status == 'success' %}
+                                    <span class="text-success">✓</span>
+                                {% else %}
+                                    <span class="text-danger">✗</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Export and Actions -->
+        <div class="col-12 mt-3">
+            <div class="btn-group">
+                <a href="{% url 'export_results' class_id=current_class.id exam_id=current_exam.id %}" 
+                   class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> Export to Excel
+                </a>
+                <form method="POST" action="{% url 'delete_scan_results' class_id=current_class.id exam_id=current_exam.id %}"
+                      onsubmit="return confirm('Are you sure you want to delete all scan results?');"
+                      class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete Results
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1013,13 +1013,12 @@ def generate_exam_sets(request, class_id, exam_id):
 
 def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     """
-    Grade a student's exam based on the answer key and difficulty points with improved difficulty tally
-    and zero correct answer detection
+    Grade a student's exam based on the answer key and difficulty points
     
     Parameters:
     student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
     answer_key (str): String of correct answers (0-based indices, e.g., "01230")
-    difficulty_points (str): String indicating point value for each question (e.g., "11123")
+    difficulty_points (str): String indicating difficulty for each question (e.g., "11223")
     
     Returns:
     tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers, failed_status)
@@ -1028,17 +1027,20 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
     max_possible_score = 0
     total_correct_answers = 0
     total_questions = 0
+    
+    # Initialize breakdown with points per difficulty
     breakdown = {
-        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
-        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []},
-        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': []}
+        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 1},
+        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 2},
+        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 3}
     }
+    
     incorrect_answers = []
     
     # Convert answer key to list of integers
     correct_answers = [int(ans) for ans in answer_key]
     
-    # Create a map of question indices to difficulties
+    # Create difficulty map
     difficulty_map = {
         '1': 'Easy',
         '2': 'Medium',
@@ -1052,21 +1054,25 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         'Hard': difficulty_points.count('3')
     }
     
-    # Validate number of answers provided for each difficulty
+    # Calculate maximum possible score
+    for difficulty in difficulty_points:
+        diff_type = difficulty_map[difficulty]
+        max_possible_score += breakdown[diff_type]['point_value']
+    
+    # Validate answers count
     for difficulty, expected in expected_counts.items():
         student_ans = student_answers_by_difficulty.get(difficulty, [])
         if len(student_ans) != expected:
-            return 0, sum(int(p) for p in difficulty_points), breakdown, [
+            return 0, max_possible_score, breakdown, [
                 f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
-            ], True  # Failed status
+            ], True
     
-    # Grade each answer with improved difficulty tracking
+    # Grade each answer
     current_index_by_difficulty = {'Easy': 0, 'Medium': 0, 'Hard': 0}
     
-    for i, (correct_ans, points) in enumerate(zip(correct_answers, difficulty_points)):
-        difficulty = difficulty_map[points]
-        points = int(points)
-        max_possible_score += points
+    for i, (correct_ans, diff) in enumerate(zip(correct_answers, difficulty_points)):
+        difficulty = difficulty_map[diff]
+        point_value = breakdown[difficulty]['point_value']
         total_questions += 1
         
         # Get student's answer for this difficulty level
@@ -1075,7 +1081,7 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             incorrect_answers.append(f"Missing {difficulty} answer at question {i+1}")
             breakdown[difficulty]['incorrect'].append(i+1)
             continue
-            
+        
         student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
         current_index_by_difficulty[difficulty] += 1
         
@@ -1085,8 +1091,8 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
         # Check if answer is correct
         if student_ans == correct_ans:
             breakdown[difficulty]['correct'] += 1
-            breakdown[difficulty]['points'] += points
-            total_score += points
+            breakdown[difficulty]['points'] += point_value
+            total_score += point_value
             total_correct_answers += 1
         else:
             incorrect_answers.append(
@@ -1094,9 +1100,7 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             )
             breakdown[difficulty]['incorrect'].append(i+1)
     
-    # Calculate percentages and check for complete failure
-    failed_status = total_correct_answers == 0
-    
+    # Calculate percentages
     for difficulty in breakdown:
         if breakdown[difficulty]['total'] > 0:
             breakdown[difficulty]['percentage'] = (
@@ -1104,6 +1108,9 @@ def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
             )
         else:
             breakdown[difficulty]['percentage'] = 0
+    
+    # Determine failed status (zero correct answers)
+    failed_status = total_correct_answers == 0
     
     return total_score, max_possible_score, breakdown, incorrect_answers, failed_status
 
