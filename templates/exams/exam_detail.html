@@ -96,20 +96,8 @@
           <td class="px-6 py-4 text-gray-900 dark:text-white">{{ question.difficulty }}</td>
           <td class="px-6 py-4">
             <div class="flex justify-center gap-4"> 
-              <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue"
-    onclick="openEditQuestionModal(
-        '{{ question.id }}', 
-        '{{ question.question_text|escapejs }}', 
-        '{{ question.option_a|escapejs }}', 
-        '{{ question.option_b|escapejs }}', 
-        '{{ question.option_c|escapejs }}', 
-        '{{ question.option_d|escapejs }}',
-        '{{ question.option_e|escapejs }}',
-        '{{ question.difficulty }}',
-        '{{ question.answer }}'
-    )">
-    Edit
-</button>
+              <button class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue
+              onclick="openEditQuestionModal('{{ question.id }}', '{{ question.question_text }}', '{{ question.option_a }}', '{{ question.option_b }}', '{{ question.option_c }}', '{{ question.option_d }}','{{ question.option_e }}')">Edit</button>
             <button class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
               onclick="openDeleteQuestionModal('{{ question.id }}', '{{ question.question_text }}')">Delete</button>
             </td>
@@ -188,42 +176,34 @@
         <!-- Options -->
         <div class="mb-4">
           <label for="optionA" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option A:</label>
-          <input type="text" name="option_a" id="optionA" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateCorrectAnswerOptions()" onkeyup="updateCorrectAnswerOptions()">
+          <input type="text" name="option_a" id="optionA" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
           <label for="optionB" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option B:</label>
-          <input type="text" name="option_b" id="optionB" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateCorrectAnswerOptions()" onkeyup="updateCorrectAnswerOptions()">
+          <input type="text" name="option_b" id="optionB" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
           <label for="optionC" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option C:</label>
-          <input type="text" name="option_c" id="optionC" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateCorrectAnswerOptions()" onkeyup="updateCorrectAnswerOptions()">
+          <input type="text" name="option_c" id="optionC" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
           <label for="optionD" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option D:</label>
-          <input type="text" name="option_d" id="optionD" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateCorrectAnswerOptions()" onkeyup="updateCorrectAnswerOptions()">
+          <input type="text" name="option_d" id="optionD" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
         <div class="mb-4">
           <label for="optionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
-          <input type="text" name="option_e" id="optionE" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateCorrectAnswerOptions()" onkeyup="updateCorrectAnswerOptions()">
+          <input type="text" name="option_e" id="optionE" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
         </div>
 
         <!-- Correct Answer -->
         <div class="mb-4">
           <label for="correctAnswer" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Correct Answer:</label>
-          <select name="correct_answer" id="correctAnswer" 
-            class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-            required>
-            <option value="">Fill in options first</option>
+          <select name="correct_answer" id="correctAnswer" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="A">Option A</option>
+            <option value="B">Option B</option>
+            <option value="C">Option C</option>
+            <option value="D">Option D</option>
+            <option value="E">Option E</option>
           </select>
         </div>
 
@@ -263,40 +243,25 @@
 
         <!-- Options -->
         <div class="mb-4">
-    <label for="editOptionA" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option A:</label>
-    <input type="text" id="editOptionA" name="option_a" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-           onchange="updateEditCorrectAnswerOptions()" 
-           onkeyup="updateEditCorrectAnswerOptions()">
-</div>
-<div class="mb-4">
-    <label for="editOptionB" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option B:</label>
-    <input type="text" id="editOptionB" name="option_b" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateEditCorrectAnswerOptions()" 
-           onkeyup="updateEditCorrectAnswerOptions()">
-</div>
-<div class="mb-4">
-    <label for="editOptionC" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option C:</label>
-    <input type="text" id="editOptionC" name="option_c" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateEditCorrectAnswerOptions()" 
-           onkeyup="updateEditCorrectAnswerOptions()">
-</div>
-<div class="mb-4">
-    <label for="editOptionD" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option D:</label>
-    <input type="text" id="editOptionD" name="option_d" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateEditCorrectAnswerOptions()" 
-           onkeyup="updateEditCorrectAnswerOptions()">
-</div>
-<div class="mb-4">
-    <label for="editOptionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
-    <input type="text" id="editOptionE" name="option_e" 
-           class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-           onchange="updateEditCorrectAnswerOptions()" 
-           onkeyup="updateEditCorrectAnswerOptions()">
-</div>
+          <label for="editOptionA" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option A:</label>
+          <input type="text" id="editOptionA" name="option_a" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_a }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionB" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option B:</label>
+          <input type="text" id="editOptionB" name="option_b" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_b }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionC" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option C:</label>
+          <input type="text" id="editOptionC" name="option_c" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_c }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionD" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option D:</label>
+          <input type="text" id="editOptionD" name="option_d" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_d }}">
+        </div>
+        <div class="mb-4">
+          <label for="editOptionE" class="block text-sm font-medium text-gray-900 dark:text-gray-300">Option E (optional):</label>
+          <input type="text" id="editOptionE" name="option_e" class="block w-full p-2.5 rounded-lg border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="{{ question.option_e }}">
+        </div>
 
         <!-- Correct Answer -->
         <div class="mb-4">
@@ -397,69 +362,24 @@
       document.getElementById('answer-key-modal').classList.add('hidden');
     }
 
-    // Modify your existing openAddQuestionModal function
     function openAddQuestionModal() {
       document.getElementById('addQuestionModal').classList.remove('hidden');
-      // Reset form and update correct answer options
-      document.getElementById('addQuestionModal').querySelector('form').reset();
-      updateCorrectAnswerOptions();
     }
 
     function closeAddQuestionModal() {
       document.getElementById('addQuestionModal').classList.add('hidden');
     }
 
-    function openEditQuestionModal(id, text, a, b, c, d, e, difficulty, answer) {
-    // Update form action with the correct URL
-    document.getElementById('editQuestionForm').action = `/edit_question/${id}/`;
-    
-    // Set values for all fields
-    document.getElementById('editQuestionText').value = text;
-    document.getElementById('editOptionA').value = a;
-    document.getElementById('editOptionB').value = b;
-    document.getElementById('editOptionC').value = c;
-    document.getElementById('editOptionD').value = d;
-    document.getElementById('editOptionE').value = e;
-    document.getElementById('editDifficulty').value = difficulty;
-    
-    // Update available options in correct answer dropdown
-    updateEditCorrectAnswerOptions();
-    
-    // Set the correct answer after options are updated
-    document.getElementById('editCorrectAnswer').value = answer;
-    
-    // Show the modal
-    document.getElementById('editQuestionModal').classList.remove('hidden');
-}
-
-// Add this new function to handle edit form correct answer options
-function updateEditCorrectAnswerOptions() {
-    const optionA = document.getElementById('editOptionA').value;
-    const optionB = document.getElementById('editOptionB').value;
-    const optionC = document.getElementById('editOptionC').value;
-    const optionD = document.getElementById('editOptionD').value;
-    const optionE = document.getElementById('editOptionE').value;
-    
-    const correctAnswerSelect = document.getElementById('editCorrectAnswer');
-    const options = correctAnswerSelect.options;
-    
-    // Clear all options first
-    while (options.length > 0) {
-        options.remove(0);
+    function openEditQuestionModal(id, text, a, b, c, d, e) {
+      document.getElementById('editQuestionForm').action = `/edit_question/${id}/`;
+      document.getElementById('editQuestionText').value = text;
+      document.getElementById('editOptionA').value = a;
+      document.getElementById('editOptionB').value = b;
+      document.getElementById('editOptionC').value = c;
+      document.getElementById('editOptionD').value = d;
+      document.getElementById('editOptionE').value = e;
+      document.getElementById('editQuestionModal').classList.remove('hidden');
     }
-    
-    // Add options only if they have content
-    if (optionA.trim()) options.add(new Option('Option A', 'A'));
-    if (optionB.trim()) options.add(new Option('Option B', 'B'));
-    if (optionC.trim()) options.add(new Option('Option C', 'C'));
-    if (optionD.trim()) options.add(new Option('Option D', 'D'));
-    if (optionE.trim()) options.add(new Option('Option E', 'E'));
-    
-    // If no options are available, add a placeholder
-    if (options.length === 0) {
-        options.add(new Option('Fill in options first', ''));
-    }
-}
 
     function closeEditQuestionModal() {
       document.getElementById('editQuestionModal').classList.add('hidden');
@@ -481,35 +401,6 @@ function updateEditCorrectAnswerOptions() {
 
     function closeInstructionsModal() {
       document.getElementById('instructions-modal').classList.add('hidden');
-    }
-
-    // Add this function to your existing JavaScript
-    function updateCorrectAnswerOptions() {
-      const optionA = document.getElementById('optionA').value;
-      const optionB = document.getElementById('optionB').value;
-      const optionC = document.getElementById('optionC').value;
-      const optionD = document.getElementById('optionD').value;
-      const optionE = document.getElementById('optionE').value;
-      
-      const correctAnswerSelect = document.getElementById('correctAnswer');
-      const options = correctAnswerSelect.options;
-      
-      // Clear all options first
-      while (options.length > 0) {
-          options.remove(0);
-      }
-      
-      // Add options only if they have content
-      if (optionA.trim()) options.add(new Option('Option A', 'A'));
-      if (optionB.trim()) options.add(new Option('Option B', 'B'));
-      if (optionC.trim()) options.add(new Option('Option C', 'C'));
-      if (optionD.trim()) options.add(new Option('Option D', 'D'));
-      if (optionE.trim()) options.add(new Option('Option E', 'E'));
-      
-      // If no options are available, add a placeholder
-      if (options.length === 0) {
-          options.add(new Option('Fill in options first', ''));
-      }
     }
   </script>
 

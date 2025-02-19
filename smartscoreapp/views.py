@@ -1787,31 +1787,31 @@ def delete_scan_results(request, class_id, exam_id):
 
 @login_required
 def scan_results_view(request, class_id, exam_id):
-    # Get required instances
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
-    # Initialize containers
-    scan_results = []
-    question_stats = {difficulty: {'correct': 0, 'total': 0} 
-                     for difficulty in ['Easy', 'Medium', 'Hard']}
-    
-    # Get upload directory path
     upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                             f'class_{class_id}', f'exam_{exam_id}')
+                             f'class_{class_id}', 
+                             f'exam_{exam_id}')
     
-    if not os.path.exists(upload_dir):
-        messages.warning(request, "No results file found. Please scan the exam papers first.")
-        return render(request, 'scan_results.html', {'current_class': current_class, 
-                                                   'current_exam': current_exam})
+    scan_results = []
+    question_stats = {
+        'Easy': {'correct': 0, 'total': 0},
+        'Medium': {'correct': 0, 'total': 0},
+        'Hard': {'correct': 0, 'total': 0}
+    }
     
-    # Process results CSV
-    csv_files = [f for f in os.listdir(upload_dir) 
-                if f.startswith('Results_exam') and f.endswith('.csv')]
-    
-    if not csv_files:
-        messages.warning(request, "No results file found. Please scan the exam papers first.")
-        return render(request, 'scan_results.html', {'current_class': current_class, 
+    def calculate_grade(score, max_score):
+        if not score or not max_score:
+            return 'N/A'
+        
+        percentage = (float(score) / float(max_score)) * 100
+        
+        if percentage >= 95:
+            return 'A+'
+        elif percentage >= 90:
+            return 'A'
+        elif percentage >= 85:
             return 'B+'
         elif percentage >= 80:
             return 'B'
@@ -2660,163 +2660,3 @@ def add_instructions(request, exam_id):
         return redirect('exam_detail', exam_id=exam_id)
     
     return redirect('exam_detail', exam_id=exam_id)
-
-@login_required
-def scan_results_view(request, class_id, exam_id):
-    current_class = get_object_or_404(Class, id=class_id)
-    current_exam = get_object_or_404(Exam, id=exam_id)
-    
-    upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                             f'class_{class_id}', 
-                             f'exam_{exam_id}')
-    
-    scan_results = []
-    question_stats = {
-        'Easy': {'correct': 0, 'total': 0},
-        'Medium': {'correct': 0, 'total': 0},
-        'Hard': {'correct': 0, 'total': 0}
-    }
-    
-    def calculate_grade(score, max_score):
-        if not score or not max_score:
-            return 'N/A'
-        
-        percentage = (float(score) / float(max_score)) * 100
-        
-        if percentage >= 95:
-            return 'A+'
-        elif percentage >= 90:
-            return 'A'
-        elif percentage >= 85:
-            return 'B+'
-        elif percentage >= 80:
-            return 'B'
-        elif percentage >= 75:
-            return 'C'
-        elif percentage >= 70:
-            return 'C-'
-        elif percentage >= 65:
-            return 'D+'
-        elif percentage >= 60:
-            return 'D'
-        else:
-            return 'F'
-    
-    def parse_list(list_str):
-        # Handle empty list, bracket-enclosed list, or plain string
-        if not list_str or list_str == '[]':
-            return []
-        
-        # Remove brackets and split
-        cleaned = list_str.strip('[]')
-        if not cleaned:
-            return []
-        
-        # Split and strip each item
-        return [item.strip() for item in cleaned.split(',') if item.strip()]
-    
-    if os.path.exists(upload_dir):
-        csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
-        if csv_files:
-            csv_path = os.path.join(upload_dir, sorted(csv_files)[-1])
-            
-            try:
-                with open(csv_path, 'r', encoding='utf-8') as file:
-                    reader = csv.DictReader(file)
-                    
-                    for row in reader:
-                        # Parse lists correctly
-                        easy_incorrect = parse_list(row.get('Easy Incorrect', ''))
-                        medium_incorrect = parse_list(row.get('Medium Incorrect', ''))
-                        hard_incorrect = parse_list(row.get('Hard Incorrect', ''))
-                        
-                        # Get the basic counts from the CSV
-                        easy_count = int(row.get('Easy', 0))
-                        medium_count = int(row.get('Medium', 0))
-                        hard_count = int(row.get('Hard', 0))
-                        total_items = int(row.get('Items', 0))
-                        max_score = int(row.get('Max Score', 0))
-                        score = int(row.get('Score', 0))
-                        
-                        # Calculate percentage
-                        percentage = (float(score) / float(max_score)) * 100 if max_score > 0 else 0
-                        
-                        # Calculate correct counts
-                        easy_correct = easy_count - len(easy_incorrect)
-                        medium_correct = medium_count - len(medium_incorrect)
-                        hard_correct = hard_count - len(hard_incorrect)
-                        
-                        # Prepare answer stats
-                        answer_stats = {
-                            'Easy': {
-                                'total': easy_count,
-                                'correct': easy_correct,
-                                'incorrect': len(easy_incorrect),
-                                'incorrect_answers': easy_incorrect
-                            },
-                            'Medium': {
-                                'total': medium_count,
-                                'correct': medium_correct,
-                                'incorrect': len(medium_incorrect),
-                                'incorrect_answers': medium_incorrect
-                            },
-                            'Hard': {
-                                'total': hard_count,
-                                'correct': hard_correct,
-                                'incorrect': len(hard_incorrect),
-                                'incorrect_answers': hard_incorrect
-                            }
-                        }
-                        
-                        # Update overall statistics
-                        for difficulty in ['Easy', 'Medium', 'Hard']:
-                            question_stats[difficulty]['total'] += answer_stats[difficulty]['total']
-                            question_stats[difficulty]['correct'] += answer_stats[difficulty]['correct']
-                        
-                        # Parse incorrect answers list
-                        incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
-                        
-                        scan_results.append({
-                            'student_id': row.get('ID', 'N/A'),
-                            'last_name': row.get('Last Name', ''),
-                            'first_name': row.get('First Name', ''),
-                            'middle_initial': row.get('Middle Initial', ''),
-                            'set_id': row.get('Set ID', 'N/A'),
-                            'answer_stats': answer_stats,
-                            'total_items': total_items,
-                            'score': score,
-                            'max_score': max_score,
-                            'percentage': percentage,  # Add percentage to the dictionary
-                            'grade': calculate_grade(score, max_score),
-                            'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
-                            'status': 'success' if score > 0 else 'failed',
-                            'invalid_answer': row.get('Invalid Ans list', ''),
-                            'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
-                        })
-                        
-            except Exception as e:
-                messages.error(request, f"Error reading results file: {str(e)}")
-                print(f"Error details: {str(e)}")
-    else:
-        messages.warning(request, "No results file found. Please scan the exam papers first.")
-    
-    # Calculate overall statistics
-    success_count = len([r for r in scan_results if r['status'] == 'success'])
-    failed_count = len([r for r in scan_results if r['status'] != 'success'])
-    passing_grades = ['A+', 'A', 'B+', 'B', 'C']
-    passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
-    failing_count = len([r for r in scan_results if r['grade'] == 'C-' or r['grade'] == 'D+' or r['grade'] == 'D' or r['grade'] == 'F'])
-    
-    context = {
-        'current_class': current_class,
-        'current_exam': current_exam,
-        'scan_results': scan_results,
-        'question_stats': question_stats,
-        'scanned_count': len(scan_results),
-        'success_count': success_count,
-        'failed_count': failed_count,
-        'passing_count': passing_count,
-        'failing_count': failing_count,
-    }
-    
-    return render(request, 'scan_results.html', context)
