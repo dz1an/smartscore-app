@@ -108,6 +108,7 @@ urlpatterns = [
     # Settings
     path('settings/', settings_view, name='settings'),
     path('chat/message/', views.chat_message, name='chat_message'),
+    path('class/<int:class_id>/exam/<int:exam_id>/download-exam-sets/', views.download_exam_sets_csv, name='download_exam_sets_csv'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
