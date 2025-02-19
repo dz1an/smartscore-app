@@ -507,6 +507,16 @@ function updateEditCorrectAnswerOptions() {
             options.add(new Option('Fill in options first', ''));
         }
     }
+
+    // Add this function to your existing script section
+    function closeAddQuestionModal() {
+        // Hide the modal
+        document.getElementById('addQuestionModal').classList.add('hidden');
+        // Reset the form
+        document.getElementById('addQuestionModal').querySelector('form').reset();
+        // Reset the correct answer options
+        updateCorrectAnswerOptions();
+    }
   </script>
 
   
