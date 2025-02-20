@@ -1801,6 +1801,14 @@ def scan_results_view(request, class_id, exam_id):
         'Hard': {'correct': 0, 'total': 0}
     }
     
+    def determine_status(score, student_id, set_id):
+        if student_id == 'N/A' or set_id == 'N/A':
+            return 'failed_processing'
+        elif score <= 0:
+            return 'failed_exam'
+        else:
+            return 'success'
+    
     def calculate_grade(score, max_score):
         if not score or not max_score:
             return 'N/A'
@@ -1900,20 +1908,23 @@ def scan_results_view(request, class_id, exam_id):
                         # Parse incorrect answers list
                         incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
                         
+                        student_id = row.get('ID', 'N/A')
+                        set_id = row.get('Set ID', 'N/A')
+                        
                         scan_results.append({
-                            'student_id': row.get('ID', 'N/A'),
+                            'student_id': student_id,
                             'last_name': row.get('Last Name', ''),
                             'first_name': row.get('First Name', ''),
                             'middle_initial': row.get('Middle Initial', ''),
-                            'set_id': row.get('Set ID', 'N/A'),
+                            'set_id': set_id,
                             'answer_stats': answer_stats,
                             'total_items': total_items,
                             'score': score,
                             'max_score': max_score,
-                            'percentage': percentage,  # Add percentage to the dictionary
+                            'percentage': percentage,
                             'grade': calculate_grade(score, max_score),
                             'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
-                            'status': 'success' if score > 0 else 'failed',
+                            'status': determine_status(score, student_id, set_id),
                             'invalid_answer': row.get('Invalid Ans list', ''),
                             'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
                         })
@@ -1926,7 +1937,8 @@ def scan_results_view(request, class_id, exam_id):
     
     # Calculate overall statistics
     success_count = len([r for r in scan_results if r['status'] == 'success'])
-    failed_count = len([r for r in scan_results if r['status'] != 'success'])
+    failed_exam_count = len([r for r in scan_results if r['status'] == 'failed_exam'])
+    failed_processing_count = len([r for r in scan_results if r['status'] == 'failed_processing'])
     passing_grades = ['A+', 'A', 'B+', 'B', 'C']
     passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
     failing_count = len([r for r in scan_results if r['grade'] == 'C-' or r['grade'] == 'D+' or r['grade'] == 'D' or r['grade'] == 'F'])
@@ -1938,12 +1950,15 @@ def scan_results_view(request, class_id, exam_id):
         'question_stats': question_stats,
         'scanned_count': len(scan_results),
         'success_count': success_count,
-        'failed_count': failed_count,
+        'failed_exam_count': failed_exam_count,
+        'failed_processing_count': failed_processing_count,
         'passing_count': passing_count,
         'failing_count': failing_count,
     }
     
     return render(request, 'scan_results.html', context)
+
+
 
 
 def export_results(request, class_id, exam_id):
