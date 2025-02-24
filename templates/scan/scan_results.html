@@ -281,7 +281,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Easy Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</span>
+                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }} ({{ result.answer_stats.Easy.percentage }}%)</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Easy.percentage }}%"></div>
@@ -290,7 +290,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Medium Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</span>
+                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }} ({{ result.answer_stats.Medium.percentage }}%)</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Medium.percentage }}%"></div>
@@ -299,7 +299,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Hard Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</span>
+                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }} ({{ result.answer_stats.Hard.percentage }}%)</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Hard.percentage }}%"></div>
