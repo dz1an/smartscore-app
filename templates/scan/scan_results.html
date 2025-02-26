@@ -110,7 +110,7 @@
                             <dl>
                                 <dt class="text-sm font-medium text-gray-500 truncate">Failed Processing</dt>
                                 <dd class="flex items-baseline">
-                                    <div class="text-2xl font-semibold text-red-600">{{ failed_count }}</div>
+                                    <div class="text-2xl font-semibold text-red-600">{{ failed_processing_count }}</div>
                                 </dd>
                             </dl>
                         </div>
@@ -188,19 +188,19 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</div>
                         {% if result.answer_stats.Easy.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Easy.incorrect_answers|join:", " }}</div>
+                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Easy.incorrect_answers|join:", " }}</div> -->
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</div>
                         {% if result.answer_stats.Medium.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Medium.incorrect_answers|join:", " }}</div>
+                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Medium.incorrect_answers|join:", " }}</div> -->
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</div>
                         {% if result.answer_stats.Hard.incorrect_answers %}
-                        <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Hard.incorrect_answers|join:", " }}</div>
+                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Hard.incorrect_answers|join:", " }}</div> -->
                         {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
