@@ -1857,10 +1857,10 @@ def scan_results_view(request, class_id, exam_id):
                     reader = csv.DictReader(file)
                     
                     for row in reader:
-                        # Parse lists correctly
-                        easy_incorrect = parse_list(row.get('Easy Incorrect', ''))
-                        medium_incorrect = parse_list(row.get('Medium Incorrect', ''))
-                        hard_incorrect = parse_list(row.get('Hard Incorrect', ''))
+                        # Parse the specific incorrect answer lists by difficulty
+                        easy_incorrect_list = parse_list(row.get('Easy Inc list', ''))
+                        medium_incorrect_list = parse_list(row.get('Medium Inc list', ''))
+                        hard_incorrect_list = parse_list(row.get('Hard Inc list', ''))
                         
                         # Get the basic counts from the CSV
                         easy_count = int(row.get('Easy', 0))
@@ -1873,30 +1873,30 @@ def scan_results_view(request, class_id, exam_id):
                         # Calculate percentage
                         percentage = (float(score) / float(max_score)) * 100 if max_score > 0 else 0
                         
-                        # Calculate correct counts
-                        easy_correct = easy_count - len(easy_incorrect)
-                        medium_correct = medium_count - len(medium_incorrect)
-                        hard_correct = hard_count - len(hard_incorrect)
+                        # Calculate correct counts based on specific incorrect lists
+                        easy_correct = easy_count - len(easy_incorrect_list)
+                        medium_correct = medium_count - len(medium_incorrect_list)
+                        hard_correct = hard_count - len(hard_incorrect_list)
                         
                         # Prepare answer stats
                         answer_stats = {
                             'Easy': {
                                 'total': easy_count,
                                 'correct': easy_correct,
-                                'incorrect': len(easy_incorrect),
-                                'incorrect_answers': easy_incorrect
+                                'incorrect': len(easy_incorrect_list),
+                                'incorrect_answers': easy_incorrect_list
                             },
                             'Medium': {
                                 'total': medium_count,
                                 'correct': medium_correct,
-                                'incorrect': len(medium_incorrect),
-                                'incorrect_answers': medium_incorrect
+                                'incorrect': len(medium_incorrect_list),
+                                'incorrect_answers': medium_incorrect_list
                             },
                             'Hard': {
                                 'total': hard_count,
                                 'correct': hard_correct,
-                                'incorrect': len(hard_incorrect),
-                                'incorrect_answers': hard_incorrect
+                                'incorrect': len(hard_incorrect_list),
+                                'incorrect_answers': hard_incorrect_list
                             }
                         }
                         
@@ -1905,7 +1905,7 @@ def scan_results_view(request, class_id, exam_id):
                             question_stats[difficulty]['total'] += answer_stats[difficulty]['total']
                             question_stats[difficulty]['correct'] += answer_stats[difficulty]['correct']
                         
-                        # Parse incorrect answers list
+                        # Parse overall incorrect answers list
                         incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
                         
                         student_id = row.get('ID', 'N/A')
@@ -1957,8 +1957,6 @@ def scan_results_view(request, class_id, exam_id):
     }
     
     return render(request, 'scan_results.html', context)
-
-
 
 
 def export_results(request, class_id, exam_id):
