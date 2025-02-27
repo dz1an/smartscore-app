@@ -1011,196 +1011,196 @@ def generate_exam_sets(request, class_id, exam_id):
 
 
 
-def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
-    """
-    Grade a student's exam based on the answer key and difficulty points
+# def grade_exam(student_answers_by_difficulty, answer_key, difficulty_points):
+#     """
+#     Grade a student's exam based on the answer key and difficulty points
     
-    Parameters:
-    student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
-    answer_key (str): String of correct answers (0-based indices, e.g., "01230")
-    difficulty_points (str): String indicating difficulty for each question (e.g., "11223")
+#     Parameters:
+#     student_answers_by_difficulty (dict): Dictionary with lists of answers by difficulty (Easy, Medium, Hard)
+#     answer_key (str): String of correct answers (0-based indices, e.g., "01230")
+#     difficulty_points (str): String indicating difficulty for each question (e.g., "11223")
     
-    Returns:
-    tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers, failed_status)
-    """
-    total_score = 0
-    max_possible_score = 0
-    total_correct_answers = 0
-    total_questions = 0
+#     Returns:
+#     tuple: (total_score, max_possible_score, breakdown_by_difficulty, incorrect_answers, failed_status)
+#     """
+#     total_score = 0
+#     max_possible_score = 0
+#     total_correct_answers = 0
+#     total_questions = 0
     
-    # Initialize breakdown with points per difficulty
-    breakdown = {
-        'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 1},
-        'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 2},
-        'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 3}
-    }
+#     # Initialize breakdown with points per difficulty
+#     breakdown = {
+#         'Easy': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 1},
+#         'Medium': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 2},
+#         'Hard': {'correct': 0, 'total': 0, 'points': 0, 'incorrect': [], 'point_value': 3}
+#     }
     
-    incorrect_answers = []
+#     incorrect_answers = []
     
-    # Convert answer key to list of integers
-    correct_answers = [int(ans) for ans in answer_key]
+#     # Convert answer key to list of integers
+#     correct_answers = [int(ans) for ans in answer_key]
     
-    # Create difficulty map
-    difficulty_map = {
-        '1': 'Easy',
-        '2': 'Medium',
-        '3': 'Hard'
-    }
+#     # Create difficulty map
+#     difficulty_map = {
+#         '1': 'Easy',
+#         '2': 'Medium',
+#         '3': 'Hard'
+#     }
     
-    # Count expected answers by difficulty
-    expected_counts = {
-        'Easy': difficulty_points.count('1'),
-        'Medium': difficulty_points.count('2'),
-        'Hard': difficulty_points.count('3')
-    }
+#     # Count expected answers by difficulty
+#     expected_counts = {
+#         'Easy': difficulty_points.count('1'),
+#         'Medium': difficulty_points.count('2'),
+#         'Hard': difficulty_points.count('3')
+#     }
     
-    # Calculate maximum possible score
-    for difficulty in difficulty_points:
-        diff_type = difficulty_map[difficulty]
-        max_possible_score += breakdown[diff_type]['point_value']
+#     # Calculate maximum possible score
+#     for difficulty in difficulty_points:
+#         diff_type = difficulty_map[difficulty]
+#         max_possible_score += breakdown[diff_type]['point_value']
     
-    # Validate answers count
-    for difficulty, expected in expected_counts.items():
-        student_ans = student_answers_by_difficulty.get(difficulty, [])
-        if len(student_ans) != expected:
-            return 0, max_possible_score, breakdown, [
-                f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
-            ], True
+#     # Validate answers count
+#     for difficulty, expected in expected_counts.items():
+#         student_ans = student_answers_by_difficulty.get(difficulty, [])
+#         if len(student_ans) != expected:
+#             return 0, max_possible_score, breakdown, [
+#                 f"Invalid number of {difficulty} answers. Expected {expected}, got {len(student_ans)}"
+#             ], True
     
-    # Grade each answer
-    current_index_by_difficulty = {'Easy': 0, 'Medium': 0, 'Hard': 0}
+#     # Grade each answer
+#     current_index_by_difficulty = {'Easy': 0, 'Medium': 0, 'Hard': 0}
     
-    for i, (correct_ans, diff) in enumerate(zip(correct_answers, difficulty_points)):
-        difficulty = difficulty_map[diff]
-        point_value = breakdown[difficulty]['point_value']
-        total_questions += 1
+#     for i, (correct_ans, diff) in enumerate(zip(correct_answers, difficulty_points)):
+#         difficulty = difficulty_map[diff]
+#         point_value = breakdown[difficulty]['point_value']
+#         total_questions += 1
         
-        # Get student's answer for this difficulty level
-        student_ans_index = current_index_by_difficulty[difficulty]
-        if student_ans_index >= len(student_answers_by_difficulty[difficulty]):
-            incorrect_answers.append(f"Missing {difficulty} answer at question {i+1}")
-            breakdown[difficulty]['incorrect'].append(i+1)
-            continue
+#         # Get student's answer for this difficulty level
+#         student_ans_index = current_index_by_difficulty[difficulty]
+#         if student_ans_index >= len(student_answers_by_difficulty[difficulty]):
+#             incorrect_answers.append(f"Missing {difficulty} answer at question {i+1}")
+#             breakdown[difficulty]['incorrect'].append(i+1)
+#             continue
         
-        student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
-        current_index_by_difficulty[difficulty] += 1
+#         student_ans = student_answers_by_difficulty[difficulty][student_ans_index]
+#         current_index_by_difficulty[difficulty] += 1
         
-        # Update statistics
-        breakdown[difficulty]['total'] += 1
+#         # Update statistics
+#         breakdown[difficulty]['total'] += 1
         
-        # Check if answer is correct
-        if student_ans == correct_ans:
-            breakdown[difficulty]['correct'] += 1
-            breakdown[difficulty]['points'] += point_value
-            total_score += point_value
-            total_correct_answers += 1
-        else:
-            incorrect_answers.append(
-                f"Question {i+1} ({difficulty}): answered {student_ans}, correct was {correct_ans}"
-            )
-            breakdown[difficulty]['incorrect'].append(i+1)
+#         # Check if answer is correct
+#         if student_ans == correct_ans:
+#             breakdown[difficulty]['correct'] += 1
+#             breakdown[difficulty]['points'] += point_value
+#             total_score += point_value
+#             total_correct_answers += 1
+#         else:
+#             incorrect_answers.append(
+#                 f"Question {i+1} ({difficulty}): answered {student_ans}, correct was {correct_ans}"
+#             )
+#             breakdown[difficulty]['incorrect'].append(i+1)
     
-    # Calculate percentages
-    for difficulty in breakdown:
-        if breakdown[difficulty]['total'] > 0:
-            breakdown[difficulty]['percentage'] = (
-                breakdown[difficulty]['correct'] / breakdown[difficulty]['total'] * 100
-            )
-        else:
-            breakdown[difficulty]['percentage'] = 0
+#     # Calculate percentages
+#     for difficulty in breakdown:
+#         if breakdown[difficulty]['total'] > 0:
+#             breakdown[difficulty]['percentage'] = (
+#                 breakdown[difficulty]['correct'] / breakdown[difficulty]['total'] * 100
+#             )
+#         else:
+#             breakdown[difficulty]['percentage'] = 0
     
-    # Determine failed status (zero correct answers)
-    failed_status = total_correct_answers == 0
+#     # Determine failed status (zero correct answers)
+#     failed_status = total_correct_answers == 0
     
-    return total_score, max_possible_score, breakdown, incorrect_answers, failed_status
+#     return total_score, max_possible_score, breakdown, incorrect_answers, failed_status
 
-def format_grade_report(student_id, student_name, score, max_score, breakdown, errors, set_id=None, failed=False):
-    """
-    Format a readable grade report with improved difficulty breakdown and failure status
-    """
-    percentage = (score / max_score * 100) if max_score > 0 else 0
+# def format_grade_report(student_id, student_name, score, max_score, breakdown, errors, set_id=None, failed=False):
+#     """
+#     Format a readable grade report with improved difficulty breakdown and failure status
+#     """
+#     percentage = (score / max_score * 100) if max_score > 0 else 0
     
-    report = f"Grade Report for {student_name} (ID: {student_id})"
-    if set_id:
-        report += f" - Set {set_id}"
+#     report = f"Grade Report for {student_name} (ID: {student_id})"
+#     if set_id:
+#         report += f" - Set {set_id}"
     
-    if failed:
-        report += "\nSTATUS: FAILED - No correct answers"
+#     if failed:
+#         report += "\nSTATUS: FAILED - No correct answers"
         
-    report += f"\nTotal Score: {score}/{max_score} ({percentage:.1f}%)\n\n"
+#     report += f"\nTotal Score: {score}/{max_score} ({percentage:.1f}%)\n\n"
     
-    report += "Breakdown by Difficulty:\n"
-    for difficulty, results in breakdown.items():
-        if results['total'] > 0:
-            report += (f"{difficulty}: {results['correct']}/{results['total']} correct "
-                      f"({results['percentage']:.1f}%) - {results['points']} points\n")
-            if results['incorrect']:
-                report += f"    Incorrect questions: {', '.join(map(str, results['incorrect']))}\n"
+#     report += "Breakdown by Difficulty:\n"
+#     for difficulty, results in breakdown.items():
+#         if results['total'] > 0:
+#             report += (f"{difficulty}: {results['correct']}/{results['total']} correct "
+#                       f"({results['percentage']:.1f}%) - {results['points']} points\n")
+#             if results['incorrect']:
+#                 report += f"    Incorrect questions: {', '.join(map(str, results['incorrect']))}\n"
     
-    if errors:
-        report += "\nErrors:\n"
-        for error in errors:
-            report += f"- {error}\n"
+#     if errors:
+#         report += "\nErrors:\n"
+#         for error in errors:
+#             report += f"- {error}\n"
             
-    return report
+#     return report
 
-# Example usage:
-if __name__ == "__main__":
-    # Example data
-    answer_key = "01230"
-    difficulty_points = "11123"
+# # Example usage:
+# if __name__ == "__main__":
+#     # Example data
+#     answer_key = "01230"
+#     difficulty_points = "11123"
     
-    # Test case 1: Some correct answers
-    student_answers = {
-        'Easy': [0, 1, 2],
-        'Medium': [3],
-        'Hard': [0]
-    }
+#     # Test case 1: Some correct answers
+#     student_answers = {
+#         'Easy': [0, 1, 2],
+#         'Medium': [3],
+#         'Hard': [0]
+#     }
     
-    score, max_score, breakdown, errors, failed = grade_exam(
-        student_answers,
-        answer_key,
-        difficulty_points
-    )
+#     score, max_score, breakdown, errors, failed = grade_exam(
+#         student_answers,
+#         answer_key,
+#         difficulty_points
+#     )
     
-    report = format_grade_report(
-        student_id="2001234",
-        student_name="John Doe",
-        score=score,
-        max_score=max_score,
-        breakdown=breakdown,
-        errors=errors,
-        set_id="001A",
-        failed=failed
-    )
-    print("Test Case 1 - Normal:")
-    print(report)
+#     report = format_grade_report(
+#         student_id="2001234",
+#         student_name="John Doe",
+#         score=score,
+#         max_score=max_score,
+#         breakdown=breakdown,
+#         errors=errors,
+#         set_id="001A",
+#         failed=failed
+#     )
+#     print("Test Case 1 - Normal:")
+#     print(report)
     
-    # Test case 2: All wrong answers
-    student_answers = {
-        'Easy': [1, 2, 3],
-        'Medium': [0],
-        'Hard': [1]
-    }
+#     # Test case 2: All wrong answers
+#     student_answers = {
+#         'Easy': [1, 2, 3],
+#         'Medium': [0],
+#         'Hard': [1]
+#     }
     
-    score, max_score, breakdown, errors, failed = grade_exam(
-        student_answers,
-        answer_key,
-        difficulty_points
-    )
+#     score, max_score, breakdown, errors, failed = grade_exam(
+#         student_answers,
+#         answer_key,
+#         difficulty_points
+#     )
     
-    report = format_grade_report(
-        student_id="2001235",
-        student_name="Jane Doe",
-        score=score,
-        max_score=max_score,
-        breakdown=breakdown,
-        errors=errors,
-        set_id="001B",
-        failed=failed
-    )
-    print("\nTest Case 2 - All Wrong:")
-    print(report)
+#     report = format_grade_report(
+#         student_id="2001235",
+#         student_name="Jane Doe",
+#         score=score,
+#         max_score=max_score,
+#         breakdown=breakdown,
+#         errors=errors,
+#         set_id="001B",
+#         failed=failed
+#     )
+#     print("\nTest Case 2 - All Wrong:")
+#     print(report)
 
 
 
