@@ -520,24 +520,18 @@ def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = exam.class_assigned
     
-    # Fetch classes assigned to the logged-in user
-    user_classes = Class.objects.filter(user=request.user)
+    # Fetch classes assigned to the logged-in user, EXCLUDING the current class
+    user_classes = Class.objects.filter(user=request.user).exclude(id=current_class.id)
 
     # Initialize variables
     selected_class_id = current_class.id
     selected_exam_id = None
-    available_exams = []
     questions = []
 
     # Get selected class and exam from POST data
     if request.method == 'POST':
         selected_class_id = request.POST.get('class_source_id', current_class.id)
         selected_exam_id = request.POST.get('exam_source_id', None)
-
-        # If a different class is selected, fetch exams from that class
-        if selected_class_id:
-            selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
-            available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
 
         # If an exam is selected, fetch its questions
         if selected_exam_id:
@@ -548,19 +542,23 @@ def select_questions_view(request, exam_id):
         if 'questions' in request.POST:
             selected_question_ids = request.POST.getlist('questions')
             selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            count_added = selected_questions.count()  # Get the number of selected questions
+            count_added = selected_questions.count()
             
             if count_added > 0:
-                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                exam.questions.add(*selected_questions)
                 messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
             else:
                 messages.warning(request, 'No questions selected to add.')
             return redirect('exam_detail', exam_id=exam_id)
     
+    # Always fetch available exams for the selected class
+    selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
+    available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
+    
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
-        'available_classes': user_classes,  # Only user-specific classes
+        'available_classes': user_classes,  # Now this excludes the current class
         'available_exams': available_exams,
         'questions': questions,
         'selected_class_id': int(selected_class_id),
@@ -1969,21 +1967,28 @@ def export_results(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
-    # Get results using the same logic as scan_results_view
-    result_csv = os.path.join(settings.MEDIA_ROOT, 'results', 
-                             f'class_{class_id}', 
-                             f'exam_{exam_id}_results.csv')
-    alternative_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                                  f'class_{class_id}', 
-                                  f'exam_{exam_id}',
-                                  'results.csv')
+    # Define possible result folders
+    possible_folders = [
+        # Standard structure: class_XX/exam_YY/
+        os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{class_id}', f'exam_{exam_id}'),
+        # Alternative structure: class_XX_exam_YY/
+        os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{class_id}_exam_{exam_id}')
+    ]
     
     csv_path = None
-    if os.path.exists(result_csv):
-        csv_path = result_csv
-    elif os.path.exists(alternative_path):
-        csv_path = alternative_path
-        
+    
+    # Check each possible location
+    for folder in possible_folders:
+        if os.path.exists(folder):
+            result_files = [f for f in os.listdir(folder) 
+                          if f.startswith(f'Results_exam_{exam_id}_') and f.endswith('.csv')]
+            
+            if result_files:
+                # Sort by timestamp to get the most recent one
+                result_files.sort(reverse=True)
+                csv_path = os.path.join(folder, result_files[0])
+                break
+    
     if not csv_path:
         messages.error(request, "No results file found to export.")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
@@ -2008,7 +2013,6 @@ def export_results(request, class_id, exam_id):
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
-    
 
 @login_required
 def student_test_papers_view(request, student_id):
