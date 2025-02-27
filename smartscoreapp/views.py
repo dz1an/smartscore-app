@@ -520,24 +520,18 @@ def select_questions_view(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     current_class = exam.class_assigned
     
-    # Fetch classes assigned to the logged-in user
-    user_classes = Class.objects.filter(user=request.user)
+    # Fetch classes assigned to the logged-in user, EXCLUDING the current class
+    user_classes = Class.objects.filter(user=request.user).exclude(id=current_class.id)
 
     # Initialize variables
     selected_class_id = current_class.id
     selected_exam_id = None
-    available_exams = []
     questions = []
 
     # Get selected class and exam from POST data
     if request.method == 'POST':
         selected_class_id = request.POST.get('class_source_id', current_class.id)
         selected_exam_id = request.POST.get('exam_source_id', None)
-
-        # If a different class is selected, fetch exams from that class
-        if selected_class_id:
-            selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
-            available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
 
         # If an exam is selected, fetch its questions
         if selected_exam_id:
@@ -548,19 +542,23 @@ def select_questions_view(request, exam_id):
         if 'questions' in request.POST:
             selected_question_ids = request.POST.getlist('questions')
             selected_questions = Question.objects.filter(id__in=selected_question_ids)
-            count_added = selected_questions.count()  # Get the number of selected questions
+            count_added = selected_questions.count()
             
             if count_added > 0:
-                exam.questions.add(*selected_questions)  # Add selected questions to the current exam
+                exam.questions.add(*selected_questions)
                 messages.success(request, f'Questions added successfully! {count_added} question(s) added to the exam.')
             else:
                 messages.warning(request, 'No questions selected to add.')
             return redirect('exam_detail', exam_id=exam_id)
     
+    # Always fetch available exams for the selected class
+    selected_class = get_object_or_404(Class, id=selected_class_id, user=request.user)
+    available_exams = Exam.objects.filter(class_assigned=selected_class).exclude(id=exam_id)
+    
     return render(request, 'select_questions.html', {
         'exam': exam,
         'current_class': current_class,
-        'available_classes': user_classes,  # Only user-specific classes
+        'available_classes': user_classes,  # Now this excludes the current class
         'available_exams': available_exams,
         'questions': questions,
         'selected_class_id': int(selected_class_id),
