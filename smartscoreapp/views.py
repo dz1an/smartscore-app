@@ -1967,21 +1967,28 @@ def export_results(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
     current_exam = get_object_or_404(Exam, id=exam_id)
     
-    # Get results using the same logic as scan_results_view
-    result_csv = os.path.join(settings.MEDIA_ROOT, 'results', 
-                             f'class_{class_id}', 
-                             f'exam_{exam_id}_results.csv')
-    alternative_path = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                                  f'class_{class_id}', 
-                                  f'exam_{exam_id}',
-                                  'results.csv')
+    # Define possible result folders
+    possible_folders = [
+        # Standard structure: class_XX/exam_YY/
+        os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{class_id}', f'exam_{exam_id}'),
+        # Alternative structure: class_XX_exam_YY/
+        os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{class_id}_exam_{exam_id}')
+    ]
     
     csv_path = None
-    if os.path.exists(result_csv):
-        csv_path = result_csv
-    elif os.path.exists(alternative_path):
-        csv_path = alternative_path
-        
+    
+    # Check each possible location
+    for folder in possible_folders:
+        if os.path.exists(folder):
+            result_files = [f for f in os.listdir(folder) 
+                          if f.startswith(f'Results_exam_{exam_id}_') and f.endswith('.csv')]
+            
+            if result_files:
+                # Sort by timestamp to get the most recent one
+                result_files.sort(reverse=True)
+                csv_path = os.path.join(folder, result_files[0])
+                break
+    
     if not csv_path:
         messages.error(request, "No results file found to export.")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
@@ -2006,7 +2013,6 @@ def export_results(request, class_id, exam_id):
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
-    
 
 @login_required
 def student_test_papers_view(request, student_id):
