@@ -1,120 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}SmartScore - Automated Exam Grading{% endblock %}
-
 {% block content %}
-    <!-- Hero Section -->
-    <div class="container mx-auto px-4 pt-8 pb-12">
-        {% if messages %}
-            <div id="message-container" class="mb-6">
-                {% include 'message_display.html' %}
-            </div>
-        {% endif %}
-        
-        <div class="text-center max-w-4xl mx-auto">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-                Smart<span class="text-blue-950">Score</span>
-            </h1>
-            <p class="text-xl text-gray-600 mb-8">
-                Revolutionize your grading process with automated scanning and instant analysis
-            </p>
-        </div>
-
-        <!-- Main Features Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
-            <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                </div>
-                <h2 class="text-xl font-semibold text-center mb-2">Quick Scan</h2>
-                <p class="text-gray-600 text-center">Instantly scan and grade multiple answer sheets with your device's camera</p>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                </div>
-                <h2 class="text-xl font-semibold text-center mb-2">Auto Analysis</h2>
-                <p class="text-gray-600 text-center">Get instant statistics and performance analysis for your entire class</p>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                </div>
-                <h2 class="text-xl font-semibold text-center mb-2">Generate Sets</h2>
-                <p class="text-gray-600 text-center">Automatically create multiple test versions to prevent cheating</p>
-            </div>
-        </div>
-
-        <!-- Call to Action Section -->
-        <div class="max-w-4xl mx-auto">
-            {% if user.is_authenticated %}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <a href="{% url 'classes' %}" class="block">
-                        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border-l-4 border-blue-500">
-                            <h2 class="text-2xl font-semibold mb-3">Your Classes</h2>
-                            <p class="text-gray-600">Manage your classes and start grading exams</p>
-                            <div class="mt-4 text-blue-600 flex items-center">
-                                <span>View Classes</span>
-                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </a>
-
-                    <a href="{% url 'exams' %}" class="block">
-                        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border-l-4 border-green-500">
-                            <h2 class="text-2xl font-semibold mb-3">Recent Exams</h2>
-                            <p class="text-gray-600">View and manage your recent exam results</p>
-                            <div class="mt-4 text-green-600 flex items-center">
-                                <span>View Exams</span>
-                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            {% else %}
-                <div class="bg-white rounded-xl shadow-md p-8 text-center">
-                    <h2 class="text-2xl font-semibold mb-4">Start Grading Smarter Today</h2>
-                    <p class="text-gray-600 mb-6">Join thousands of teachers who are saving time with automated grading</p>
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <a href="{% url 'register' %}" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            Create Free Account
-                        </a>
-                        <a href="{% url 'login' %}" class="inline-block px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                            Login to Your Account
-                        </a>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Auto-dismiss messages after 5 seconds
-setTimeout(function() {
-    var messageContainer = document.getElementById('message-container');
-    if (messageContainer) {
-        messageContainer.style.opacity = '0';
-        messageContainer.style.transition = 'opacity 0.5s ease';
-        setTimeout(function() {
-            messageContainer.style.display = 'none';
-        }, 500);
-    }
-}, 5000);
-</script>
-{% endblock %}
+<!-- Improved Hero Section with gradient background -->
+<div class="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-900">
+<div class="container mx-auto px-4 pt-16 pb-20">
+{% if messages %}
+<div id="message-container" class="mb-6 max-w-4xl mx-auto">
+{% include 'message_display.html' %}
+</div>
+{% endif %}

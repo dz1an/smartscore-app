@@ -2668,11 +2668,26 @@ def add_instructions(request, exam_id):
     
     if request.method == 'POST':
         instructions = request.POST.get('instructions')
-        time_limit = request.POST.get('time_limit')
+        time_limit_str = request.POST.get('time_limit', '')
         
+        # Update instructions
         exam.instructions = instructions
-        exam.time_limit = time_limit
+        
+        # Handle time_limit field - explicitly check for empty string
+        if time_limit_str.strip():
+            try:
+                exam.time_limit = int(time_limit_str)
+            except ValueError:
+                messages.error(request, 'Time limit must be a valid number.')
+                return redirect('exam_detail', exam_id=exam_id)
+        else:
+            # Set to None when empty (not empty string)
+            exam.time_limit = None
+        
+        # Save the exam with the updated fields
         exam.save()
+        
+        messages.success(request, 'Instructions updated successfully!')
         
         return redirect('exam_detail', exam_id=exam_id)
     
