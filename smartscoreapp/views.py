@@ -970,12 +970,12 @@ def generate_exam_sets(request, class_id, exam_id):
                 'difficulty_points': set_data['difficulty_points']
             })
 
-            # Add row to CSV
+            # Add row to CSV - use full student ID instead of slicing
             csv_rows.append([
                 student.last_name,
                 student.first_name,
                 student.middle_initial,
-                student.student_id[4:],
+                student.student_id,  # Changed from student.student_id[4:] to use full 7-digit ID
                 set_data['set_id'],
                 set_data['answer_key'],
                 set_data['difficulty_points']
@@ -995,7 +995,7 @@ def generate_exam_sets(request, class_id, exam_id):
         else:
             messages.warning(request, "No sets were generated.")
 
-        return redirect('exam_detail', exam_id=exam_id)  # Changed from 'exam_details' to 'exam_detail'
+        return redirect('exam_detail', exam_id=exam_id)
 
     context = {
         'exam': exam,
@@ -1006,6 +1006,152 @@ def generate_exam_sets(request, class_id, exam_id):
         'hard_count': hard_count,
     }
     return render(request, 'exams/generate_sets.html', context)
+
+# @login_required
+# def generate_exam_sets(request, class_id, exam_id):
+#     exam = get_object_or_404(Exam, id=exam_id)
+#     current_class = get_object_or_404(Class, id=class_id)
+
+#     # Filter questions based on difficulty
+#     easy_questions = list(exam.questions.filter(difficulty='Easy'))
+#     medium_questions = list(exam.questions.filter(difficulty='Medium'))
+#     hard_questions = list(exam.questions.filter(difficulty='Hard'))
+
+#     easy_count = len(easy_questions)
+#     medium_count = len(medium_questions)
+#     hard_count = len(hard_questions)
+
+#     if request.method == "POST":
+#         num_sets = int(request.POST.get('num_sets', 1))
+#         easy_q_requested = int(request.POST.get('easy_questions', 0))
+#         medium_q_requested = int(request.POST.get('medium_questions', 0))
+#         hard_q_requested = int(request.POST.get('hard_questions', 0))
+
+#         students = list(current_class.students.all())
+#         total_students = len(students)
+
+#         # Validate number of sets
+#         if num_sets > total_students:
+#             num_sets = total_students
+
+#         # Check if there are enough questions
+#         if easy_q_requested > easy_count or medium_q_requested > medium_count or hard_q_requested > hard_count:
+#             messages.error(request, "Not enough questions available for the selected difficulty.")
+#             return redirect('generate_exam_sets', class_id=class_id, exam_id=exam_id)
+
+#         # Clear existing test sets for re-generation
+#         TestSet.objects.filter(exam=exam, student__in=students).delete()
+
+#         generated_sets = []
+#         csv_rows = []
+
+#         # Generate the actual unique sets first
+#         unique_sets = []
+#         exam_id_part = str(exam.exam_id).zfill(3)[-3:]  # Get last 3 digits of exam_id
+        
+#         # Generate set IDs first - one for each unique set
+#         set_ids = []
+#         used_set_ids = set()
+        
+#         for set_no in range(num_sets):
+#             while True:
+#                 random_part = f"{random.randint(0, 99):02d}"
+#                 set_id = f"{exam_id_part}{random_part}"
+                
+#                 if set_id not in used_set_ids and not TestSet.objects.filter(set_id=set_id).exists():
+#                     used_set_ids.add(set_id)
+#                     set_ids.append(set_id)
+#                     break
+
+#             # Shuffle and select questions for each set
+#             random.shuffle(easy_questions)
+#             random.shuffle(medium_questions)
+#             random.shuffle(hard_questions)
+
+#             selected_easy = easy_questions[:easy_q_requested]
+#             selected_medium = medium_questions[:medium_q_requested]
+#             selected_hard = hard_questions[:hard_q_requested]
+
+#             selected_questions = selected_easy + selected_medium + selected_hard
+#             random.shuffle(selected_questions)
+
+#             answer_key = ''.join(str(ord(question.answer) - ord('A')) for question in selected_questions)
+#             difficulty_points = ''.join(
+#                 '1' if question.difficulty == 'Easy' 
+#                 else '2' if question.difficulty == 'Medium' 
+#                 else '3'
+#                 for question in selected_questions
+#             )
+
+#             unique_sets.append({
+#                 'set_id': set_ids[set_no],
+#                 'questions': selected_questions,
+#                 'answer_key': answer_key,
+#                 'difficulty_points': difficulty_points,
+#                 'set_no': set_no + 1
+#             })
+
+#         # Distribute sets among students
+#         for idx, student in enumerate(students):
+#             # Use modulo to cycle through the sets
+#             set_data = unique_sets[idx % num_sets]
+            
+#             # Create and save the test set
+#             test_set = TestSet(
+#                 exam=exam,
+#                 student=student,
+#                 set_no=set_data['set_no'],
+#                 answer_key=set_data['answer_key'],
+#                 set_id=set_data['set_id']  # Use the same set_id for students with same questions
+#             )
+#             test_set.save()
+#             test_set.questions.add(*set_data['questions'])
+
+#             # Add to generated sets list
+#             generated_sets.append({
+#                 'student_id': student.student_id,
+#                 'student_name': f"{student.first_name} {student.last_name}",
+#                 'set_id': set_data['set_id'],
+#                 'answer_key': set_data['answer_key'],
+#                 'difficulty_points': set_data['difficulty_points']
+#             })
+
+#             # Add row to CSV
+#             csv_rows.append([
+#                 student.last_name,
+#                 student.first_name,
+#                 student.middle_initial,
+#                 student.student_id[4:],
+#                 set_data['set_id'],
+#                 set_data['answer_key'],
+#                 set_data['difficulty_points']
+#             ])
+
+#         # Save to CSV file
+#         if csv_rows:
+#             csv_file_path = os.path.join(settings.MEDIA_ROOT, 'csv', f'class_{current_class.id}', f'exam_{exam.id}_sets.csv')
+#             os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+            
+#             with open(csv_file_path, mode='w', newline='') as csv_file:
+#                 writer = csv.writer(csv_file)
+#                 writer.writerow(['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Answer Key', 'Difficulty Points'])
+#                 writer.writerows(csv_rows)
+
+#             messages.success(request, f"Successfully generated {len(generated_sets)} exam sets across {num_sets} unique test versions.")
+#         else:
+#             messages.warning(request, "No sets were generated.")
+
+#         return redirect('exam_detail', exam_id=exam_id)  # Changed from 'exam_details' to 'exam_detail'
+
+#     context = {
+#         'exam': exam,
+#         'current_class': current_class,
+#         'generated_sets': TestSet.objects.filter(exam=exam, student__in=current_class.students.all()).order_by('student__last_name', 'student__first_name'),
+#         'easy_count': easy_count,
+#         'medium_count': medium_count,
+#         'hard_count': hard_count,
+#     }
+#     return render(request, 'exams/generate_sets.html', context)
 
 
 
@@ -2044,21 +2190,21 @@ def add_student_view(request, class_id):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         middle_initial = request.POST.get('middle_initial', '')
-        student_id = request.POST.get('student_id', '').strip().lower()  # Convert to lowercase and remove whitespace
+        student_id = request.POST.get('student_id', '').strip()
 
         try:
-            # Validate student ID format: 2 letters + 9 digits
-            if not re.match(r'^[a-zA-Z]{2}\d{9}$', student_id):
-                raise ValidationError("Student ID must be in format: xx123456789 (2 letters followed by 9 digits)")
+            # Validate student ID format: exactly 7 digits
+            if not re.match(r'^\d{7}$', student_id):
+                raise ValidationError("Student ID must be exactly 7 digits")
 
             # Check if the student ID already exists in the same class
             if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
                 messages.warning(request, f"Student with ID {student_id} already exists in this class.")
                 return redirect('class_detail', class_id=class_id)
 
-            # Create the new student record with assigned_class and formatted student ID
+            # Create the new student record with assigned_class
             Student.objects.create(
-                student_id=student_id,  # Will be lowercase
+                student_id=student_id,
                 first_name=first_name,
                 last_name=last_name,
                 middle_initial=middle_initial,
@@ -2104,13 +2250,13 @@ def bulk_upload_students_view(request, class_id):
                 middle_initial = row.get('Middle Initial', '')
 
                 try:
-                    # Validate student ID format: 2 letters followed by 9 digits
-                    if not student_id or not re.match(r'^[a-zA-Z]{2}\d{9}$', student_id):
+                    # Validate student ID format: exactly 7 digits
+                    if not student_id or not re.match(r'^\d{7}$', student_id):
                         invalid_student_ids.append(student_id)
                         continue
 
                     # Check if the student already exists in the same class
-                    if Student.objects.filter(student_id=student_id.lower(), assigned_class=class_instance).exists():
+                    if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
                         existing_student_ids.append(student_id)
                         continue  # Skip this student
                     
@@ -2162,23 +2308,23 @@ def edit_student(request, student_id):
         student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
 
         if request.method == "POST":
-            # Get and format the new student ID
-            new_student_id = request.POST.get('student_id', student.student_id).strip().lower()
+            # Get the new student ID
+            new_student_id = request.POST.get('student_id', student.student_id).strip()
             
             try:
-                # Validate student ID format: 2 letters followed by 9 digits (e.g. xt202001241)
-                if not re.match(r'^[a-zA-Z]{2}\d{9}$', new_student_id):
-                    raise ValidationError("Student ID must be in format: xx123456789 (2 letters followed by 9 digits)")
+                # Validate student ID format: exactly 7 digits
+                if not re.match(r'^\d{7}$', new_student_id):
+                    raise ValidationError("Student ID must be exactly 7 digits")
                 
                 # Check for uniqueness only if the ID is being changed
                 if new_student_id != student.student_id:
                     # Check if another student in the same class already has this ID
-                    if Student.objects.filter(student_id__iexact=new_student_id, assigned_class__id=class_instance).exists():
+                    if Student.objects.filter(student_id=new_student_id, assigned_class__id=class_instance).exists():
                         messages.error(request, f"Student ID {new_student_id} already exists in this class.")
                         return redirect('edit_student', student_id=student_id, class_id=class_instance)
                 
                 # Update student details
-                student.student_id = new_student_id  # Store as lowercase
+                student.student_id = new_student_id
                 student.first_name = request.POST.get('first_name', student.first_name)
                 student.last_name = request.POST.get('last_name', student.last_name)
                 student.middle_initial = request.POST.get('middle_initial', student.middle_initial)
@@ -2202,6 +2348,173 @@ def edit_student(request, student_id):
     except Exception as e:
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect('class_detail', class_id=class_instance)
+
+# @login_required
+# def add_student_view(request, class_id):
+#     class_instance = get_object_or_404(Class, id=class_id)
+
+#     if request.method == 'POST':
+#         first_name = request.POST.get('first_name')
+#         last_name = request.POST.get('last_name')
+#         middle_initial = request.POST.get('middle_initial', '')
+#         student_id = request.POST.get('student_id', '').strip().lower()  # Convert to lowercase and remove whitespace
+
+#         try:
+#             # Validate student ID format: 2 letters + 9 digits
+#             if not re.match(r'^[a-zA-Z]{2}\d{9}$', student_id):
+#                 raise ValidationError("Student ID must be in format: xx123456789 (2 letters followed by 9 digits)")
+
+#             # Check if the student ID already exists in the same class
+#             if Student.objects.filter(student_id=student_id, assigned_class=class_instance).exists():
+#                 messages.warning(request, f"Student with ID {student_id} already exists in this class.")
+#                 return redirect('class_detail', class_id=class_id)
+
+#             # Create the new student record with assigned_class and formatted student ID
+#             Student.objects.create(
+#                 student_id=student_id,  # Will be lowercase
+#                 first_name=first_name,
+#                 last_name=last_name,
+#                 middle_initial=middle_initial,
+#                 assigned_class=class_instance
+#             )
+#             messages.success(request, f"Student {first_name} {last_name} added successfully!")
+#             return redirect('class_detail', class_id=class_id)
+        
+#         except ValidationError as ve:
+#             messages.error(request, str(ve))
+#             return redirect('class_detail', class_id=class_id)
+#         except IntegrityError as e:
+#             messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+#             return redirect('class_detail', class_id=class_id)
+
+#     return render(request, 'add_student.html', {
+#         'class_instance': class_instance,
+#     })
+
+# @login_required
+# def bulk_upload_students_view(request, class_id):
+#     class_instance = get_object_or_404(Class, id=class_id)
+
+#     if request.method == 'POST':
+#         form = StudentBulkUploadForm(request.POST, request.FILES)
+        
+#         if form.is_valid():
+#             csv_file = request.FILES['csv_file']
+            
+#             # Read the uploaded CSV file
+#             decoded_file = csv_file.read().decode('utf-8').splitlines()
+#             reader = csv.DictReader(decoded_file)
+
+#             # Initialize counters and lists
+#             successful_additions = 0
+#             existing_student_ids = []
+#             invalid_student_ids = []
+            
+#             for row in reader:
+#                 student_id = row.get('ID', '').strip()  # Ensure no leading/trailing whitespace
+#                 first_name = row.get('First Name')
+#                 last_name = row.get('Last Name')
+#                 middle_initial = row.get('Middle Initial', '')
+
+#                 try:
+#                     # Validate student ID format: 2 letters followed by 9 digits
+#                     if not student_id or not re.match(r'^[a-zA-Z]{2}\d{9}$', student_id):
+#                         invalid_student_ids.append(student_id)
+#                         continue
+
+#                     # Check if the student already exists in the same class
+#                     if Student.objects.filter(student_id=student_id.lower(), assigned_class=class_instance).exists():
+#                         existing_student_ids.append(student_id)
+#                         continue  # Skip this student
+                    
+#                     # Create the new student record
+#                     Student.objects.create(
+#                         student_id=student_id,
+#                         first_name=first_name,
+#                         last_name=last_name,
+#                         middle_initial=middle_initial,
+#                         assigned_class=class_instance
+#                     )
+#                     successful_additions += 1
+
+#                 except ValidationError:
+#                     invalid_student_ids.append(student_id)
+#                 except IntegrityError as e:
+#                     messages.error(request, f"Error creating student with ID {student_id}. Error: {str(e)}")
+            
+#             # Success and info messages
+#             if successful_additions > 0:
+#                 messages.success(request, f'Student bulk upload completed successfully! {successful_additions} students added.')
+#             else:
+#                 messages.info(request, 'No new students were added during the bulk upload.')
+            
+#             # Alert for existing and invalid student IDs
+#             if existing_student_ids:
+#                 messages.info(request, f'Skipped {len(existing_student_ids)} existing student IDs: {", ".join(existing_student_ids)}')
+            
+#             if invalid_student_ids:
+#                 messages.warning(request, f'Skipped {len(invalid_student_ids)} invalid student IDs: {", ".join(invalid_student_ids)}')
+                
+#             return redirect('class_detail', class_id=class_id)
+    
+#     else:
+#         form = StudentBulkUploadForm()
+
+#     return render(request, 'bulk_upload_students.html', {
+#         'form': form,
+#         'class_instance': class_instance,
+#     })
+
+
+# @login_required
+# @require_http_methods(["GET", "POST"])
+# def edit_student(request, student_id):
+#     class_instance = request.GET.get('class_id')
+
+#     try:
+#         student = get_object_or_404(Student, student_id=student_id, assigned_class__id=class_instance)
+
+#         if request.method == "POST":
+#             # Get and format the new student ID
+#             new_student_id = request.POST.get('student_id', student.student_id).strip().lower()
+            
+#             try:
+#                 # Validate student ID format: 2 letters followed by 9 digits (e.g. xt202001241)
+#                 if not re.match(r'^[a-zA-Z]{2}\d{9}$', new_student_id):
+#                     raise ValidationError("Student ID must be in format: xx123456789 (2 letters followed by 9 digits)")
+                
+#                 # Check for uniqueness only if the ID is being changed
+#                 if new_student_id != student.student_id:
+#                     # Check if another student in the same class already has this ID
+#                     if Student.objects.filter(student_id__iexact=new_student_id, assigned_class__id=class_instance).exists():
+#                         messages.error(request, f"Student ID {new_student_id} already exists in this class.")
+#                         return redirect('edit_student', student_id=student_id, class_id=class_instance)
+                
+#                 # Update student details
+#                 student.student_id = new_student_id  # Store as lowercase
+#                 student.first_name = request.POST.get('first_name', student.first_name)
+#                 student.last_name = request.POST.get('last_name', student.last_name)
+#                 student.middle_initial = request.POST.get('middle_initial', student.middle_initial)
+#                 student.save()
+
+#                 messages.success(request, "Student information updated successfully!")
+#                 return redirect('class_detail', class_id=class_instance)
+            
+#             except ValidationError as ve:
+#                 messages.error(request, str(ve))
+#                 return redirect('edit_student', student_id=student_id, class_id=class_instance)
+
+#         return render(request, 'edit_student.html', {
+#             'student': student,
+#             'class_id': class_instance,
+#         })
+
+#     except Student.DoesNotExist:
+#         messages.error(request, "Student not found.")
+#         return redirect('class_detail', class_id=class_instance)
+#     except Exception as e:
+#         messages.error(request, f"An error occurred: {str(e)}")
+#         return redirect('class_detail', class_id=class_instance)
 
     
 @login_required
