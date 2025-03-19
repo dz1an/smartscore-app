@@ -11,7 +11,8 @@ from django.http import (
     JsonResponse, 
     HttpResponseForbidden, 
     HttpResponseNotAllowed,
-    FileResponse
+    FileResponse,
+    
 )
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -30,7 +31,8 @@ from django.contrib.auth.forms import (
     UserCreationForm, 
     AuthenticationForm,
     PasswordChangeForm, 
-    UserChangeForm
+    UserChangeForm,
+    
 )
 
 # Local imports
@@ -67,7 +69,8 @@ from reportlab.platypus import (
     Spacer,
     Image,
     Table,
-    TableStyle
+    TableStyle,
+    PageBreak
 )
 from reportlab.lib.units import inch
 
@@ -1380,24 +1383,33 @@ def download_test_paper(request, class_id, exam_id):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="test_paper_class_{current_class.id}_exam_{exam.id}.pdf"'
 
-    # Create the PDF object
-    pdf_canvas = canvas.Canvas(response, pagesize=letter)
-    width, height = letter
-    pdf_canvas.setTitle(f"Test Paper for {exam.name}")
-
-    # [Rest of the code remains unchanged...]
-    # Adjusted dimensions for better text fitting
-    line_height = 15 
-    bottom_margin = 30 
-    font_size_header = 12  
-    font_size_normal = 11  
-    font_size_question = 11  
+    # Create PDF with 0.5 inch margins (36 points = 0.5 inches)
+    p = SimpleDocTemplate(
+        response, 
+        pagesize=letter,
+        topMargin=36, 
+        bottomMargin=36, 
+        leftMargin=36, 
+        rightMargin=36
+    )
     
-    # Column layout parameters
-    left_margin = 30
-    column_spacing = 20
-    column_width = (width - 2 * left_margin - column_spacing) / 2
-
+    # Get styles and customize for compact layout
+    styles = getSampleStyleSheet()
+    
+    # Modify styles for smaller font and tighter spacing
+    styles['Normal'].fontSize = 8  # Reduced from 10 to 8
+    styles['Normal'].leading = 10  # Reduced leading (font size + 2)
+    styles['Title'].fontSize = 10  # Reduced from 12 to 10
+    styles['Title'].leading = 12
+    styles['Heading3'].fontSize = 9  # Reduced from 11 to 9
+    styles['Heading3'].leading = 11
+    styles['Heading4'].fontSize = 8  # Reduced from 10 to 8
+    styles['Heading4'].leading = 10
+    
+    # Create document elements list
+    elements = []
+    
+    # Process each test set
     test_sets = test_sets.prefetch_related('questions').order_by('student__last_name', 'student__first_name')
 
     for test_set in test_sets:
@@ -1410,86 +1422,58 @@ def download_test_paper(request, class_id, exam_id):
         
         if test_set.answer_key:
             for idx, key in enumerate(test_set.answer_key):
-                answer_letter = chr(ord('A') + int(key))
-                answers.append(f"{idx + 1}. {answer_letter}")
-                
-                matching_question = next(
-                    (q for q in all_questions if ord(q.answer) - ord('A') == int(key)),
-                    None
-                )
-                if matching_question:
-                    ordered_questions.append(matching_question)
-                    all_questions.remove(matching_question)
+                try:
+                    answer_letter = chr(ord('A') + int(key))
+                    answers.append(f"{idx + 1}. {answer_letter}")
+                    
+                    matching_question = next(
+                        (q for q in all_questions if ord(q.answer) - ord('A') == int(key)),
+                        None
+                    )
+                    if matching_question:
+                        ordered_questions.append(matching_question)
+                        all_questions.remove(matching_question)
+                except (ValueError, IndexError):
+                    # Skip invalid answer keys
+                    continue
         
         ordered_questions.extend(all_questions)
-        ordered_questions = ordered_questions[:20]
-
-        # New page for each test set
-        pdf_canvas.showPage()
+        # Include all questions (up to 30) instead of limiting to 20
         
-        # Compact header section
-        pdf_canvas.setFont("Helvetica-Bold", font_size_header)
-        pdf_canvas.drawString(left_margin, height - 20, f"{exam.name}")
+        # Add a page break
+        elements.append(PageBreak())
         
-        # More compact student info
-        pdf_canvas.setFont("Helvetica", font_size_normal)
-        pdf_canvas.drawString(left_margin, height - 32, f"Name: {student.last_name}, {student.first_name}")
-        pdf_canvas.drawString(250, height - 32, f"ID: {student.student_id}")
-        pdf_canvas.drawString(400, height - 32, f"Set: {test_set.set_id}")
+        # Document header
+        header_text = f"<b>{exam.name}</b>"
+        elements.append(Paragraph(header_text, styles['Title']))
+        elements.append(Spacer(1, 3))  # Minimal spacing between header and info
+        
+        # Student info (all on one line to save space)
+        info_text = f"<b>Name:</b> {student.last_name}, {student.first_name} &nbsp;&nbsp; <b>ID:</b> {student.student_id} &nbsp;&nbsp; <b>Set:</b> {test_set.set_id}"
+        elements.append(Paragraph(info_text, styles['Normal']))
         
         if exam.time_limit:
-            pdf_canvas.drawString(width - 100, height - 32, f"Time: {exam.time_limit} min")
-
-        # Compact instructions
-        y_position = height - 45
+            time_text = f"<b>Time Limit:</b> {exam.time_limit} minutes"
+            elements.append(Paragraph(time_text, styles['Normal']))
+        
+        elements.append(Spacer(1, 2))  # Extremely reduced spacing
+        
+        # Instructions (if available)
         if exam.instructions:
-            pdf_canvas.setFont("Helvetica-Bold", font_size_normal)
-            wrapped_instructions = textwrap.wrap(exam.instructions, width=120)
-            for line in wrapped_instructions:
-                pdf_canvas.drawString(left_margin, y_position, line)
-                y_position -= line_height
-            
-            y_position -= line_height * 0.3
-
-        # Questions section with dynamic layout
-        question_number = 1
-        original_y = y_position
+            elements.append(Paragraph("<b>Instructions:</b>", styles['Heading3']))
+            elements.append(Paragraph(exam.instructions, styles['Normal']))
+            elements.append(Spacer(1, 2))  # Very minimal spacing
         
-        # Determine if we should use two columns (only if more than 10 questions)
-        use_two_columns = len(ordered_questions) > 10
+        # Questions
+        elements.append(Paragraph("<b>Questions:</b>", styles['Heading3']))
+        elements.append(Spacer(1, 1))  # Extremely minimal spacing
         
-        for idx, question in enumerate(ordered_questions):
-            # Calculate column position only if using two columns
-            if use_two_columns:
-                is_right_column = idx >= len(ordered_questions) / 2
-                x_position = left_margin if not is_right_column else left_margin + column_width + column_spacing
-                
-                if is_right_column and idx == len(ordered_questions) / 2:
-                    y_position = original_y  # Reset Y position for right column
-            else:
-                x_position = left_margin  # Single column layout
-
-            # New page check
-            if y_position < bottom_margin + 30:
-                pdf_canvas.showPage()
-                pdf_canvas.setFont("Helvetica", font_size_normal)
-                pdf_canvas.drawString(left_margin, height - 20, f"Set ID: {test_set.set_id}")
-                y_position = height - 35
-                original_y = y_position
-
-            # Question text
-            pdf_canvas.setFont("Helvetica-Bold", font_size_question)
-            question_text = f"{question_number}. {question.question_text}"
+        for i, question in enumerate(ordered_questions):
+            question_text = f"{i+1}. {question.question_text}"
+            elements.append(Paragraph(question_text, styles['Heading4']))
             
-            # Adjusted width for better text wrapping
-            wrap_width = int((column_width - 20) / (font_size_question / 12))  # Scale based on font size
-            wrapped_text = textwrap.wrap(question_text, width=wrap_width)
-            for line in wrapped_text:
-                pdf_canvas.drawString(x_position, y_position, line)
-                y_position -= line_height
-            
-            # Options with consistent spacing
-            options_data = [
+            # Options with compact spacing
+            option_data = [
                 ('A', question.option_a),
                 ('B', question.option_b),
                 ('C', question.option_c),
@@ -1497,45 +1481,61 @@ def download_test_paper(request, class_id, exam_id):
                 ('E', question.option_e)
             ]
             
-            pdf_canvas.setFont("Helvetica", font_size_normal)
-            option_indent = 15
-            for opt_letter, opt_text in options_data:
+            for opt_letter, opt_text in option_data:
                 if opt_text:
-                    option_line = f"{opt_letter}. {opt_text}"
-                    # Slightly narrower width for options to account for indent
-                    wrap_width = int((column_width - 25) / (font_size_normal / 12))
-                    wrapped_option = textwrap.wrap(option_line, width=wrap_width)
-                    for line in wrapped_option:
-                        pdf_canvas.drawString(x_position + option_indent, y_position, line)
-                        y_position -= line_height
-
-            y_position -= line_height * 0.3  # Spacing between questions
-            question_number += 1
-
-        # Answer key page with compact layout
+                    option_text = f"&nbsp;&nbsp;{opt_letter}. {opt_text}"  # Reduced indentation
+                    # Create a paragraph with indentation
+                    paragraph = Paragraph(option_text, styles['Normal'])
+                    paragraph.leftIndent = 10  # Reduced indentation from 15 to 10
+                    elements.append(paragraph)
+            
+            elements.append(Spacer(1, 1))  # Minimal space between questions
+        
+        # Add answer key page for staff/superusers
         if request.user.is_staff or request.user.is_superuser:
-            pdf_canvas.showPage()
-            pdf_canvas.setFont("Helvetica-Bold", font_size_header)
-            pdf_canvas.drawString(left_margin, height - 30, "ANSWER KEY")
-            pdf_canvas.drawString(left_margin, height - 45, f"Student: {student.last_name}, {student.first_name}")
-            pdf_canvas.drawString(left_margin, height - 60, f"Set ID: {test_set.set_id}")
+            elements.append(PageBreak())
+            elements.append(Paragraph("<b>ANSWER KEY</b>", styles['Title']))
+            elements.append(Paragraph(f"Student: {student.last_name}, {student.first_name}", styles['Normal']))
+            elements.append(Paragraph(f"Set ID: {test_set.set_id}", styles['Normal']))
+            elements.append(Spacer(1, 6))
             
-            # Compact answer grid
-            y_pos = height - 80
-            x_pos = left_margin
-            items_per_row = 15
+            # Create a compact table for answers (5 answers per row)
+            answer_rows = []
+            row = []
             
-            pdf_canvas.setFont("Helvetica", font_size_normal)
-            for idx, answer in enumerate(answers[:20]):
-                if idx > 0 and idx % items_per_row == 0:
-                    y_pos -= line_height
-                    x_pos = left_margin
-                pdf_canvas.drawString(x_pos, y_pos, answer)
-                x_pos += 35
-
-    pdf_canvas.save()
+            for idx, answer in enumerate(answers):
+                row.append(answer)
+                
+                # Start a new row after every 5 items
+                if (idx + 1) % 5 == 0:
+                    answer_rows.append(row)
+                    row = []
+            
+            # Add any remaining items
+            if row:
+                while len(row) < 5:  # Pad the row with empty cells
+                    row.append('')
+                answer_rows.append(row)
+            
+            if answer_rows:
+                answer_table = Table(answer_rows, colWidths=[70] * 5)  # Reduced column widths
+                answer_table.setStyle(TableStyle([
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),  # Reduced font size for answer key
+                    ('GRID', (0, 0), (-1, -1), 0.25, colors.white),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 2),  # Reduced padding
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),  # Reduced padding
+                    ('TOPPADDING', (0, 0), (-1, -1), 1),  # Reduced padding
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 1),  # Reduced padding
+                ]))
+                elements.append(answer_table)
+    
+    # Build the PDF
+    p.build(elements)
+    
     return response
-
 
 @login_required
 def download_exam_sets_csv(request, class_id, exam_id):
