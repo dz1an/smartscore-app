@@ -60,7 +60,7 @@ from .forms import (
 
 # PDF generation
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import legal
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import (
@@ -1386,7 +1386,7 @@ def download_test_paper(request, class_id, exam_id):
     # Create PDF with 0.5 inch margins (36 points = 0.5 inches)
     p = SimpleDocTemplate(
         response, 
-        pagesize=letter,
+        pagesize=legal,
         topMargin=36, 
         bottomMargin=36, 
         leftMargin=36, 
