@@ -26,8 +26,8 @@ def omr(csv_path, images):
         utilis.create_csv(filename)
         
         # Check if image paths and student data match
-        if len(image_file_paths) != len(id_to_info):
-            raise ValueError("Error: Mismatch between the number of images and the student data in CSV.")
+        # if len(image_file_paths) != len(id_to_info):
+        #     raise ValueError("Error: Mismatch between the number of images and the student data in CSV.")
         
         # Process each image
         for image_path in image_file_paths:
