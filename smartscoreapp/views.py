@@ -2144,11 +2144,15 @@ def export_results(request, class_id, exam_id):
         ws = wb.active
         ws.title = "Scan Results"
         
-        # Read CSV and write to Excel
+        # Define the headers to export
+        headers_to_export = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Items', 'Max Score', 'Score']
+        ws.append(headers_to_export)
+        
+        # Read CSV and write only the selected headers to Excel
         with open(csv_path, 'r', encoding='utf-8') as file:
-            reader = csv.reader(file)
+            reader = csv.DictReader(file)
             for row in reader:
-                ws.append(row)
+                ws.append([row.get(header, '') for header in headers_to_export])
         
         # Prepare response
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
