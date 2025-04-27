@@ -21,7 +21,7 @@
         </ol>
     </nav>
 
-    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+    <!-- <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
         <div class="flex">
             <div class="flex-shrink-0">
                 <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -34,7 +34,7 @@
                 </p>
             </div>
         </div>
-    </div>
+    </div> -->
     
     {% if messages %}
         {% include 'message_display.html' %}
@@ -69,7 +69,6 @@
                             <th scope="col" class="px-6 py-3">#</th>
                             <th scope="col" class="px-6 py-3">Image</th>
                             <th scope="col" class="px-6 py-3">Action</th>
-                            <th scope="col" class="px-6 py-3">Scan File</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -86,7 +85,6 @@
                                         <button type="submit" class="text-red-600 hover:underline">Remove</button>
                                     </form>
                                 </td>
-                                <td class="px-6 py-4">{{ image.scan_timestamp }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
