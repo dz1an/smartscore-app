@@ -1991,16 +1991,28 @@ def scan_results_view(request, class_id, exam_id):
         # Split and strip each item
         return [item.strip() for item in cleaned.split(',') if item.strip()]
     
+    # Process all result files
     if os.path.exists(upload_dir):
         csv_files = [f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')]
-        if csv_files:
-            csv_path = os.path.join(upload_dir, sorted(csv_files)[-1])
+        
+        # Process each CSV file
+        for csv_file in sorted(csv_files):  # Process in chronological order
+            csv_path = os.path.join(upload_dir, csv_file)
             
             try:
                 with open(csv_path, 'r', encoding='utf-8') as file:
                     reader = csv.DictReader(file)
                     
                     for row in reader:
+                        # Check if this student result already exists (to avoid duplicates)
+                        student_id = row.get('ID', 'N/A')
+                        existing_result = next((result for result in scan_results 
+                                              if result['student_id'] == student_id), None)
+                        
+                        # If this student already has a result, skip (or update if needed)
+                        if existing_result:
+                            continue
+                        
                         # Parse the specific incorrect answer lists by difficulty
                         easy_incorrect_list = parse_list(row.get('Easy Inc list', ''))
                         medium_incorrect_list = parse_list(row.get('Medium Inc list', ''))
@@ -2052,7 +2064,6 @@ def scan_results_view(request, class_id, exam_id):
                         # Parse overall incorrect answers list
                         incorrect_answers_list = parse_list(row.get('Incorrect Ans list', ''))
                         
-                        student_id = row.get('ID', 'N/A')
                         set_id = row.get('Set ID', 'N/A')
                         
                         scan_results.append({
@@ -2070,14 +2081,16 @@ def scan_results_view(request, class_id, exam_id):
                             'formatted_grade': f"{score}/{max_score} ({percentage:.1f}%) - {calculate_grade(score, max_score)}",
                             'status': determine_status(score, student_id, set_id),
                             'invalid_answer': row.get('Invalid Ans list', ''),
-                            'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else ''
+                            'incorrect_answer': ', '.join(incorrect_answers_list) if incorrect_answers_list else '',
+                            'scan_timestamp': csv_file  # Add this to track which scan this came from
                         })
                         
             except Exception as e:
-                messages.error(request, f"Error reading results file: {str(e)}")
+                messages.error(request, f"Error reading results file {csv_file}: {str(e)}")
                 print(f"Error details: {str(e)}")
-    else:
-        messages.warning(request, "No results file found. Please scan the exam papers first.")
+    
+    # Sort results by last name, first name for consistent display
+    scan_results.sort(key=lambda x: (x['last_name'], x['first_name']))
     
     # Calculate overall statistics
     success_count = len([r for r in scan_results if r['status'] == 'success'])
@@ -2086,6 +2099,9 @@ def scan_results_view(request, class_id, exam_id):
     passing_grades = ['A+', 'A', 'B+', 'B', 'C']
     passing_count = len([r for r in scan_results if r['grade'] in passing_grades])
     failing_count = len([r for r in scan_results if r['grade'] == 'C-' or r['grade'] == 'D+' or r['grade'] == 'D' or r['grade'] == 'F'])
+    
+    # Add total number of scans processed
+    total_scans = len(set([f for f in os.listdir(upload_dir) if f.startswith('Results_exam') and f.endswith('.csv')])) if os.path.exists(upload_dir) else 0
     
     context = {
         'current_class': current_class,
@@ -2098,14 +2114,14 @@ def scan_results_view(request, class_id, exam_id):
         'failed_processing_count': failed_processing_count,
         'passing_count': passing_count,
         'failing_count': failing_count,
+        'total_scans': total_scans,  # New context variable for number of scans
     }
     
     return render(request, 'scan_results.html', context)
 
-
 def export_results(request, class_id, exam_id):
     """
-    Export scan results to Excel
+    Export all scan results to Excel
     """
     from openpyxl import Workbook
     from django.http import HttpResponse
@@ -2121,7 +2137,8 @@ def export_results(request, class_id, exam_id):
         os.path.join(settings.MEDIA_ROOT, 'uploads', f'class_{class_id}_exam_{exam_id}')
     ]
     
-    csv_path = None
+    combined_data = []
+    processed_student_ids = set()  # To avoid duplicates
     
     # Check each possible location
     for folder in possible_folders:
@@ -2129,41 +2146,53 @@ def export_results(request, class_id, exam_id):
             result_files = [f for f in os.listdir(folder) 
                           if f.startswith(f'Results_exam_{exam_id}_') and f.endswith('.csv')]
             
-            if result_files:
-                # Sort by timestamp to get the most recent one
-                result_files.sort(reverse=True)
-                csv_path = os.path.join(folder, result_files[0])
-                break
+            # Process all result files
+            for result_file in sorted(result_files):
+                csv_path = os.path.join(folder, result_file)
+                try:
+                    with open(csv_path, 'r', encoding='utf-8') as file:
+                        reader = csv.DictReader(file)
+                        for row in reader:
+                            student_id = row.get('ID', '')
+                            # Add only if student hasn't been processed yet
+                            if student_id and student_id not in processed_student_ids:
+                                combined_data.append(row)
+                                processed_student_ids.add(student_id)
+                except Exception as e:
+                    continue
     
-    if not csv_path:
-        messages.error(request, "No results file found to export.")
+    if not combined_data:
+        messages.error(request, "No results found to export.")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
     
     try:
         wb = Workbook()
         ws = wb.active
-        ws.title = "Scan Results"
+        ws.title = "Combined Scan Results"
         
         # Define the headers to export
         headers_to_export = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Items', 'Max Score', 'Score']
         ws.append(headers_to_export)
         
-        # Read CSV and write only the selected headers to Excel
-        with open(csv_path, 'r', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                ws.append([row.get(header, '') for header in headers_to_export])
+        # Write combined data to Excel
+        for row in combined_data:
+            ws.append([row.get(header, '') for header in headers_to_export])
+        
+        # Add a summary sheet
+        ws2 = wb.create_sheet("Summary")
+        ws2.append(['Total Records', len(combined_data)])
+        ws2.append(['Unique Students', len(processed_student_ids)])
         
         # Prepare response
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename=exam_{exam_id}_results.xlsx'
+        response['Content-Disposition'] = f'attachment; filename=exam_{exam_id}_combined_results.xlsx'
         wb.save(response)
         return response
         
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
-
+    
 @login_required
 def student_test_papers_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)
