@@ -19,13 +19,6 @@
                             </svg>
                             Export to Excel
                         </a>
-                        <!-- <a href="{% url 'download_exam_sets_csv' class_id=current_class.id exam_id=current_exam.id %}" 
-                           class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                            Export Answer Keys
-                        </a> -->
                     </div>
                 </div>
             </div>
@@ -52,7 +45,7 @@
                             </p>
                         </div>
                     </div>
-                </div></svg>
+                </div>
             {% endfor %}
         {% endif %}
 
@@ -159,83 +152,90 @@
             </div>
         </div>
 
-<!-- Results Table -->
-<div class="bg-white rounded-lg shadow-sm">
-    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Detailed Results</h3>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Set ID</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Easy Questions</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium Questions</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hard Questions</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for result in scan_results %}
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">{{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.set_id }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</div>
-                        {% if result.answer_stats.Easy.incorrect_answers %}
-                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Easy.incorrect_answers|join:", " }}</div> -->
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</div>
-                        {% if result.answer_stats.Medium.incorrect_answers %}
-                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Medium.incorrect_answers|join:", " }}</div> -->
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</div>
-                        {% if result.answer_stats.Hard.incorrect_answers %}
-                        <!-- <div class="text-xs text-red-600 mt-1">Wrong: {{ result.answer_stats.Hard.incorrect_answers|join:", " }}</div> -->
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {{ result.score }}/{{ result.max_score }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if result.percentage < 60 %}
-                                bg-red-100 text-red-800
-                            {% elif result.percentage >= 60 and result.percentage < 75 %}
-                                bg-yellow-100 text-yellow-800
-                            {% else %}
-                                bg-green-100 text-green-800
-                            {% endif %}">
-                            {{ result.percentage|floatformat:1 }}%
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button onclick="showDetails('{{ forloop.counter }}')" 
-                                class="text-indigo-600 hover:text-indigo-900 font-medium">
-                            View Details
-                        </button>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
-                        No results found
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+        <!-- Results Table -->
+        <div class="bg-white rounded-lg shadow-sm">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Detailed Results</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Set ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Easy Questions</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium Questions</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hard Questions</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for result in scan_results %}
+                        <tr class="hover:bg-gray-50 transition-colors {% if result.student_id == 'N/A' %}bg-yellow-50{% endif %}">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {% if result.student_id == 'N/A' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mr-2">
+                                        INVALID
+                                    </span>
+                                    {% endif %}
+                                    {{ result.last_name }}, {{ result.first_name }} {{ result.middle_initial }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ result.set_id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ result.score }}/{{ result.max_score }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if result.percentage < 60 %}
+                                        bg-red-100 text-red-800
+                                    {% elif result.percentage >= 60 and result.percentage < 75 %}
+                                        bg-yellow-100 text-yellow-800
+                                    {% else %}
+                                        bg-green-100 text-green-800
+                                    {% endif %}">
+                                    {{ result.percentage|floatformat:1 }}%
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div class="flex space-x-2">
+                                    <button onclick="showDetails('{{ forloop.counter }}')" 
+                                            class="text-indigo-600 hover:text-indigo-900 font-medium">
+                                        View
+                                    </button>
+                                    <form method="POST" action="{% url 'delete_scan_result' class_id=current_class.id exam_id=current_exam.id result_file=result.scan_timestamp student_id=result.student_id %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-red-600 hover:text-red-900 font-medium" 
+                                                onclick="return confirm('Are you sure you want to delete this scan result?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No results found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         <!-- Modal -->
         <div id="detailsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
@@ -281,7 +281,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Easy Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }} ({{ result.answer_stats.Easy.percentage }}%)</span>
+                                            <span class="font-medium">{{ result.answer_stats.Easy.correct }}/{{ result.answer_stats.Easy.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Easy.percentage }}%"></div>
@@ -290,7 +290,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Medium Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }} ({{ result.answer_stats.Medium.percentage }}%)</span>
+                                            <span class="font-medium">{{ result.answer_stats.Medium.correct }}/{{ result.answer_stats.Medium.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Medium.percentage }}%"></div>
@@ -299,7 +299,7 @@
                                     <div>
                                         <div class="flex justify-between text-sm mb-1">
                                             <span class="text-gray-500">Hard Questions</span>
-                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }} ({{ result.answer_stats.Hard.percentage }}%)</span>
+                                            <span class="font-medium">{{ result.answer_stats.Hard.correct }}/{{ result.answer_stats.Hard.total }}</span>
                                         </div>
                                         <div class="w-full bg-gray-200 rounded-full h-2">
                                             <div class="bg-green-600 h-2 rounded-full" style="width: {{ result.answer_stats.Hard.percentage }}%"></div>

@@ -1898,35 +1898,6 @@ def students_view(request):
     return render(request, 'students.html', context)
 
 
-@login_required
-def delete_scan_results(request, class_id, exam_id):
-    """Delete scan results for a specific exam"""
-    # Verify the class and exam exist and belong to the current user
-    current_class = get_object_or_404(Class, id=class_id)
-    current_exam = get_object_or_404(Exam, id=exam_id)
-    
-    # Only allow POST requests to prevent accidental deletions
-    if request.method == 'POST':
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                                f'class_{class_id}', 
-                                f'exam_{exam_id}')
-        
-        try:
-            # Check if directory exists before attempting deletion
-            if os.path.exists(upload_dir):
-                # Remove the entire directory and its contents
-                shutil.rmtree(upload_dir)
-                messages.success(request, "Scan results deleted successfully.")
-            else:
-                messages.info(request, "No scan results found to delete.")
-                
-        except PermissionError:
-            messages.error(request, "Permission denied. Could not delete results.")
-        except Exception as e:
-            messages.error(request, f"Error deleting results: {str(e)}")
-    
-    # Redirect back to scan results page
-    return redirect(reverse('scan_results', kwargs={'class_id': class_id, 'exam_id': exam_id}))
 
 
 @login_required
@@ -2004,14 +1975,22 @@ def scan_results_view(request, class_id, exam_id):
                     reader = csv.DictReader(file)
                     
                     for row in reader:
-                        # Check if this student result already exists (to avoid duplicates)
+                        # Get student ID
                         student_id = row.get('ID', 'N/A')
-                        existing_result = next((result for result in scan_results 
-                                              if result['student_id'] == student_id), None)
                         
-                        # If this student already has a result, skip (or update if needed)
-                        if existing_result:
-                            continue
+                        # Only check for duplicates on valid student IDs
+                        # Invalid IDs (N/A or empty) should always be included as they represent different papers
+                        if student_id != 'N/A' and student_id.strip() != '':
+                            existing_result = next((result for result in scan_results 
+                                                if result['student_id'] == student_id), None)
+                            
+                            # If this student already has a valid result, skip
+                            if existing_result:
+                                continue
+                        
+                        # Generate a unique identifier for invalid scans
+                        # This ensures we can distinguish between different invalid papers
+                        scan_id = f"{csv_file}_{len(scan_results)}" if student_id == 'N/A' else student_id
                         
                         # Parse the specific incorrect answer lists by difficulty
                         easy_incorrect_list = parse_list(row.get('Easy Inc list', ''))
@@ -2119,6 +2098,33 @@ def scan_results_view(request, class_id, exam_id):
     
     return render(request, 'scan_results.html', context)
 
+@login_required
+def delete_scan_result(request, class_id, exam_id, result_file, student_id):
+    """Delete a specific scan result file"""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+        
+    # Verify the class and exam exist and belong to the current user
+    current_class = get_object_or_404(Class, id=class_id, user=request.user)
+    current_exam = get_object_or_404(Exam, id=exam_id, class_assigned=current_class)
+    
+    # Construct file path
+    upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
+                             f'class_{class_id}', 
+                             f'exam_{exam_id}')
+    file_path = os.path.join(upload_dir, result_file)
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            messages.success(request, f"Scan result file '{result_file}' deleted successfully.")
+        else:
+            messages.warning(request, f"File '{result_file}' not found.")
+    except Exception as e:
+        messages.error(request, f"Error deleting file: {str(e)}")
+        
+    return redirect('scan_results', class_id=class_id, exam_id=exam_id)
+
 def export_results(request, class_id, exam_id):
     """
     Export all scan results to Excel
@@ -2154,8 +2160,16 @@ def export_results(request, class_id, exam_id):
                         reader = csv.DictReader(file)
                         for row in reader:
                             student_id = row.get('ID', '')
-                            # Add only if student hasn't been processed yet
-                            if student_id and student_id not in processed_student_ids:
+                            
+                            # Handle invalid IDs differently
+                            if student_id == 'N/A' or student_id.strip() == '':
+                                # For invalid IDs, always include them and generate a unique identifier
+                                # This includes scan file name and position to differentiate them
+                                unique_id = f"invalid_{result_file}_{len(combined_data)}"
+                                row['_unique_id'] = unique_id  # Add internal tracking ID
+                                combined_data.append(row)
+                            # For valid IDs, only include once
+                            elif student_id not in processed_student_ids:
                                 combined_data.append(row)
                                 processed_student_ids.add(student_id)
                 except Exception as e:
@@ -2192,7 +2206,7 @@ def export_results(request, class_id, exam_id):
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
         return redirect('scan_results', class_id=class_id, exam_id=exam_id)
-    
+       
 @login_required
 def student_test_papers_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)

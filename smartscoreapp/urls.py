@@ -105,6 +105,8 @@ urlpatterns = [
     path('exams/<int:class_id>/<int:exam_id>/scan-results/', scan_results_view, name='scan_results'),
 
     path('api/delete-account/', views.delete_account_view, name='delete_account'),
+
+    path('class/<int:class_id>/exam/<int:exam_id>/delete_result/<str:result_file>/<str:student_id>/', views.delete_scan_result, name='delete_scan_result'),
     # Settings
     path('settings/', settings_view, name='settings'),
     path('chat/message/', views.chat_message, name='chat_message'),
