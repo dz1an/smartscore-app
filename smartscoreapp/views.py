@@ -1978,19 +1978,8 @@ def scan_results_view(request, class_id, exam_id):
                         # Get student ID
                         student_id = row.get('ID', 'N/A')
                         
-                        # Only check for duplicates on valid student IDs
-                        # Invalid IDs (N/A or empty) should always be included as they represent different papers
-                        if student_id != 'N/A' and student_id.strip() != '':
-                            existing_result = next((result for result in scan_results 
-                                                if result['student_id'] == student_id), None)
-                            
-                            # If this student already has a valid result, skip
-                            if existing_result:
-                                continue
-                        
-                        # Generate a unique identifier for invalid scans
-                        # This ensures we can distinguish between different invalid papers
-                        scan_id = f"{csv_file}_{len(scan_results)}" if student_id == 'N/A' else student_id
+                        # CHANGED: No longer check for duplicate student IDs
+                        # Always include all entries regardless of whether they're valid or invalid
                         
                         # Parse the specific incorrect answer lists by difficulty
                         easy_incorrect_list = parse_list(row.get('Easy Inc list', ''))
@@ -2098,6 +2087,10 @@ def scan_results_view(request, class_id, exam_id):
     
     return render(request, 'scan_results.html', context)
 
+
+
+
+
 @login_required
 def delete_scan_result(request, class_id, exam_id, result_file, student_id):
     """Delete a specific scan result file"""
@@ -2127,7 +2120,7 @@ def delete_scan_result(request, class_id, exam_id, result_file, student_id):
 
 def export_results(request, class_id, exam_id):
     """
-    Export all scan results to Excel
+    Export all scan results to Excel, including duplicate student IDs
     """
     from openpyxl import Workbook
     from django.http import HttpResponse
@@ -2144,7 +2137,7 @@ def export_results(request, class_id, exam_id):
     ]
     
     combined_data = []
-    processed_student_ids = set()  # To avoid duplicates
+    # CHANGED: Removed the processed_student_ids set to allow duplicates
     
     # Check each possible location
     for folder in possible_folders:
@@ -2159,19 +2152,10 @@ def export_results(request, class_id, exam_id):
                     with open(csv_path, 'r', encoding='utf-8') as file:
                         reader = csv.DictReader(file)
                         for row in reader:
-                            student_id = row.get('ID', '')
-                            
-                            # Handle invalid IDs differently
-                            if student_id == 'N/A' or student_id.strip() == '':
-                                # For invalid IDs, always include them and generate a unique identifier
-                                # This includes scan file name and position to differentiate them
-                                unique_id = f"invalid_{result_file}_{len(combined_data)}"
-                                row['_unique_id'] = unique_id  # Add internal tracking ID
-                                combined_data.append(row)
-                            # For valid IDs, only include once
-                            elif student_id not in processed_student_ids:
-                                combined_data.append(row)
-                                processed_student_ids.add(student_id)
+                            # Add scan timestamp to row for reference
+                            row_with_file = row.copy()
+                            row_with_file['Scan File'] = result_file
+                            combined_data.append(row_with_file)
                 except Exception as e:
                     continue
     
@@ -2182,10 +2166,10 @@ def export_results(request, class_id, exam_id):
     try:
         wb = Workbook()
         ws = wb.active
-        ws.title = "Combined Scan Results"
+        ws.title = "All Scan Results"
         
-        # Define the headers to export
-        headers_to_export = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Items', 'Max Score', 'Score']
+        # Define the headers to export - include scan file information
+        headers_to_export = ['Last Name', 'First Name', 'Middle Initial', 'ID', 'Set ID', 'Items', 'Max Score', 'Score', 'Scan File']
         ws.append(headers_to_export)
         
         # Write combined data to Excel
@@ -2195,18 +2179,23 @@ def export_results(request, class_id, exam_id):
         # Add a summary sheet
         ws2 = wb.create_sheet("Summary")
         ws2.append(['Total Records', len(combined_data)])
-        ws2.append(['Unique Students', len(processed_student_ids)])
+        ws2.append(['Total Scan Files', len(set(row['Scan File'] for row in combined_data))])
+        
+        # Count valid vs invalid student IDs
+        valid_ids = len([row for row in combined_data if row.get('ID', 'N/A') != 'N/A' and row.get('ID', '').strip() != ''])
+        invalid_ids = len(combined_data) - valid_ids
+        ws2.append(['Valid Student IDs', valid_ids])
+        ws2.append(['Invalid Student IDs', invalid_ids])
         
         # Prepare response
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename=exam_{exam_id}_combined_results.xlsx'
+        response['Content-Disposition'] = f'attachment; filename=exam_{exam_id}_all_results.xlsx'
         wb.save(response)
         return response
         
     except Exception as e:
         messages.error(request, f"Error exporting results: {str(e)}")
-        return redirect('scan_results', class_id=class_id, exam_id=exam_id)
-       
+        return redirect('scan_results', class_id=class_id, exam_id=exam_id)   
 @login_required
 def student_test_papers_view(request, student_id):
     student = get_object_or_404(Student, id=student_id)
