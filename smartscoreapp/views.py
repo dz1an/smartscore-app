@@ -1899,7 +1899,6 @@ def students_view(request):
 
 
 
-
 @login_required
 def scan_results_view(request, class_id, exam_id):
     current_class = get_object_or_404(Class, id=class_id)
@@ -1908,6 +1907,16 @@ def scan_results_view(request, class_id, exam_id):
     upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
                              f'class_{class_id}', 
                              f'exam_{exam_id}')
+    
+    # Load deleted records
+    deleted_records_file = os.path.join(upload_dir, 'deleted_records.json')
+    deleted_records = []
+    if os.path.exists(deleted_records_file):
+        try:
+            with open(deleted_records_file, 'r') as f:
+                deleted_records = json.load(f)
+        except json.JSONDecodeError:
+            deleted_records = []
     
     scan_results = []
     question_stats = {
@@ -1978,8 +1987,10 @@ def scan_results_view(request, class_id, exam_id):
                         # Get student ID
                         student_id = row.get('ID', 'N/A')
                         
-                        # CHANGED: No longer check for duplicate student IDs
-                        # Always include all entries regardless of whether they're valid or invalid
+                        # Check if this record is deleted
+                        record_id = f"{csv_file}|{student_id}"
+                        if record_id in deleted_records:
+                            continue  # Skip deleted records
                         
                         # Parse the specific incorrect answer lists by difficulty
                         easy_incorrect_list = parse_list(row.get('Easy Inc list', ''))
@@ -2083,17 +2094,16 @@ def scan_results_view(request, class_id, exam_id):
         'passing_count': passing_count,
         'failing_count': failing_count,
         'total_scans': total_scans,  # New context variable for number of scans
+        'deleted_records_count': len(deleted_records),  # Count of deleted records
     }
     
     return render(request, 'scan_results.html', context)
 
 
 
-
-
 @login_required
 def delete_scan_result(request, class_id, exam_id, result_file, student_id):
-    """Delete a specific scan result file"""
+    """Delete a specific scan result record"""
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
         
@@ -2101,21 +2111,38 @@ def delete_scan_result(request, class_id, exam_id, result_file, student_id):
     current_class = get_object_or_404(Class, id=class_id, user=request.user)
     current_exam = get_object_or_404(Exam, id=exam_id, class_assigned=current_class)
     
-    # Construct file path
-    upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
-                             f'class_{class_id}', 
-                             f'exam_{exam_id}')
-    file_path = os.path.join(upload_dir, result_file)
+    # Get the path to the deleted records file
+    deleted_records_dir = os.path.join(settings.MEDIA_ROOT, 'uploads', 
+                                     f'class_{class_id}', 
+                                     f'exam_{exam_id}')
+    deleted_records_file = os.path.join(deleted_records_dir, 'deleted_records.json')
     
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            messages.success(request, f"Scan result file '{result_file}' deleted successfully.")
-        else:
-            messages.warning(request, f"File '{result_file}' not found.")
-    except Exception as e:
-        messages.error(request, f"Error deleting file: {str(e)}")
+    # Create directory if it doesn't exist
+    os.makedirs(deleted_records_dir, exist_ok=True)
+    
+    # Load existing deleted records or initialize empty list
+    deleted_records = []
+    if os.path.exists(deleted_records_file):
+        try:
+            with open(deleted_records_file, 'r') as f:
+                deleted_records = json.load(f)
+        except json.JSONDecodeError:
+            # Handle corrupted file
+            deleted_records = []
+    
+    # Add the current record to the deleted list
+    record_id = f"{result_file}|{student_id}"
+    if record_id not in deleted_records:
+        deleted_records.append(record_id)
         
+        # Save updated deleted records
+        with open(deleted_records_file, 'w') as f:
+            json.dump(deleted_records, f)
+        
+        messages.success(request, "Record deleted successfully.")
+    else:
+        messages.info(request, "This record was already deleted.")
+    
     return redirect('scan_results', class_id=class_id, exam_id=exam_id)
 
 def export_results(request, class_id, exam_id):
